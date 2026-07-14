@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <title>{{ article.title }}</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+</head>
+<body class="bg-gray-50 py-10">
+
+    <div class="max-w-3xl mx-auto bg-white p-8 rounded-xl shadow-sm">
+        <a href="{% url 'articles:import_article' %}" class="text-indigo-600 hover:text-indigo-800 text-sm font-medium mb-4 inline-block">&larr; Quay lại trang nhập link</a>
+
+        <h1 class="text-3xl font-bold text-gray-900 my-4 leading-tight">{{ article.title }}</h1>
+        
+        <div class="flex items-center space-x-4 text-sm text-gray-500 mb-6 border-b pb-4">
+            <span><strong>Nguồn:</strong> {{ article.source_name }}</span>
+            <span><strong>Trạng thái AI:</strong> 
+                <span class="px-2 py-0.5 rounded text-xs font-semibold bg-yellow-100 text-yellow-800">
+                    {{ article.status }}
+                </span>
+            </span>
+            <span class="text-xs">Link gốc: <a href="{{ article.url }}" target="_blank" class="text-blue-500 underline truncate max-w-xs inline-block vertical-middle">Xem bản gốc</a></span>
+        </div>
+
+        <div class="prose max-w-none text-gray-800 leading-relaxed whitespace-pre-line text-lg">
+            {{ article.original_text }}
+        </div>
+
+        <div class="mt-10 border-t pt-8 bg-indigo-50 p-6 rounded-xl border border-indigo-100">
+            <h3 class="text-lg font-bold text-indigo-900 mb-2">🧠 Góc Học Tập (AI Tính Năng)</h3>
+            <p class="text-indigo-700 text-sm">
+                Tính năng trích xuất từ vựng, điểm ngữ pháp và tạo bộ câu hỏi trắc nghiệm tự động (LangGraph) đang được thiết lập. Hãy sẵn sàng cho Tuần 2 nhé!
+            </p>
+        </div>
+    </div>
+
+</body>
+</html>
