@@ -1,38 +1,108 @@
 <!DOCTYPE html>
-<html lang="vi">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>{{ article.title }}</title>
-    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ article.title }} - IELTS Reading Practice</title>
+    <script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body class="bg-gray-50 py-10">
+<body class="bg-gray-50 h-screen overflow-hidden flex flex-col">
 
-    <div class="max-w-3xl mx-auto bg-white p-8 rounded-xl shadow-sm">
-        <a href="{% url 'articles:import_article' %}" class="text-indigo-600 hover:text-indigo-800 text-sm font-medium mb-4 inline-block">&larr; Quay lại trang nhập link</a>
+    <header class="bg-blue-900 text-white p-4 shadow-md flex justify-between items-center z-10">
+        <h1 class="text-xl font-bold truncate w-2/3">{{ article.title }}</h1>
+        <div class="text-lg font-semibold bg-blue-700 px-4 py-1 rounded-full">
+            Score: <span id="score-display">0</span> / {{ article.exams.0.quizzes|length }}
+        </div>
+    </header>
 
-        <h1 class="text-3xl font-bold text-gray-900 my-4 leading-tight">{{ article.title }}</h1>
+    <main class="flex-1 flex overflow-hidden">
         
-        <div class="flex items-center space-x-4 text-sm text-gray-500 mb-6 border-b pb-4">
-            <span><strong>Nguồn:</strong> {{ article.source_name }}</span>
-            <span><strong>Trạng thái AI:</strong> 
-                <span class="px-2 py-0.5 rounded text-xs font-semibold bg-yellow-100 text-yellow-800">
-                    {{ article.status }}
-                </span>
-            </span>
-            <span class="text-xs">Link gốc: <a href="{{ article.url }}" target="_blank" class="text-blue-500 underline truncate max-w-xs inline-block vertical-middle">Xem bản gốc</a></span>
-        </div>
+        <section class="w-1/2 p-8 overflow-y-auto bg-white border-r border-gray-200">
+            <div class="prose max-w-none text-gray-800 leading-relaxed text-lg">
+                {{ article.original_text|linebreaks }}
+            </div>
+        </section>
 
-        <div class="prose max-w-none text-gray-800 leading-relaxed whitespace-pre-line text-lg">
-            {{ article.original_text }}
-        </div>
+        <section class="w-1/2 p-8 overflow-y-auto bg-gray-50">
+            <div id="quiz-container" class="max-w-3xl mx-auto">
+                <h2 class="text-2xl font-bold mb-6 text-gray-800">Questions</h2>
+                
+                {% for quiz in article.exams.0.quizzes %}
+                <div class="quiz-item bg-white p-6 rounded-lg shadow-sm border border-gray-200 mb-6" data-answer="{{ quiz.correct_answer }}">
+                    <p class="font-semibold text-lg mb-4 text-gray-800">
+                        <span class="mr-2 text-blue-600">{{ forloop.counter }}.</span>{{ quiz.question }}
+                    </p>
 
-        <div class="mt-10 border-t pt-8 bg-indigo-50 p-6 rounded-xl border border-indigo-100">
-            <h3 class="text-lg font-bold text-indigo-900 mb-2">🧠 Góc Học Tập (AI Tính Năng)</h3>
-            <p class="text-indigo-700 text-sm">
-                Tính năng trích xuất từ vựng, điểm ngữ pháp và tạo bộ câu hỏi trắc nghiệm tự động (LangGraph) đang được thiết lập. Hãy sẵn sàng cho Tuần 2 nhé!
-            </p>
-        </div>
-    </div>
+                    {% if quiz.quiz_type == 'multiple_choice' %}
+                        <div class="space-y-3 options-container">
+                            {% for option in quiz.options %}
+                            <label class="flex items-center p-3 border rounded cursor-pointer hover:bg-gray-50 transition-colors option-label">
+                                <input type="radio" name="question_{{ forloop.parentloop.counter }}" value="{{ option }}" class="w-5 h-5 text-blue-600 border-gray-300 focus:ring-blue-500 mr-3">
+                                <span class="text-gray-700">{{ option }}</span>
+                            </label>
+                            {% endfor %}
+                        </div>
+                    {% elif quiz.quiz_type == 'fill_in_blank' %}
+                        <div class="mt-2 options-container">
+                            <input type="text" name="question_{{ forloop.counter }}" class="w-full p-3 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:outline-none" placeholder="Type your answer here...">
+                        </div>
+                    {% endif %}
 
+                    <div class="explanation hidden mt-4 p-4 bg-blue-50 border-l-4 border-blue-500 text-sm text-gray-700 rounded-r">
+                        <strong class="text-blue-800">Correct Answer:</strong> {{ quiz.correct_answer }} <br>
+                        <strong class="text-blue-800 mt-2 block">Explanation:</strong> {{ quiz.explanation }}
+                    </div>
+                </div>
+                {% endfor %}
+
+                <button id="submit-btn" class="w-full mt-6 bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-4 rounded-lg transition-colors text-lg shadow-md">
+                    Submit Exam
+                </button>
+            </div>
+        </section>
+    </main>
+
+    <script>
+        document.getElementById('submit-btn').addEventListener('click', function() {
+            let correctCount = 0;
+            const quizItems = document.querySelectorAll('.quiz-item');
+
+            quizItems.forEach(item => {
+                const correctAnswer = item.getAttribute('data-answer').trim().toLowerCase();
+                const inputs = item.querySelectorAll('input');
+                let userAnswer = null;
+
+                // Lấy đáp án của người dùng
+                if (inputs[0].type === 'radio') {
+                    const selected = Array.from(inputs).find(radio => radio.checked);
+                    if (selected) userAnswer = selected.value.trim().toLowerCase();
+                } else if (inputs[0].type === 'text') {
+                    userAnswer = inputs[0].value.trim().toLowerCase();
+                }
+
+                // Xử lý UI đổi màu
+                const container = item.querySelector('.options-container');
+                if (userAnswer === correctAnswer) {
+                    correctCount++;
+                    item.classList.add('border-green-500', 'bg-green-50');
+                    item.classList.remove('border-gray-200');
+                } else {
+                    item.classList.add('border-red-500', 'bg-red-50');
+                    item.classList.remove('border-gray-200');
+                }
+
+                // Vô hiệu hóa input và hiện giải thích
+                inputs.forEach(input => input.disabled = true);
+                item.querySelector('.explanation').classList.remove('hidden');
+            });
+
+            // Cập nhật điểm
+            document.getElementById('score-display').textContent = correctCount;
+            this.textContent = 'Exam Submitted';
+            this.disabled = true;
+            this.classList.replace('bg-green-600', 'bg-gray-400');
+            this.classList.replace('hover:bg-green-700', 'cursor-not-allowed');
+        });
+    </script>
 </body>
 </html>
