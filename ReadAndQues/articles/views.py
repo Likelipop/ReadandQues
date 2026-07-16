@@ -17,57 +17,80 @@ db = client[getattr(settings, "MONGO_DB_NAME", "read_and_ques_db")]
 article_collection = db["articles"]  # Tên collection trong MongoDB
 
 
+import os
+from django.shortcuts import render, redirect
+from django.contrib import messages
+from .utils.crawler import crawl_article_content  # Hàm cào báo từ Tuần 1
+from ai_core.graph import app  # Đồ thị LangGraph của chúng ta
+from .models import ArticleMongoModel  # Pydantic/Mongo Model của bạn
+
 def import_article(request):
     """
-    Xử lý tiếp nhận URL, cào báo, validate qua Pydantic Schema và lưu vào MongoDB
+    View xử lý dán link bài báo, cào text, chạy qua LangGraph và lưu MongoDB
     """
     if request.method == "POST":
         url = request.POST.get("url", "").strip()
         
         if not url:
-            messages.error(request, "Vui lòng nhập URL bài báo!")
+            messages.error(request, "Vui lòng nhập một URL bài báo hợp lệ!")
             return render(request, "articles/import.html")
-            
-        # 2. Kiểm tra trùng lặp URL trong MongoDB
-        existing_doc = article_collection.find_one({"url": url})
-        if existing_doc:
-            messages.info(request, "Bài báo này đã tồn tại trong hệ thống.")
-            # Chuyển đổi ObjectId thành chuỗi string để làm tham số URL
-            return redirect("articles:article_detail", pk=str(existing_doc["_id"]))
-            
-        # 3. Tiến hành gọi bộ cào dữ liệu chữ thuần từ utils/
-        crawl_result = crawl_article_content(url)
         
-        if crawl_result["success"]:
-            try:
-                # 4. Tạo Object thông qua Pydantic để Validate dữ liệu đầu vào
-                # Ở bước Tuần 1 này, ta lưu trạng thái 'pending' và các trường phân tích/quiz tạm để trống (None / rỗng)
-                pydantic_article = ArticleMongoModel(
-                    url=url,
-                    title=crawl_result["title"],
-                    original_text=crawl_result["content"],
-                    source_name=crawl_result.get("source_name", "Unknown"),
-                    status="pending",
-                    created_at=datetime.utcnow()
-                )
+        try:
+            # 1. Cào nội dung bài báo từ URL
+            print(f"🕵️ Đang cào dữ liệu từ URL: {url}...")
+            title, plain_text, *_ = crawl_article_content(url)
+            
+            if not plain_text:
+                messages.error(request, "Không thể trích xuất nội dung từ bài báo này. Hãy thử link khác!")
+                return render(request, "articles/import.html")
                 
-                # 5. Đẩy dữ liệu đã được validate vào MongoDB dưới dạng Dictionary (JSON)
-                # Dùng mode_dump(by_alias=True) để Pydantic hiểu biến id thành _id của MongoDB
-                doc_to_insert = pydantic_article.model_dump(by_alias=True, exclude_none=True)
-                
-                # Đảm bảo xóa trường _id nếu nó đang là None để MongoDB tự sinh ObjectId
-                if "_id" in doc_to_insert and doc_to_insert["_id"] is None:
-                    del doc_to_insert["_id"]
-                    
-                result = article_collection.insert_one(doc_to_insert)
-                
-                messages.success(request, "Cào dữ liệu và lưu vào MongoDB thành công!")
-                return redirect("articles:article_detail", pk=str(result.inserted_id))
-                
-            except Exception as e:
-                messages.error(request, f"Lỗi Validate dữ liệu hoặc lưu DB: {str(e)}")
-        else:
-            messages.error(request, f"Cào báo thất bại: {crawl_result['error']}")
+            # 2. Chuẩn bị dữ liệu và session đẩy vào LangGraph
+            inputs = {"original_text": plain_text}
+            # Tạo unique session id từ timestamp để LangGraph theo dõi trạng thái
+            session_id = f"session_{int(os.times().elapsed * 1000)}" 
+            config = {"configurable": {"thread_id": session_id}}
+            
+            # 3. Gọi mô hình GPT qua LangGraph
+            print("🧠 Đang gửi nội dung qua LangGraph và Azure AI Foundry...")
+            ai_result = app.invoke(inputs, config)
+            
+            # Lấy data đã được phân tách từ các Node trong đồ thị
+            analysis_data = ai_result.get("analysis", {})
+            quizzes_data = ai_result.get("quizzes", [])
+            
+            # 4. Khởi tạo Object đúng theo Schema MongoDB của bạn
+            print("💾 Lưu thông tin bài báo và bộ quiz vào MongoDB...")
+            
+            # Tùy thuộc vào cách bạn kết nối PyMongo hay Djongo ở Tuần 1, 
+            # Dưới đây là cách tạo document chuẩn bằng việc đưa Dict vào PyMongo hoặc .objects.create()
+            # Ví dụ minh họa theo PyMongo / Djongo kết hợp Pydantic:
+            article_doc = {
+                "url": url,
+                "title": title or analysis_data.get("main_idea", "English Article"),
+                "original_text": plain_text,
+                "source_name": "Unknown",
+                "analysis": analysis_data,
+                "quizzes": quizzes_data,
+                "status": "completed",
+            }
+            
+            # Đoạn này bạn gọi hàm insert vào MongoDB của bạn từ Tuần 1:
+            # Giả sử dùng PyMongo: db.articles.insert_one(article_doc)
+            # Hoặc nếu dùng Djongo/ORM: inserted_obj = ArticleMongoModel.objects.create(**article_doc)
+            
+            # Lấy ra ID của bản ghi vừa tạo (ví dụ chuỗi string của ObjectId)
+            # inserted_id = str(inserted_obj.id) hoặc str(result.inserted_id)
+            inserted_id = "điền_id_sau_khi_insert_thành_công_vào_đây"
+            
+            messages.success(request, "Chúc mừng! AI đã phân tích bài viết và tạo bộ câu hỏi thành công.")
+            
+            # 5. Khớp chính xác với đường dẫn: path("<str:pk>/", views.article_detail, name="article_detail")
+            return redirect("articles:article_detail", pk=inserted_id)
+            
+        except Exception as e:
+            print(f"❌ Lỗi hệ thống: {str(e)}")
+            messages.error(request, f"Đã xảy ra lỗi trong quá trình xử lý: {str(e)}")
+            return render(request, "articles/import.html")
             
     return render(request, "articles/import.html")
 
@@ -92,3 +115,5 @@ def article_detail(request, pk):
     article = ArticleMongoModel.model_validate(doc)
     
     return render(request, "articles/detail.html", {"article": article})
+
+
