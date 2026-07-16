@@ -4,18 +4,17 @@ from pydantic import BaseModel, Field
 from datetime import datetime
 
 # ==========================================
-# 1. PARAGRAPH CHUNKS (INDEX MAP)
+# 1. PARAGRAPH CHUNKS (Cập nhật theo Node A & B)
 # ==========================================
 class ChunkMetadata(BaseModel):
-    difficulty: str = Field("medium", description="easy, medium, hard")
-    contains_vocabulary: bool = False
-    contains_numbers: bool = False
-    contains_grammar: bool = False
+    difficulty: str = Field(default="medium", description="easy, medium, hard")
+    main_idea: str = Field(default="")
+    keywords: List[str] = Field(default_factory=list)
 
 class ArticleChunk(BaseModel):
     chunk_id: str = Field(..., description="e.g., chunk_1, chunk_2")
-    content: str = Field(..., description="Raw paragraph text")
-    paragraph_number: int = Field(...)
+    content: str = Field(..., description="Raw paragraph text grouped together")
+    source_paragraph_indices: List[int] = Field(..., description="Original paragraph indexes used")
     metadata: ChunkMetadata
 
 # ==========================================
@@ -29,24 +28,19 @@ class QuizItem(BaseModel):
     explanation: str = Field(...)
     
     # IELTS Psychometrics Traceability
-    source_chunk_id: str = Field(...)
+    source_chunk_ids: Union[List[str], str] = Field(..., description="IDs of chunks or -1 for whole passage")
     supporting_text: str = Field(..., description="Verbatim sentence from the text")
-    start_char_offset: int = Field(...)
-    end_char_offset: int = Field(...)
 
 # ==========================================
-# 3. EXAM CLASS (Embedded 1 : N Relationship)
+# 3. EXAM CLASS & MAIN MONGO SCHEMA (Giữ nguyên cấu trúc nhúng 1:N)
 # ==========================================
 class Exam(BaseModel):
     exam_id: str = Field(..., description="Unique generated code for this exam")
     title: str = Field(default="IELTS Academic Reading Test")
-    total_questions: int = Field(14)
+    total_questions: int = Field(...)
     quizzes: List[QuizItem] = Field(default_factory=list)
     created_at: datetime = Field(default_factory=datetime.utcnow)
 
-# ==========================================
-# 4. MAIN MONGO SCHEMA
-# ==========================================
 class ArticleMongoModel(BaseModel):
     id: Optional[str] = Field(default=None, alias="_id") 
     url: str = Field(...)
@@ -54,9 +48,9 @@ class ArticleMongoModel(BaseModel):
     original_text: str = Field(...)
     source_name: Optional[str] = Field(default="Unknown")
     
-    # Embedded components
+    analysis_review: Optional[str] = Field(default=None, description="Examiner review from Node A")
     chunks: List[ArticleChunk] = Field(default_factory=list)
-    exams: List[Exam] = Field(default_factory=list) # 1 Article : N Exams
+    exams: List[Exam] = Field(default_factory=list) 
     
     status: str = Field(default="pending")
     created_at: datetime = Field(default_factory=datetime.utcnow)

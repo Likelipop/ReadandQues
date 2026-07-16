@@ -1,192 +1,217 @@
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Union
 from typing_extensions import TypedDict
 import random
 from langgraph.graph import StateGraph, START, END
 from pydantic import BaseModel, Field
 from ai_core.config import get_llm
-from ai_core.schemas import QuizItem
+from articles.models import QuizItem, ArticleChunk, ChunkMetadata
 
-# 1. StateGraph State definition
+# --- A. State & Internal Schemas ---
 class GraphState(TypedDict):
     original_text: str
-    chunks: List[Dict[str, Any]]
-    total_target_questions: int
-    hard_target_count: int
+    paragraphs: List[str]           # Split by \n\n beforehand
+    exam_config: Dict[str, Any]     # e.g., {"total": 14, "hard": 7}
+    
+    # Node A Outputs
+    article_analysis: Dict[str, Any] 
+    
+    # Node B Outputs
+    chunks: List[Dict[str, Any]]    # Dictionaries of ArticleChunk
+    
+    # Node C Outputs
     question_plan: List[Dict[str, Any]]
-    mcq_quizzes: List[Dict[str, Any]] # Written by quiz_node
-    fib_quizzes: List[Dict[str, Any]] # Written by fill_in_the_blank_node
+    
+    # Node D & E Outputs
+    mcq_quizzes: List[Dict[str, Any]]
+    fib_quizzes: List[Dict[str, Any]]
+    
+    # Node F Output
     final_exam: Dict[str, Any]
 
-# --- Pydantic Output Structuring Schemas ---
+# Pydantic cho Node A (Phân tích)
+class ChunkInstruction(BaseModel):
+    chunk_id: str = Field(..., description="e.g., chunk_1")
+    paragraph_indices: List[int] = Field(..., description="List of indices from the raw paragraphs array to group together")
+    main_idea: str = Field(...)
+    keywords: List[str] = Field(...)
+    difficulty: str = Field(..., description="easy, medium, or hard")
+
+class ArticleAnalysisOutput(BaseModel):
+    main_idea_overall: str
+    keywords_overall: List[str]
+    examiner_review: str = Field(..., description="Detailed review of text difficulty, complex grammar, and potential trap areas.")
+    chunk_instructions: List[ChunkInstruction]
+
+# Pydantic cho Node C (Lên kế hoạch)
 class QuestionPlanItem(BaseModel):
-    quiz_type: str = Field(..., description="Must be 'multiple_choice' or 'fill_in_blank'")
-    target_chunk_id: str = Field(..., description="Chunk ID targeted for the question")
-    difficulty: str = Field(..., description="Must be 'easy', 'medium', or 'hard'")
+    id: str = Field(..., description="Unique ID for this question plan")
+    quiz_type: str = Field(..., description="multiple_choice or fill_in_blank")
+    attendWhere: Union[List[str], int] = Field(..., description="List of chunk_ids, or -1 for the whole article")
+    attendWhat: str = Field(..., description="Specific instructions, trap ideas, or vocabulary/grammar focus for the generators")
+    difficulty: str = Field(...)
 
 class QuestionPlanOutput(BaseModel):
     plans: List[QuestionPlanItem]
 
-class MCQOutput(BaseModel):
-    quizzes: List[QuizItem]
-
-class FIBOutput(BaseModel):
+class QuizOutput(BaseModel):
     quizzes: List[QuizItem]
 
 
-# --- Nodes Implementation ---
+# --- B. Nodes Implementation ---
 
-def chunk_and_analyze(state: GraphState) -> Dict[str, Any]:
-    """Helper to split raw article into standard paragraphs and assign metadata."""
-    paragraphs = [p.strip() for p in state["original_text"].split("\n\n") if p.strip()]
-    analyzed_chunks = []
+def node_a_analyze(state: GraphState) -> Dict[str, Any]:
+    """Node A: Analyzes the text and creates chunking instructions."""
+    llm = get_llm()
+    structured_llm = llm.with_structured_output(ArticleAnalysisOutput)
     
-    for idx, content in enumerate(paragraphs):
-        chunk_id = f"chunk_{idx + 1}"
-        difficulty = "hard" if idx % 2 == 0 else "easy" if idx % 3 == 0 else "medium"
-        analyzed_chunks.append({
-            "chunk_id": chunk_id,
-            "content": content,
-            "paragraph_number": idx + 1,
-            "metadata": {
-                "difficulty": difficulty,
-                "contains_vocabulary": len(content) > 150,
-                "contains_numbers": any(char.isdigit() for char in content),
-                "contains_grammar": True
-            }
-        })
-    return {"chunks": analyzed_chunks}
+    # Prepare raw paragraphs with indices for the LLM to map
+    indexed_paragraphs = "\n".join([f"[{i}] {p}" for i, p in enumerate(state["paragraphs"])])
+    
+    prompt = f"""
+    You are an Expert IELTS Examiner. Read the following paragraphs:
+    {indexed_paragraphs}
+    
+    Tasks:
+    1. Provide the overall main idea and keywords.
+    2. Write an 'examiner_review' detailing the text's difficulty, tricky syntax, and vocabulary.
+    3. Group related paragraphs into logical 'chunks' using their indices [0], [1], etc. Provide a main idea and keywords for each chunk.
+    """
+    result = structured_llm.invoke(prompt)
+    return {"article_analysis": result.model_dump()}
 
 
-def question_planner(state: GraphState) -> Dict[str, Any]:
-    """Orchestrator Node: Strategically allocates difficulty and question types across chunks."""
+def node_b_chunking(state: GraphState) -> Dict[str, Any]:
+    """Node B: Pure Python node that physically builds the chunks based on Node A's instructions."""
+    raw_paragraphs = state["paragraphs"]
+    analysis = state["article_analysis"]
+    
+    built_chunks = []
+    for inst in analysis["chunk_instructions"]:
+        # Group text using the indices provided by the LLM
+        content = "\n\n".join([raw_paragraphs[i] for i in inst["paragraph_indices"] if i < len(raw_paragraphs)])
+        
+        chunk = ArticleChunk(
+            chunk_id=inst["chunk_id"],
+            content=content,
+            source_paragraph_indices=inst["paragraph_indices"],
+            metadata=ChunkMetadata(
+                difficulty=inst["difficulty"],
+                main_idea=inst["main_idea"],
+                keywords=inst["keywords"]
+            )
+        )
+        built_chunks.append(chunk.model_dump())
+        
+    return {"chunks": built_chunks}
+
+
+def node_c_planner(state: GraphState) -> Dict[str, Any]:
+    """Node C: Uses ExamConfig and Analysis to generate a strategic question matrix."""
     llm = get_llm()
     structured_llm = llm.with_structured_output(QuestionPlanOutput)
     
-    chunks_catalog = [{"chunk_id": c["chunk_id"], "difficulty": c["metadata"]["difficulty"]} for c in state["chunks"]]
-    total_q = state.get("total_target_questions", 14)
-    hard_q = state.get("hard_target_count", 7)
+    config = state["exam_config"]
+    analysis = state["article_analysis"]
+    chunks_info = [{"id": c["chunk_id"], "idea": c["metadata"]["main_idea"]} for c in state["chunks"]]
     
-    system_prompt = f"""
-    You are an expert IELTS Reading Exam Director. 
-    Your job is to allocate a strict matrix plan of questions based on this available catalog:
-    {chunks_catalog}
-
-    Total Questions to generate: {total_q}
-    Total HARD Questions to generate: {hard_q}
-
-    Strict Allocation Constraints:
-    1. The output list MUST contain exactly {total_q} plans.
-    2. Exactly {hard_q} of those plans MUST be assigned the 'hard' difficulty tier.
-    3. The remaining {total_q - hard_q} plans must be randomly/strategically distributed between 'easy' and 'medium'.
-    4. Balance the question types evenly between 'multiple_choice' and 'fill_in_blank'.
+    prompt = f"""
+    As an IELTS Test Designer, create a question plan.
+    Exam Config: Generate exactly {config['total_questions']} questions ({config['hard_questions']} must be 'hard').
+    
+    Examiner Review: {analysis['examiner_review']}
+    Available Chunks: {chunks_info}
+    
+    Create a mix of 'multiple_choice' and 'fill_in_blank'.
+    For 'attendWhere', specify the chunk_id(s) or -1 for general questions.
+    For 'attendWhat', provide specific hints (e.g., 'Test understanding of keyword X', 'Create a trap around the author's tone').
     """
+    result = structured_llm.invoke(prompt)
+    return {"question_plan": [plan.model_dump() for plan in result.plans]}
+
+
+def node_d_mcq(state: GraphState) -> Dict[str, Any]:
+    """Node D: Generates MCQs based strictly on the planner's attendWhat hints."""
+    mcq_plans = [p for p in state["question_plan"] if p["quiz_type"] == "multiple_choice"]
+    if not mcq_plans: return {"mcq_quizzes": []}
     
-    result = structured_llm.invoke(system_prompt)
-    return {"question_plan": [item.model_dump() for item in result.plans]}
-
-
-def quiz_node(state: GraphState) -> Dict[str, Any]:
-    """MCQ Node: Builds high-validity IELTS MCQs with rigid distractor structures."""
-    plans = [p for p in state["question_plan"] if p["quiz_type"] == "multiple_choice"]
-    if not plans:
-        return {"mcq_quizzes": []}
-        
     llm = get_llm()
-    structured_llm = llm.with_structured_output(MCQOutput)
+    structured_llm = llm.with_structured_output(QuizOutput)
     
-    target_chunks = {p["target_chunk_id"] for p in plans}
-    context_text = "\n\n".join([f"[{c['chunk_id']}]\n{c['content']}" for c in state["chunks"] if c["chunk_id"] in target_chunks])
+    prompt = f"""
+    You are an IELTS Item Writer. Generate Multiple Choice Questions based on these plans:
+    {mcq_plans}
     
-    system_prompt = f"""
-    You are an elite IELTS MCQ Item Writer.
-    Analyze the following text chunks:
-    {context_text}
+    Available Text Chunks: {state['chunks']}
+    Examiner Context: {state['article_analysis']['examiner_review']}
     
-    Generate questions strictly aligned with this allocation blueprint:
-    {plans}
-    
-    STRICT DISTRACTOR FORMULA FOR THE 4 OPTIONS:
-    - Correct Option: A perfect semantic paraphrase of the supporting text facts.
-    - Distractor A (70% Overlap Bias): Retains 70% of exact wording/keywords from the chunk, but alters negation, relationship, or truth value to be factually false. Traps superficial matching readers.
-    - Distractor B (10% Incorrect Fact): Direct logical contradiction of the passage details.
-    - Distractor C (10% Absent Concept): Plausible-sounding details completely missing/unsupported by the text.
-    - Distractor D (10% Wrong Context): Factually 100% correct according to the passage, but taken from a completely different chunk/paragraph than the targeted area of this question.
-
-    CRITICAL QUALITY CONSTRAINT:
-    The character length and syntax complexity of ALL 4 options within a question MUST be highly similar (+/- 10% maximum length variance). Never make the correct option the longest or most detailed.
-    
-    Each MCQ must contain the correct answer, step-by-step logic in the explanation, verbatim supporting_text, and character offsets.
+    RULES:
+    1. Distractor Formula: 70% overlap (false twist), 10% not in text, 10% wrong context.
+    2. Keep option lengths balanced.
+    3. Strictly follow the 'attendWhat' instructions for each plan.
     """
-    
-    result = structured_llm.invoke(system_prompt)
+    result = structured_llm.invoke(prompt)
     return {"mcq_quizzes": [q.model_dump() for q in result.quizzes]}
 
 
-def fill_in_the_blank_node(state: GraphState) -> Dict[str, Any]:
-    """FIB Node: Creates sentence completions with heavy paraphrasing and literal original word blanks."""
-    plans = [p for p in state["question_plan"] if p["quiz_type"] == "fill_in_blank"]
-    if not plans:
-        return {"fib_quizzes": []}
-        
+def node_e_fib(state: GraphState) -> Dict[str, Any]:
+    """Node E: Generates Fill-in-the-Blank questions with heavy paraphrasing."""
+    fib_plans = [p for p in state["question_plan"] if p["quiz_type"] == "fill_in_blank"]
+    if not fib_plans: return {"fib_quizzes": []}
+    
     llm = get_llm()
-    structured_llm = llm.with_structured_output(FIBOutput)
+    structured_llm = llm.with_structured_output(QuizOutput)
     
-    target_chunks = {p["target_chunk_id"] for p in plans}
-    context_text = "\n\n".join([f"[{c['chunk_id']}]\n{c['content']}" for c in state["chunks"] if c["chunk_id"] in target_chunks])
+    prompt = f"""
+    You are an IELTS Sentence Completion Designer. Generate FIB questions based on these plans:
+    {fib_plans}
     
-    system_prompt = f"""
-    You are an expert IELTS Sentence Completion Designer.
-    Analyze the following text chunks:
-    {context_text}
+    Available Text Chunks: {state['chunks']}
+    Examiner Context: {state['article_analysis']['examiner_review']}
     
-    Generate Fill-in-the-Blank items strictly matching this blueprint:
-    {plans}
-    
-    STRICT IMPLEMENTATION RULES:
-    1. Paraphrase the target chunk's context heavily. The question prompt must NOT copy-paste the sentence structure from the original text.
-    2. The 'correct_answer' (blanked word) MUST be an exact keyword extracted directly from the targeted chunk without any spelling modifications.
-    3. Self-Critique Step: Audit your question to guarantee that based ONLY on the targeted text context, the 'correct_answer' is the sole grammatically and logically correct fit.
+    RULES:
+    1. Paraphrase the question heavily.
+    2. The 'correct_answer' MUST be an exact word/phrase present in the source chunk.
+    3. Strictly follow the 'attendWhat' instructions.
     """
-    
-    result = structured_llm.invoke(system_prompt)
+    result = structured_llm.invoke(prompt)
     return {"fib_quizzes": [q.model_dump() for q in result.quizzes]}
 
 
-def exam_packager(state: GraphState) -> Dict[str, Any]:
-    """Aggregates and formats the final Exam set, shuffling compiled questions."""
-    compiled_quizzes = state.get("mcq_quizzes", []) + state.get("fib_quizzes", [])
-    random.shuffle(compiled_quizzes)
+def node_f_packager(state: GraphState) -> Dict[str, Any]:
+    """Node F: Aggregates and finalizes the exam."""
+    all_quizzes = state.get("mcq_quizzes", []) + state.get("fib_quizzes", [])
+    random.shuffle(all_quizzes)
     
     exam_payload = {
-        "exam_id": f"EXAM_{random.randint(10000, 99999)}",
-        "title": "IELTS Academic Reading Practice Test",
-        "total_questions": len(compiled_quizzes),
-        "quizzes": compiled_quizzes
+        "exam_id": f"EXAM_{random.randint(1000, 9999)}",
+        "title": "IELTS Reading Practice (Agentic Generated)",
+        "total_questions": len(all_quizzes),
+        "quizzes": all_quizzes
     }
     return {"final_exam": exam_payload}
 
 
-# --- Parallel Topology Construction ---
+# --- C. Build Topology ---
 workflow = StateGraph(GraphState)
 
-workflow.add_node("chunk_and_analyze", chunk_and_analyze)
-workflow.add_node("question_planner", question_planner)
-workflow.add_node("quiz_node", quiz_node)
-workflow.add_node("fill_in_the_blank_node", fill_in_the_blank_node)
-workflow.add_node("exam_packager", exam_packager)
+workflow.add_node("node_a_analyze", node_a_analyze)
+workflow.add_node("node_b_chunking", node_b_chunking)
+workflow.add_node("node_c_planner", node_c_planner)
+workflow.add_node("node_d_mcq", node_d_mcq)
+workflow.add_node("node_e_fib", node_e_fib)
+workflow.add_node("node_f_packager", node_f_packager)
 
-# Routing Edges
-workflow.add_edge(START, "chunk_and_analyze")
-workflow.add_edge("chunk_and_analyze", "question_planner")
+workflow.add_edge(START, "node_a_analyze")
+workflow.add_edge("node_a_analyze", "node_b_chunking")
+workflow.add_edge("node_b_chunking", "node_c_planner")
 
-# Parallel Execution Trigger (Fan-out)
-workflow.add_edge("question_planner", "quiz_node")
-workflow.add_edge("question_planner", "fill_in_the_blank_node")
+# Fan-out to Question Generators
+workflow.add_edge("node_c_planner", "node_d_mcq")
+workflow.add_edge("node_c_planner", "node_e_fib")
 
-# Convergence Trigger (Fan-in)
-workflow.add_edge("quiz_node", "exam_packager")
-workflow.add_edge("fill_in_the_blank_node", "exam_packager")
-
-workflow.add_edge("exam_packager", END)
+# Fan-in to Packager
+workflow.add_edge("node_d_mcq", "node_f_packager")
+workflow.add_edge("node_e_fib", "node_f_packager")
+workflow.add_edge("node_f_packager", END)
 
 app = workflow.compile()
