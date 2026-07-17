@@ -1,7 +1,20 @@
 import os
+from pydantic import BaseModel
 from ai_core.graph import app
+from ai_core.config import calculate_exam_config
 from .utils.crawler import crawl_article_content
 # from .utils.db import get_article_document_by_id, article_collection
+
+
+def _recursive_dump(value):
+    if isinstance(value, BaseModel):
+        return _recursive_dump(value.model_dump())
+    if isinstance(value, dict):
+        return {k: _recursive_dump(v) for k, v in value.items()}
+    if isinstance(value, list):
+        return [_recursive_dump(v) for v in value]
+    return value
+
 
 def process_and_analyze_article(url: str) -> dict | None:
     crawl_result = crawl_article_content(url)
@@ -21,14 +34,12 @@ def process_and_analyze_article(url: str) -> dict | None:
     inputs = {
         "original_text": plain_text,
         "paragraphs": raw_paragraphs,
-        "exam_config": {
-            "total_questions": 14,
-            "hard_questions": 7
-        }
+        "exam_config": calculate_exam_config(plain_text)
     }
     
     print("🧠 Running Parallel IELTS Item Generator Graph (5-Node Architecture)...")
     ai_result = app.invoke(inputs, config)
+    ai_result = _recursive_dump(ai_result)
 
     # Trả về payload map với ArticleMongoModel
     return {

@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Đang tạo bài đọc...</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-50 min-h-screen flex items-center justify-center">
+    <div class="max-w-3xl w-full p-8 bg-white rounded-3xl shadow-xl border border-gray-200">
+        <div class="flex flex-col gap-6">
+            <div class="text-center">
+                <h1 class="text-3xl font-bold text-gray-900 mb-3">Chuẩn bị bài đọc và câu hỏi</h1>
+                {% if article.status == 'failed' %}
+                    <p class="text-red-600 text-lg">Đã xảy ra lỗi khi tạo đề.</p>
+                {% else %}
+                    <p class="text-gray-600 text-lg">Hệ thống đang xử lý bài báo và tạo quiz. Vui lòng đợi trong giây lát.</p>
+                {% endif %}
+            </div>
+
+            <div class="flex items-center justify-center">
+                <div class="h-14 w-14 rounded-full border-4 border-blue-600 border-t-transparent animate-spin"></div>
+            </div>
+
+            <div class="bg-blue-50 border border-blue-200 rounded-2xl p-5 text-gray-700">
+                <p class="font-semibold">Trang hiện tại:</p>
+                <p class="mt-2">URL: <span class="font-medium break-all">{{ article.url }}</span></p>
+                {% if article.title %}
+                    <p class="mt-2">Tiêu đề: <span class="font-medium">{{ article.title }}</span></p>
+                {% endif %}
+                <p class="mt-2">Trạng thái: <span class="font-medium">{{ article.status|capfirst }}</span></p>
+                {% if article.status == 'failed' and article.error_message %}
+                    <p class="mt-4 text-red-600">Lý do: {{ article.error_message }}</p>
+                {% endif %}
+            </div>
+
+            {% if article.status == 'failed' %}
+                <div class="text-center">
+                    <a href="{% url 'import_article' %}" class="inline-flex items-center justify-center rounded-full bg-blue-600 px-6 py-3 text-white font-semibold hover:bg-blue-700 transition">
+                        Quay lại trang nhập URL
+                    </a>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+
+    {% if article.status != 'failed' %}
+    <script>
+        function pollStatus() {
+            fetch(`/articles/status/{{ article.id }}/`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.status === 'completed') {
+                        window.location.href = `/articles/{{ article.id }}/`;
+                        return;
+                    }
+
+                    if (data.status === 'failed' || data.status === 'error') {
+                        window.location.reload();
+                        return;
+                    }
+
+                    setTimeout(pollStatus, 2500);
+                })
+                .catch(() => {
+                    setTimeout(pollStatus, 5000);
+                });
+        }
+
+        pollStatus();
+    </script>
+    {% endif %}
+</body>
+</html>

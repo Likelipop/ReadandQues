@@ -50,11 +50,11 @@ class ArticleMongoModel(BaseModel):
     
     analysis_review: Optional[str] = Field(default=None, description="Examiner review from Node A")
     chunks: List[ArticleChunk] = Field(default_factory=list)
-    exams: List[Exam] = Field(default_factory=list) 
+    exams: List[Exam] = Field(default_factory=list)
     
+    error_message: Optional[str] = Field(default=None, description="Optional error message when processing fails")
     status: str = Field(default="pending")
     created_at: datetime = Field(default_factory=datetime.utcnow)
-
     model_config = {
         "populate_by_name": True,
         "arbitrary_types_allowed": True

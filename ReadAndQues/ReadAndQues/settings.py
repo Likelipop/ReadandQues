@@ -18,6 +18,9 @@ import os
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 load_dotenv(BASE_DIR / '.env')
+# Fallback to parent directory if .env is in the repo root
+if not os.getenv('SECRET_KEY'):
+    load_dotenv(BASE_DIR.parent / '.env')
 
 
 # Quick-start development settings - unsuitable for production
@@ -122,6 +125,14 @@ USE_TZ = True
 
 STATIC_URL = 'static/'
 
-MONGO_URI = os.getenv('MONGO_URI', 'mongodb+srv://djangoDev:mot2ba4nam@articlecluster.pkdy5c0.mongodb.net/?appName=articleCluster')
+raw_mongo_uri = os.environ.get("MONGO_URI", "")
+if not raw_mongo_uri or raw_mongo_uri.startswith("******"):
+    MONGO_URI = "mongodb://admin:changeme@localhost:27017/mydb?authSource=admin"
+else:
+    MONGO_URI = raw_mongo_uri
 
-MONGO_DB_NAME = os.getenv('MONGO_DB_NAME', 'articlesDB')
+MONGO_DB_NAME = os.environ.get("MONGO_DB_NAME", "mydb")
+
+# Ensure explicit fallback for local Docker development
+if MONGO_URI.startswith('******') or not MONGO_URI:
+    MONGO_URI = 'mongodb://admin:changeme@localhost:27017/mydb?authSource=admin'

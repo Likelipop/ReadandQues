@@ -1,217 +1,225 @@
-from typing import List, Dict, Any, Union
+from typing import List, Dict, Any, Union, Optional
 from typing_extensions import TypedDict
 import random
 from langgraph.graph import StateGraph, START, END
 from pydantic import BaseModel, Field
-from ai_core.config import get_llm
-from articles.models import QuizItem, ArticleChunk, ChunkMetadata
 
-# --- A. State & Internal Schemas ---
+from .config import get_llm
+
+# --- A. STATE & TỐI GIẢN SCHEMAS ---
 class GraphState(TypedDict):
     original_text: str
-    paragraphs: List[str]           # Split by \n\n beforehand
-    exam_config: Dict[str, Any]     # e.g., {"total": 14, "hard": 7}
+    paragraphs: List[str]           
+    exam_config: Dict[str, Any]     # VD: {"total_questions": 14, "hard_questions": 7}
     
-    # Node A Outputs
-    article_analysis: Dict[str, Any] 
+    # 1. Output của Node Planner (Thay thế cho Node A & C cũ)
+    master_plan: Dict[str, Any]     
     
-    # Node B Outputs
-    chunks: List[Dict[str, Any]]    # Dictionaries of ArticleChunk
+    # 2. Output của Node Chunker (Code thuần Python)
+    chunks: List[Dict[str, Any]]    
     
-    # Node C Outputs
-    question_plan: List[Dict[str, Any]]
-    
-    # Node D & E Outputs
+    # 3. Output của các Node Sinh Câu Hỏi (Chạy song song)
     mcq_quizzes: List[Dict[str, Any]]
     fib_quizzes: List[Dict[str, Any]]
+    # matching_quizzes: List[...] <-- Dễ dàng thêm ở đây sau này
     
-    # Node F Output
+    # 4. Output cuối cùng
     final_exam: Dict[str, Any]
 
-# Pydantic cho Node A (Phân tích)
+# --- PYDANTIC SCHEMAS (ÉP KIỂU TRẢ VỀ SIÊU NHỎ GỌN) ---
 class ChunkInstruction(BaseModel):
     chunk_id: str = Field(..., description="e.g., chunk_1")
-    paragraph_indices: List[int] = Field(..., description="List of indices from the raw paragraphs array to group together")
-    main_idea: str = Field(...)
-    keywords: List[str] = Field(...)
-    difficulty: str = Field(..., description="easy, medium, or hard")
+    paragraph_indices: List[int] = Field(..., description="Indices of paragraphs to group. e.g., [0, 1]")
+    main_idea: str = Field(..., description="Short 5-word summary of this chunk")
 
-class ArticleAnalysisOutput(BaseModel):
-    main_idea_overall: str
-    keywords_overall: List[str]
-    examiner_review: str = Field(..., description="Detailed review of text difficulty, complex grammar, and potential trap areas.")
-    chunk_instructions: List[ChunkInstruction]
-
-# Pydantic cho Node C (Lên kế hoạch)
 class QuestionPlanItem(BaseModel):
-    id: str = Field(..., description="Unique ID for this question plan")
-    quiz_type: str = Field(..., description="multiple_choice or fill_in_blank")
-    attendWhere: Union[List[str], int] = Field(..., description="List of chunk_ids, or -1 for the whole article")
-    attendWhat: str = Field(..., description="Specific instructions, trap ideas, or vocabulary/grammar focus for the generators")
-    difficulty: str = Field(...)
+    id: str = Field(..., description="e.g., q_1")
+    quiz_type: str = Field(..., description="multiple_choice, fill_in_blank, etc.")
+    target_chunk_ids: List[str] = Field(..., description="Which chunk(s) this question is based on.")
+    attendWhat: str = Field(..., description="Specific trick or focus (e.g., 'Test the contrast word', 'Focus on dates'). KEEP IT SHORT.")
 
-class QuestionPlanOutput(BaseModel):
-    plans: List[QuestionPlanItem]
+class MasterPlanOutput(BaseModel):
+    chunk_instructions: List[ChunkInstruction]
+    question_plans: List[QuestionPlanItem]
+
+class QuizItem(BaseModel):
+    quiz_type: str = Field(..., description="multiple_choice or fill_in_blank")
+    question: str = Field(...)
+    options: Optional[List[str]] = Field(default=None, description="Only for multiple_choice")
+    correct_answer: str = Field(...)
+    explanation: str = Field(...)
+    
+    # IELTS Psychometrics Traceability
+    source_chunk_ids: Union[List[str], str] = Field(..., description="IDs of chunks or -1 for whole passage")
+    supporting_text: str = Field(..., description="Verbatim sentence from the text")
 
 class QuizOutput(BaseModel):
-    quizzes: List[QuizItem]
+    # Dùng chung cho tất cả các Node sinh câu hỏi
+    quizzes: List[QuizItem]  # Dùng QuizItem schema thay vì Dict để hỗ trợ structured output chính xác
 
 
-# --- B. Nodes Implementation ---
+# --- B. THỰC THI CÁC NODES ---
 
-def node_a_analyze(state: GraphState) -> Dict[str, Any]:
-    """Node A: Analyzes the text and creates chunking instructions."""
+def node_master_planner(state: GraphState) -> Dict[str, Any]:
+    """
+    Node 1 (LLM): Đọc toàn bộ văn bản 1 lần duy nhất.
+    Suy nghĩ trong Context Window -> Trả ra cách cắt Text + Ma trận phân bổ đề thi.
+    """
     llm = get_llm()
-    structured_llm = llm.with_structured_output(ArticleAnalysisOutput)
+    structured_llm = llm.with_structured_output(MasterPlanOutput, method="function_calling")
     
-    # Prepare raw paragraphs with indices for the LLM to map
     indexed_paragraphs = "\n".join([f"[{i}] {p}" for i, p in enumerate(state["paragraphs"])])
+    config = state["exam_config"]
     
     prompt = f"""
-    You are an Expert IELTS Examiner. Read the following paragraphs:
+    You are a Master IELTS Architect. Read these paragraphs:
     {indexed_paragraphs}
     
-    Tasks:
-    1. Provide the overall main idea and keywords.
-    2. Write an 'examiner_review' detailing the text's difficulty, tricky syntax, and vocabulary.
-    3. Group related paragraphs into logical 'chunks' using their indices [0], [1], etc. Provide a main idea and keywords for each chunk.
+    Exam Requirement: Create exactly {config['total_questions']} questions ({config.get('hard_questions', 0)} hard).
+    
+    Tasks (Do not explain, just output the JSON):
+    1. chunk_instructions: Group paragraphs into logical chunks using their indices. Assign a short main idea.
+    2. question_plans: Distribute the required number of questions across these chunks. 
+       - Mix 'multiple_choice' and 'fill_in_blank'.
+       - Use 'attendWhat' to specify the exact trap or vocabulary focus.
     """
     result = structured_llm.invoke(prompt)
-    return {"article_analysis": result.model_dump()}
+    return {"master_plan": result.model_dump()}
 
 
-def node_b_chunking(state: GraphState) -> Dict[str, Any]:
-    """Node B: Pure Python node that physically builds the chunks based on Node A's instructions."""
+def node_chunker(state: GraphState) -> Dict[str, Any]:
+    """
+    Node 2 (Python thuần): Dùng chỉ thị từ Planner để cắt text vật lý.
+    KHÔNG tốn API Token.
+    """
     raw_paragraphs = state["paragraphs"]
-    analysis = state["article_analysis"]
+    instructions = state["master_plan"]["chunk_instructions"]
     
     built_chunks = []
-    for inst in analysis["chunk_instructions"]:
-        # Group text using the indices provided by the LLM
+    for inst in instructions:
         content = "\n\n".join([raw_paragraphs[i] for i in inst["paragraph_indices"] if i < len(raw_paragraphs)])
-        
-        chunk = ArticleChunk(
-            chunk_id=inst["chunk_id"],
-            content=content,
-            source_paragraph_indices=inst["paragraph_indices"],
-            metadata=ChunkMetadata(
-                difficulty=inst["difficulty"],
-                main_idea=inst["main_idea"],
-                keywords=inst["keywords"]
-            )
-        )
-        built_chunks.append(chunk.model_dump())
+        built_chunks.append({
+            "chunk_id": inst["chunk_id"],
+            "content": content,
+            "source_paragraph_indices": inst["paragraph_indices"],
+            "metadata": {
+                "difficulty": "medium",
+                "main_idea": inst["main_idea"],
+                "keywords": []
+            }
+        })
         
     return {"chunks": built_chunks}
 
 
-def node_c_planner(state: GraphState) -> Dict[str, Any]:
-    """Node C: Uses ExamConfig and Analysis to generate a strategic question matrix."""
-    llm = get_llm()
-    structured_llm = llm.with_structured_output(QuestionPlanOutput)
-    
-    config = state["exam_config"]
-    analysis = state["article_analysis"]
-    chunks_info = [{"id": c["chunk_id"], "idea": c["metadata"]["main_idea"]} for c in state["chunks"]]
-    
-    prompt = f"""
-    As an IELTS Test Designer, create a question plan.
-    Exam Config: Generate exactly {config['total_questions']} questions ({config['hard_questions']} must be 'hard').
-    
-    Examiner Review: {analysis['examiner_review']}
-    Available Chunks: {chunks_info}
-    
-    Create a mix of 'multiple_choice' and 'fill_in_blank'.
-    For 'attendWhere', specify the chunk_id(s) or -1 for general questions.
-    For 'attendWhat', provide specific hints (e.g., 'Test understanding of keyword X', 'Create a trap around the author's tone').
+def node_mcq(state: GraphState) -> Dict[str, Any]:
     """
-    result = structured_llm.invoke(prompt)
-    return {"question_plan": [plan.model_dump() for plan in result.plans]}
-
-
-def node_d_mcq(state: GraphState) -> Dict[str, Any]:
-    """Node D: Generates MCQs based strictly on the planner's attendWhat hints."""
-    mcq_plans = [p for p in state["question_plan"] if p["quiz_type"] == "multiple_choice"]
+    Node 3a (LLM): Sinh Multiple Choice.
+    TỐI ƯU TOKEN: Chỉ truyền vào đúng các Chunk được giao nhiệm vụ MCQ.
+    """
+    plans = state["master_plan"]["question_plans"]
+    mcq_plans = [p for p in plans if p["quiz_type"] == "multiple_choice"]
     if not mcq_plans: return {"mcq_quizzes": []}
     
+    # Chỉ trích xuất các Chunk liên quan đến MCQ để tiết kiệm Input Token
+    target_ids = {chunk_id for plan in mcq_plans for chunk_id in plan["target_chunk_ids"]}
+    relevant_chunks = [c for c in state["chunks"] if c["chunk_id"] in target_ids]
+    
     llm = get_llm()
-    structured_llm = llm.with_structured_output(QuizOutput)
+    structured_llm = llm.with_structured_output(QuizOutput, method="function_calling")
     
     prompt = f"""
-    You are an IELTS Item Writer. Generate Multiple Choice Questions based on these plans:
+    You are an expert IELTS Item Writer. Write high-quality Multiple Choice Questions (MCQs) for the following plans:
     {mcq_plans}
     
-    Available Text Chunks: {state['chunks']}
-    Examiner Context: {state['article_analysis']['examiner_review']}
+    Source Material (ONLY reference these chunks):
+    {relevant_chunks}
     
-    RULES:
-    1. Distractor Formula: 70% overlap (false twist), 10% not in text, 10% wrong context.
-    2. Keep option lengths balanced.
-    3. Strictly follow the 'attendWhat' instructions for each plan.
+    CRITICAL RULES FOR MULTIPLE CHOICE OPTIONS:
+    1. Length and Style Balance:
+       - All 4 options (the correct answer and the 3 distractors) must be of similar length (roughly equal word count).
+       - Ensure the correct answer is NOT significantly longer or more detailed than the distractors, to avoid giving away the answer.
+       - Use similar grammatical structures and complexity for all options.
+    
+    2. Distractor Design Formula (You MUST generate exactly 3 distractors using these specific rules):
+       - Distractor 1 (70% Semantic Overlap): Matches about 70% of the meaning or core idea of the correct answer, but introduces a subtle, critical logical error, negation, or minor distortion of detail that makes it incorrect.
+       - Distractor 2 (20% Text Association): Uses keywords, phrases, or facts directly present in the source text, but in a different context, making it factually incorrect for the specific question.
+       - Distractor 3 (10% Semantic Near-Synonym): Uses near-synonyms of keywords in the correct answer that seem plausible but are incorrect/inaccurate when placed in the specific context of the sentence (e.g., using "complete" instead of "success", or similar contextual nuance). The selection of this near-synonym must show deep contextual understanding of the text.
+    
+    3. Traps and Correctness:
+       - Execute the 'attendWhat' trap precisely for each question.
+       - The 'correct_answer' must be factually correct based ONLY on the provided source material, and must be one of the choices in the 'options' list.
+       - Include the correct answer in the 'options' list, along with the 3 distractors, in a random/shuffled order.
     """
     result = structured_llm.invoke(prompt)
-    return {"mcq_quizzes": [q.model_dump() for q in result.quizzes]}
+    return {"mcq_quizzes": result.quizzes}
 
 
-def node_e_fib(state: GraphState) -> Dict[str, Any]:
-    """Node E: Generates Fill-in-the-Blank questions with heavy paraphrasing."""
-    fib_plans = [p for p in state["question_plan"] if p["quiz_type"] == "fill_in_blank"]
+def node_fib(state: GraphState) -> Dict[str, Any]:
+    """
+    Node 3b (LLM): Sinh Fill in the Blank.
+    TỐI ƯU TOKEN: Chỉ truyền vào đúng các Chunk được giao nhiệm vụ FIB.
+    """
+    plans = state["master_plan"]["question_plans"]
+    fib_plans = [p for p in plans if p["quiz_type"] == "fill_in_blank"]
     if not fib_plans: return {"fib_quizzes": []}
     
+    # Lọc Chunk tương tự MCQ
+    target_ids = {chunk_id for plan in fib_plans for chunk_id in plan["target_chunk_ids"]}
+    relevant_chunks = [c for c in state["chunks"] if c["chunk_id"] in target_ids]
+    
     llm = get_llm()
-    structured_llm = llm.with_structured_output(QuizOutput)
+    structured_llm = llm.with_structured_output(QuizOutput, method="function_calling")
     
     prompt = f"""
-    You are an IELTS Sentence Completion Designer. Generate FIB questions based on these plans:
+    You are an IELTS Sentence Completion Designer. Write Fill-in-the-Blank questions for:
     {fib_plans}
     
-    Available Text Chunks: {state['chunks']}
-    Examiner Context: {state['article_analysis']['examiner_review']}
+    Source Material:
+    {relevant_chunks}
     
-    RULES:
+    Rules:
     1. Paraphrase the question heavily.
-    2. The 'correct_answer' MUST be an exact word/phrase present in the source chunk.
-    3. Strictly follow the 'attendWhat' instructions.
+    2. The answer MUST be an exact word from the source chunk.
     """
     result = structured_llm.invoke(prompt)
-    return {"fib_quizzes": [q.model_dump() for q in result.quizzes]}
+    return {"fib_quizzes": result.quizzes}
 
 
-def node_f_packager(state: GraphState) -> Dict[str, Any]:
-    """Node F: Aggregates and finalizes the exam."""
+def node_packager(state: GraphState) -> Dict[str, Any]:
+    """Node 4 (Python thuần): Gom tất cả câu hỏi lại thành đề hoàn chỉnh."""
     all_quizzes = state.get("mcq_quizzes", []) + state.get("fib_quizzes", [])
+    # Xáo trộn câu hỏi nếu cần
     random.shuffle(all_quizzes)
     
     exam_payload = {
         "exam_id": f"EXAM_{random.randint(1000, 9999)}",
-        "title": "IELTS Reading Practice (Agentic Generated)",
         "total_questions": len(all_quizzes),
         "quizzes": all_quizzes
     }
     return {"final_exam": exam_payload}
 
 
-# --- C. Build Topology ---
+# --- C. BUILD TOPOLOGY (ĐỒ THỊ DẠNG TỎA NHÁNH SONG SONG) ---
 workflow = StateGraph(GraphState)
 
-workflow.add_node("node_a_analyze", node_a_analyze)
-workflow.add_node("node_b_chunking", node_b_chunking)
-workflow.add_node("node_c_planner", node_c_planner)
-workflow.add_node("node_d_mcq", node_d_mcq)
-workflow.add_node("node_e_fib", node_e_fib)
-workflow.add_node("node_f_packager", node_f_packager)
+workflow.add_node("node_master_planner", node_master_planner)
+workflow.add_node("node_chunker", node_chunker)
+workflow.add_node("node_mcq", node_mcq)
+workflow.add_node("node_fib", node_fib)
+workflow.add_node("node_packager", node_packager)
 
-workflow.add_edge(START, "node_a_analyze")
-workflow.add_edge("node_a_analyze", "node_b_chunking")
-workflow.add_edge("node_b_chunking", "node_c_planner")
+# Luồng chính 1 đường thẳng
+workflow.add_edge(START, "node_master_planner")
+workflow.add_edge("node_master_planner", "node_chunker")
 
-# Fan-out to Question Generators
-workflow.add_edge("node_c_planner", "node_d_mcq")
-workflow.add_edge("node_c_planner", "node_e_fib")
+# Tỏa nhánh (Fan-out) ra các Generator Models (Chạy BẤT ĐỒNG BỘ SONG SONG)
+workflow.add_edge("node_chunker", "node_mcq")
+workflow.add_edge("node_chunker", "node_fib")
 
-# Fan-in to Packager
-workflow.add_edge("node_d_mcq", "node_f_packager")
-workflow.add_edge("node_e_fib", "node_f_packager")
-workflow.add_edge("node_f_packager", END)
+# Hội tụ (Fan-in) về Packager
+workflow.add_edge("node_mcq", "node_packager")
+workflow.add_edge("node_fib", "node_packager")
+workflow.add_edge("node_packager", END)
 
 app = workflow.compile()

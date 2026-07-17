@@ -11,7 +11,7 @@
     <header class="bg-blue-900 text-white p-4 shadow-md flex justify-between items-center z-10">
         <h1 class="text-xl font-bold truncate w-2/3">{{ article.title }}</h1>
         <div class="text-lg font-semibold bg-blue-700 px-4 py-1 rounded-full">
-            Score: <span id="score-display">0</span> / {{ article.exams.0.quizzes|length }}
+            Score: <span id="score-display">0</span> / {% if article.exams and article.exams.0.quizzes %}{{ article.exams.0.quizzes|length }}{% else %}0{% endif %}
         </div>
     </header>
 
@@ -26,83 +26,135 @@
         <section class="w-1/2 p-8 overflow-y-auto bg-gray-50">
             <div id="quiz-container" class="max-w-3xl mx-auto">
                 <h2 class="text-2xl font-bold mb-6 text-gray-800">Questions</h2>
-                
-                {% for quiz in article.exams.0.quizzes %}
-                <div class="quiz-item bg-white p-6 rounded-lg shadow-sm border border-gray-200 mb-6" data-answer="{{ quiz.correct_answer }}">
-                    <p class="font-semibold text-lg mb-4 text-gray-800">
-                        <span class="mr-2 text-blue-600">{{ forloop.counter }}.</span>{{ quiz.question }}
-                    </p>
 
-                    {% if quiz.quiz_type == 'multiple_choice' %}
-                        <div class="space-y-3 options-container">
-                            {% for option in quiz.options %}
-                            <label class="flex items-center p-3 border rounded cursor-pointer hover:bg-gray-50 transition-colors option-label">
-                                <input type="radio" name="question_{{ forloop.parentloop.counter }}" value="{{ option }}" class="w-5 h-5 text-blue-600 border-gray-300 focus:ring-blue-500 mr-3">
-                                <span class="text-gray-700">{{ option }}</span>
-                            </label>
-                            {% endfor %}
-                        </div>
-                    {% elif quiz.quiz_type == 'fill_in_blank' %}
-                        <div class="mt-2 options-container">
-                            <input type="text" name="question_{{ forloop.counter }}" class="w-full p-3 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:outline-none" placeholder="Type your answer here...">
-                        </div>
-                    {% endif %}
+                {% if article.exams and article.exams.0.quizzes %}
 
-                    <div class="explanation hidden mt-4 p-4 bg-blue-50 border-l-4 border-blue-500 text-sm text-gray-700 rounded-r">
-                        <strong class="text-blue-800">Correct Answer:</strong> {{ quiz.correct_answer }} <br>
-                        <strong class="text-blue-800 mt-2 block">Explanation:</strong> {{ quiz.explanation }}
+                    {% for quiz in article.exams.0.quizzes %}
+                    <div class="quiz-item bg-white p-6 rounded-lg shadow-sm border border-gray-200 mb-6" data-answer="{{ quiz.correct_answer }}">
+                        <p class="font-semibold text-lg mb-4 text-gray-800">
+                            <span class="mr-2 text-blue-600">{{ forloop.counter }}.</span>{{ quiz.question }}
+                        </p>
+
+                        {% if quiz.quiz_type == 'multiple_choice' %}
+                            <div class="space-y-3 options-container">
+                                {% for option in quiz.options %}
+                                <label class="flex items-center p-3 border rounded cursor-pointer hover:bg-gray-50 transition-colors option-label">
+                                    <input type="radio" name="question_{{ forloop.parentloop.counter }}" value="{{ option }}" class="w-5 h-5 text-blue-600 border-gray-300 focus:ring-blue-500 mr-3">
+                                    <span class="text-gray-700">{{ option }}</span>
+                                </label>
+                                {% endfor %}
+                            </div>
+                        {% elif quiz.quiz_type == 'fill_in_blank' %}
+                            <div class="mt-2 options-container">
+                                <input type="text" name="question_{{ forloop.counter }}" class="w-full p-3 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:outline-none" placeholder="Type your answer here...">
+                            </div>
+                        {% endif %}
+
+                        <div class="explanation hidden mt-4 p-4 bg-blue-50 border-l-4 border-blue-500 text-sm text-gray-700 rounded-r">
+                            <strong class="text-blue-800">Correct Answer:</strong> {{ quiz.correct_answer }} <br>
+                            <strong class="text-blue-800 mt-2 block">Explanation:</strong> {{ quiz.explanation }}
+                        </div>
                     </div>
-                </div>
-                {% endfor %}
+                    {% endfor %}
 
-                <button id="submit-btn" class="w-full mt-6 bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-4 rounded-lg transition-colors text-lg shadow-md">
-                    Submit Exam
-                </button>
+                    <button id="submit-btn" class="w-full mt-6 bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-4 rounded-lg transition-colors text-lg shadow-md">
+                        Submit Exam
+                    </button>
+
+                {% else %}
+                    <div id="processing-right" class="bg-white p-8 rounded-lg shadow-sm border border-gray-200 text-center">
+                        <div class="h-12 w-12 mx-auto rounded-full border-4 border-blue-600 border-t-transparent animate-spin mb-4"></div>
+                        <p class="text-gray-700 font-semibold">Generating questions... You can keep reading the passage on the left.</p>
+                        <p class="text-sm text-gray-500 mt-2">When generation completes, the questions will appear here automatically.</p>
+                    </div>
+                {% endif %}
+
             </div>
         </section>
     </main>
 
     <script>
-        document.getElementById('submit-btn').addEventListener('click', function() {
-            let correctCount = 0;
-            const quizItems = document.querySelectorAll('.quiz-item');
+        // Poll server status if generation is still in progress; reload page when done so questions render into right pane.
+        (function() {
+            const articleId = '{{ article.id|default:article.id|default:request.path|slice:"/articles/" }}';
+            function getArticleId() {
+                // prefer article.id, fallback to URL extraction
+                {% if article.id %}
+                    return '{{ article.id }}';
+                {% else %}
+                    return '{{ request.path|cut:"/articles/"|cut:"/" }}';
+                {% endif %}
+            }
 
-            quizItems.forEach(item => {
-                const correctAnswer = item.getAttribute('data-answer').trim().toLowerCase();
-                const inputs = item.querySelectorAll('input');
-                let userAnswer = null;
+            const id = getArticleId();
 
-                // Lấy đáp án của người dùng
-                if (inputs[0].type === 'radio') {
-                    const selected = Array.from(inputs).find(radio => radio.checked);
-                    if (selected) userAnswer = selected.value.trim().toLowerCase();
-                } else if (inputs[0].type === 'text') {
-                    userAnswer = inputs[0].value.trim().toLowerCase();
-                }
+            function poll() {
+                fetch(`/articles/status/${id}/`)
+                    .then(r => r.json())
+                    .then(data => {
+                        if (data.status === 'completed') {
+                            // Full content is ready — reload to render questions without complex client-side rendering
+                            window.location.reload();
+                        } else if (data.status === 'failed' || data.status === 'error') {
+                            const proc = document.getElementById('processing-right');
+                            if (proc) {
+                                proc.innerHTML = '<p class="text-red-600 font-semibold">Failed to generate questions. Please try again later.</p>';
+                            }
+                        } else {
+                            setTimeout(poll, 2500);
+                        }
+                    })
+                    .catch(() => setTimeout(poll, 5000));
+            }
 
-                // Xử lý UI đổi màu
-                const container = item.querySelector('.options-container');
-                if (userAnswer === correctAnswer) {
-                    correctCount++;
-                    item.classList.add('border-green-500', 'bg-green-50');
-                    item.classList.remove('border-gray-200');
-                } else {
-                    item.classList.add('border-red-500', 'bg-red-50');
-                    item.classList.remove('border-gray-200');
-                }
+            // Start polling only if the article is not completed yet
+            {% if article.status != 'completed' %}
+                poll();
+            {% endif %}
+        })();
 
-                // Vô hiệu hóa input và hiện giải thích
-                inputs.forEach(input => input.disabled = true);
-                item.querySelector('.explanation').classList.remove('hidden');
+        // Existing submit handler (only present if quizzes rendered)
+        const submitBtn = document.getElementById('submit-btn');
+        if (submitBtn) {
+            submitBtn.addEventListener('click', function() {
+                let correctCount = 0;
+                const quizItems = document.querySelectorAll('.quiz-item');
+
+                quizItems.forEach(item => {
+                    const correctAnswer = item.getAttribute('data-answer').trim().toLowerCase();
+                    const inputs = item.querySelectorAll('input');
+                    let userAnswer = null;
+
+                    if (inputs.length === 0) return;
+
+                    if (inputs[0].type === 'radio') {
+                        const selected = Array.from(inputs).find(radio => radio.checked);
+                        if (selected) userAnswer = selected.value.trim().toLowerCase();
+                    } else if (inputs[0].type === 'text') {
+                        userAnswer = inputs[0].value.trim().toLowerCase();
+                    }
+
+                    if (userAnswer === correctAnswer) {
+                        correctCount++;
+                        item.classList.add('border-green-500', 'bg-green-50');
+                        item.classList.remove('border-gray-200');
+                    } else {
+                        item.classList.add('border-red-500', 'bg-red-50');
+                        item.classList.remove('border-gray-200');
+                    }
+
+                    inputs.forEach(input => input.disabled = true);
+                    const expl = item.querySelector('.explanation');
+                    if (expl) expl.classList.remove('hidden');
+                });
+
+                document.getElementById('score-display').textContent = correctCount;
+                this.textContent = 'Exam Submitted';
+                this.disabled = true;
+                this.classList.replace('bg-green-600', 'bg-gray-400');
+                this.classList.replace('hover:bg-green-700', 'cursor-not-allowed');
             });
-
-            // Cập nhật điểm
-            document.getElementById('score-display').textContent = correctCount;
-            this.textContent = 'Exam Submitted';
-            this.disabled = true;
-            this.classList.replace('bg-green-600', 'bg-gray-400');
-            this.classList.replace('hover:bg-green-700', 'cursor-not-allowed');
-        });
+        }
     </script>
 </body>
 </html>

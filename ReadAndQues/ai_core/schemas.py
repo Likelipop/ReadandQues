@@ -1,15 +1,13 @@
-from django.db import models
-from typing import List, Optional, Union, Dict, Any
+from typing import List, Optional, Any
 from pydantic import BaseModel, Field
 from datetime import datetime
 
 # ==========================================
-# 1. PARAGRAPH CHUNKS (Cập nhật theo Node A & B)
+# 1. PARAGRAPH CHUNKS (Tối giản theo Master Planner)
 # ==========================================
 class ChunkMetadata(BaseModel):
-    difficulty: str = Field(default="medium", description="easy, medium, hard")
-    main_idea: str = Field(default="")
-    keywords: List[str] = Field(default_factory=list)
+    # Đã bỏ keywords và difficulty đi để giảm Output Token của LLM
+    main_idea: str = Field(default="", description="Short 5-word summary of the chunk")
 
 class ArticleChunk(BaseModel):
     chunk_id: str = Field(..., description="e.g., chunk_1, chunk_2")
@@ -21,18 +19,20 @@ class ArticleChunk(BaseModel):
 # 2. DETAILED EXAM QUESTIONS (QUIZ ITEM)
 # ==========================================
 class QuizItem(BaseModel):
-    quiz_type: str = Field(..., description="multiple_choice or fill_in_blank")
+    quiz_type: str = Field(..., description="multiple_choice, fill_in_blank, matching_heading")
     question: str = Field(...)
     options: Optional[List[str]] = Field(default=None, description="Only for multiple_choice")
     correct_answer: str = Field(...)
-    explanation: str = Field(...)
+    
+    # [QUAN TRỌNG] Lazy Explanation: Mặc định là None, chỉ gen khi User bấm nút "Giải thích"
+    explanation: Optional[str] = Field(default=None, description="Generated later on-demand")
     
     # IELTS Psychometrics Traceability
-    source_chunk_ids: Union[List[str], str] = Field(..., description="IDs of chunks or -1 for whole passage")
-    supporting_text: str = Field(..., description="Verbatim sentence from the text")
+    target_chunk_ids: List[str] = Field(..., description="List of chunk IDs this question belongs to")
+    supporting_text: str = Field(..., description="Verbatim sentence from the text containing the answer")
 
 # ==========================================
-# 3. EXAM CLASS & MAIN MONGO SCHEMA (Giữ nguyên cấu trúc nhúng 1:N)
+# 3. EXAM CLASS & MAIN MONGO SCHEMA 
 # ==========================================
 class Exam(BaseModel):
     exam_id: str = Field(..., description="Unique generated code for this exam")
@@ -48,7 +48,7 @@ class ArticleMongoModel(BaseModel):
     original_text: str = Field(...)
     source_name: Optional[str] = Field(default="Unknown")
     
-    analysis_review: Optional[str] = Field(default=None, description="Examiner review from Node A")
+    # Đã xóa analysis_review vì Master Planner không còn xuất ra text dư thừa
     chunks: List[ArticleChunk] = Field(default_factory=list)
     exams: List[Exam] = Field(default_factory=list) 
     

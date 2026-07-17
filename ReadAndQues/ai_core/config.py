@@ -25,3 +25,29 @@ def get_llm():
         model=AZURE_DEPLOYMENT_NAME,        # Tên deployment_name (ví dụ: gpt-5-mini)
         temperature=0.3,
     )
+
+
+def calculate_exam_config(text: str) -> dict:
+    """
+    Calculate exam configuration based on word count:
+    - Under 500 words: 7 questions (3 hard)
+    - 500 to 700 words: 10 questions (5 hard)
+    - Over 700 words: 15 questions (7 hard)
+    """
+    words = text.strip().split()
+    word_count = len(words)
+    
+    if word_count < 500:
+        total_questions = 7
+        hard_questions = 3
+    elif 500 <= word_count <= 700:
+        total_questions = 10
+        hard_questions = 5
+    else:
+        total_questions = 15
+        hard_questions = 7
+        
+    return {
+        "total_questions": total_questions,
+        "hard_questions": hard_questions
+    }
