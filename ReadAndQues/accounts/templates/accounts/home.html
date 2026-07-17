@@ -1,0 +1,136 @@
+{% extends 'articles/base.html' %}
+
+{% block title %}Trang chủ - IELTS AI Reading Quiz{% endblock %}
+
+{% block content %}
+{% if user.is_authenticated %}
+    <!-- Logged in User Dashboard -->
+    <div class="space-y-8">
+        <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div>
+                <h1 class="text-3xl font-extrabold tracking-tight text-slate-900">Bảng điều khiển cá nhân</h1>
+                <p class="text-slate-500 text-sm mt-1">Danh sách các bài báo tiếng Anh bạn đã lưu và bộ đề IELTS tương ứng.</p>
+            </div>
+            <div>
+                <a href="{% url 'import_article' %}" class="inline-flex items-center gap-2 px-5 py-3 text-sm font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-xl shadow-lg shadow-blue-100 hover:shadow-blue-200 transition duration-150">
+                    <span>✨</span> Import New Article
+                </a>
+            </div>
+        </div>
+
+        {% if articles %}
+            <div class="bg-white rounded-2xl border border-slate-100 shadow-md overflow-hidden">
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left border-collapse">
+                        <thead>
+                            <tr class="bg-slate-50 border-b border-slate-100">
+                                <th class="py-4 px-6 text-xs font-bold uppercase tracking-wider text-slate-400">Tiêu đề bài viết</th>
+                                <th class="py-4 px-6 text-xs font-bold uppercase tracking-wider text-slate-400">Nguồn bài viết</th>
+                                <th class="py-4 px-6 text-xs font-bold uppercase tracking-wider text-slate-400">Ngày tạo</th>
+                                <th class="py-4 px-6 text-xs font-bold uppercase tracking-wider text-slate-400">Trạng thái</th>
+                                <th class="py-4 px-6 text-xs font-bold uppercase tracking-wider text-slate-400 text-right">Thao tác</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-100">
+                            {% for art in articles %}
+                                <tr class="hover:bg-slate-50/50 transition">
+                                    <td class="py-4 px-6 max-w-md">
+                                        <div class="font-bold text-slate-800 truncate">{{ art.title|default:"Chưa có tiêu đề" }}</div>
+                                        <a href="{{ art.url }}" target="_blank" class="text-xs text-blue-500 hover:underline truncate block max-w-sm mt-1">{{ art.url }}</a>
+                                    </td>
+                                    <td class="py-4 px-6 text-sm text-slate-500 font-medium">
+                                        {{ art.source_name|default:"VietNam News" }}
+                                    </td>
+                                    <td class="py-4 px-6 text-sm text-slate-400 font-medium">
+                                        {{ art.created_at|date:"d/m/Y H:i" }}
+                                    </td>
+                                    <td class="py-4 px-6">
+                                        {% if art.status == 'completed' %}
+                                            <span class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-full bg-emerald-50 text-emerald-700 border border-emerald-100">
+                                                <span class="h-2 w-2 rounded-full bg-emerald-500"></span> Completed
+                                            </span>
+                                        {% elif art.status == 'failed' %}
+                                            <span class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-full bg-red-50 text-red-700 border border-red-100" title="{{ art.error_message }}">
+                                                <span class="h-2 w-2 rounded-full bg-red-500"></span> Failed
+                                            </span>
+                                        {% else %}
+                                            <span class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-full bg-blue-50 text-blue-700 border border-blue-100">
+                                                <span class="h-2 w-2 rounded-full bg-blue-500 animate-ping"></span> Generating...
+                                            </span>
+                                        {% endif %}
+                                    </td>
+                                    <td class="py-4 px-6 text-right">
+                                        <a href="{% url 'article_detail' art.id %}" class="inline-flex items-center justify-center px-4 py-2 text-xs font-bold text-slate-700 hover:text-blue-600 bg-slate-100 hover:bg-blue-50 rounded-lg transition">
+                                            {% if art.status == 'completed' %}Làm bài tập{% else %}Đọc báo / Chờ câu hỏi{% endif %} →
+                                        </a>
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        {% else %}
+            <!-- Empty state -->
+            <div class="bg-white rounded-2xl border border-slate-100 shadow-md p-12 text-center max-w-lg mx-auto mt-8">
+                <div class="text-5xl mb-4">📚</div>
+                <h3 class="text-xl font-bold text-slate-800 mb-2">Chưa có bài viết nào</h3>
+                <p class="text-slate-400 text-sm mb-6">Bạn chưa đưa bài viết tiếng Anh nào vào hệ thống. Hãy dán link bài báo đầu tiên để AI sinh đề thi ngay nhé!</p>
+                <a href="{% url 'import_article' %}" class="inline-flex items-center gap-2 px-5 py-3 text-sm font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-xl shadow-lg shadow-blue-100 hover:shadow-blue-200 transition">
+                    ✨ Bắt đầu ngay
+                </a>
+            </div>
+        {% endif %}
+    </div>
+{% else %}
+    <!-- Public Landing Page -->
+    <div class="py-12 md:py-20 space-y-24">
+        <!-- Hero Section -->
+        <div class="text-center max-w-3xl mx-auto space-y-6">
+            <span class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-full bg-blue-50 text-blue-700 border border-blue-100">
+                🚀 Nền tảng học Tiếng Anh kết hợp trí tuệ nhân tạo (AI)
+            </span>
+            <h1 class="text-4xl md:text-6xl font-extrabold tracking-tight text-slate-900 leading-tight">
+                Tạo đề thi IELTS từ <br/>
+                <span class="bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">Bất kỳ bài báo tiếng Anh nào</span>
+            </h1>
+            <p class="text-lg md:text-xl text-slate-500 font-medium">
+                Chỉ cần dán link bài báo tiếng Anh. Hệ thống AI LangGraph sẽ tự động phân tích từ vựng, ngữ pháp và sinh đề trắc nghiệm chuẩn sư phạm IELTS IELTS ngay lập tức.
+            </p>
+            <div class="flex items-center justify-center gap-4 pt-4">
+                <a href="{% url 'register' %}" class="px-6 py-3.5 text-base font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-xl shadow-xl shadow-blue-100 hover:shadow-blue-200 transition duration-150">
+                    Bắt đầu miễn phí
+                </a>
+                <a href="{% url 'login' %}" class="px-6 py-3.5 text-base font-bold text-slate-700 hover:text-slate-900 hover:bg-slate-100/80 rounded-xl transition duration-150">
+                    Đăng nhập tài khoản
+                </a>
+            </div>
+        </div>
+
+        <!-- Features Grid -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+            <div class="bg-white p-8 rounded-2xl border border-slate-100 shadow-md space-y-4 hover:shadow-lg transition">
+                <div class="h-12 w-12 bg-blue-50 text-blue-600 rounded-xl flex items-center justify-center text-2xl font-bold">⚡</div>
+                <h3 class="text-xl font-bold text-slate-800">Đọc báo tức thì</h3>
+                <p class="text-slate-400 text-sm leading-relaxed">
+                    Không phải chờ đợi. Giao diện được thiết kế để bạn bắt đầu đọc báo lập tức trong khi hệ thống AI biên soạn bộ đề thi ở chế độ nền.
+                </p>
+            </div>
+            <div class="bg-white p-8 rounded-2xl border border-slate-100 shadow-md space-y-4 hover:shadow-lg transition">
+                <div class="h-12 w-12 bg-indigo-50 text-indigo-600 rounded-xl flex items-center justify-center text-2xl font-bold">🎓</div>
+                <h3 class="text-xl font-bold text-slate-800">Chuẩn sư phạm 70/20/10</h3>
+                <p class="text-slate-400 text-sm leading-relaxed">
+                    Các đáp án gây nhiễu được tinh soạn theo chuẩn sư phạm quốc tế: 70% bẫy ngữ nghĩa, 20% từ khóa sai ngữ cảnh, và 10% đồng nghĩa gây nhiễu.
+                </p>
+            </div>
+            <div class="bg-white p-8 rounded-2xl border border-slate-100 shadow-md space-y-4 hover:shadow-lg transition">
+                <div class="h-12 w-12 bg-emerald-50 text-emerald-600 rounded-xl flex items-center justify-center text-2xl font-bold">📊</div>
+                <h3 class="text-xl font-bold text-slate-800">Cá nhân hóa độ dài</h3>
+                <p class="text-slate-400 text-sm leading-relaxed">
+                    Số lượng và mức độ khó của câu hỏi được tự động điều chỉnh theo độ dài bài viết: 7 câu (dưới 500 từ), 10 câu (500-700 từ), hoặc 15 câu (trên 700 từ).
+                </p>
+            </div>
+        </div>
+    </div>
+{% endif %}
+{% endblock %}

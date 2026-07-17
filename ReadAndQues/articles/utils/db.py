@@ -46,3 +46,15 @@ def get_article_document_by_id(pk: str) -> dict | None:
         return article_collection.find_one({"_id": ObjectId(pk)})
     except Exception:
         return None
+
+
+def get_articles_by_user(user_id: int) -> list:
+    try:
+        cursor = article_collection.find({"user_id": user_id}).sort("created_at", -1)
+        articles = []
+        for doc in cursor:
+            doc["id"] = str(doc["_id"])
+            articles.append(doc)
+        return articles
+    except Exception:
+        return []

@@ -54,6 +54,7 @@ class ArticleMongoModel(BaseModel):
     
     error_message: Optional[str] = Field(default=None, description="Optional error message when processing fails")
     status: str = Field(default="pending")
+    user_id: Optional[int] = Field(default=None, description="The ID of the Django User who imported this article")
     created_at: datetime = Field(default_factory=datetime.utcnow)
     model_config = {
         "populate_by_name": True,

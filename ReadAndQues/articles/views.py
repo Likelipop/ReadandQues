@@ -4,10 +4,20 @@ from datetime import datetime
 from django.shortcuts import render, redirect
 from django.contrib import messages
 from django.http import JsonResponse, HttpResponseNotAllowed
+from django.contrib.auth import authenticate, login, logout
+from django.contrib.auth.models import User
+from django.contrib.auth.decorators import login_required
+import time
+import re
 
 from .models import ArticleMongoModel
 from .services import process_and_analyze_article
-from .utils.db import insert_article_document, get_article_document_by_id, update_article_document
+from .utils.db import (
+    insert_article_document,
+    get_article_document_by_id,
+    update_article_document,
+    get_articles_by_user,
+)
 
 
 def _run_article_generation(url: str, pk: str) -> None:
@@ -28,6 +38,7 @@ def _run_article_generation(url: str, pk: str) -> None:
         })
 
 
+@login_required(login_url='login')
 def import_article_view(request):
     """
     On POST: do a quick crawl synchronously to get title + original_text so user can read immediately.
@@ -66,6 +77,7 @@ def import_article_view(request):
             "title": title,
             "original_text": original_text,
             "status": "pending",
+            "user_id": request.user.id,
             "created_at": datetime.utcnow(),
         }
 
@@ -88,6 +100,7 @@ def import_article_view(request):
 import_article = import_article_view
 
 
+@login_required(login_url='login')
 def article_status(request, pk):
     if request.method != "GET":
         return HttpResponseNotAllowed(["GET"])
@@ -95,6 +108,10 @@ def article_status(request, pk):
     doc = get_article_document_by_id(pk)
     if not doc:
         return JsonResponse({"status": "error", "message": "Không tìm thấy bài báo."}, status=404)
+
+    # Security: check ownership
+    if doc.get("user_id") != request.user.id:
+        return JsonResponse({"status": "error", "message": "Bạn không có quyền truy cập bài báo này."}, status=403)
 
     status = doc.get("status", "pending")
     payload = {
@@ -113,11 +130,17 @@ def article_status(request, pk):
 from pydantic import ValidationError
 
 
+@login_required(login_url='login')
 def article_detail(request, pk):
     doc = get_article_document_by_id(pk)
     if not doc:
         messages.error(request, "Không tìm thấy bài báo yêu cầu!")
-        return redirect("articles:import_article")
+        return redirect("home")
+
+    # Security: check ownership
+    if doc.get("user_id") != request.user.id:
+        messages.error(request, "Bạn không có quyền xem bài báo này!")
+        return redirect("home")
 
     # expose _id as string for templates
     doc["_id"] = str(doc["_id"])

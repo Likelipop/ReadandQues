@@ -8,10 +8,17 @@
 </head>
 <body class="bg-gray-50 h-screen overflow-hidden flex flex-col">
 
-    <header class="bg-blue-900 text-white p-4 shadow-md flex justify-between items-center z-10">
-        <h1 class="text-xl font-bold truncate w-2/3">{{ article.title }}</h1>
-        <div class="text-lg font-semibold bg-blue-700 px-4 py-1 rounded-full">
-            Score: <span id="score-display">0</span> / {% if article.exams and article.exams.0.quizzes %}{{ article.exams.0.quizzes|length }}{% else %}0{% endif %}
+    <header class="bg-slate-900 text-white px-6 py-4 shadow-md flex justify-between items-center z-10 border-b border-slate-800">
+        <div class="flex items-center gap-4 w-2/3">
+            <a href="{% url 'home' %}" class="inline-flex items-center gap-1.5 text-sm font-semibold text-slate-400 hover:text-white transition">
+                <span>←</span> Dashboard
+            </a>
+            <div class="h-4 w-[1px] bg-slate-800"></div>
+            <h1 class="text-lg font-bold truncate">{{ article.title }}</h1>
+        </div>
+        <div class="text-sm font-semibold bg-slate-800 px-4 py-2 rounded-xl flex items-center gap-2">
+            <span>Score:</span>
+            <span id="score-display" class="text-emerald-400 font-bold">0</span> / <span class="text-slate-300">{% if article.exams and article.exams.0.quizzes %}{{ article.exams.0.quizzes|length }}{% else %}0{% endif %}</span>
         </div>
     </header>
 
