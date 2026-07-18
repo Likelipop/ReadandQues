@@ -19,6 +19,11 @@ class UserProfile(models.Model):
     total_articles_imported = models.PositiveIntegerField(default=0)
     total_questions_solved = models.PositiveIntegerField(default=0)
     correct_answers_count = models.PositiveIntegerField(default=0)
+    avg_incorrect_questions = models.FloatField(default=0.0)
+    avg_time_spent = models.FloatField(default=0.0)
+    last_test_date = models.DateField(blank=True, null=True)
+    streak = models.PositiveIntegerField(default=0)
+    total_tests_completed = models.PositiveIntegerField(default=0)
 
     def __str__(self):
         return f"Profile of {self.user.username}"
