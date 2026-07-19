@@ -72,7 +72,9 @@ def node_analyzer(state: GraphState) -> Dict[str, Any]:
     prompt = build_analysis_prompt(text)
 
     llm = get_llm(temperature=0.0)  # deterministic — genre classification must be stable
-    structured_llm = llm.with_structured_output(SemanticAnalysis, include_raw=True)
+    structured_llm = llm.with_structured_output(
+        SemanticAnalysis, include_raw=True, method="function_calling"
+    )
     raw_result = structured_llm.invoke(prompt)
 
     parsed: SemanticAnalysis = raw_result["parsed"]
@@ -110,7 +112,9 @@ def node_question_planner(state: GraphState) -> Dict[str, Any]:
     prompt = build_question_prompt(text, analysis, config)
 
     llm = get_llm(temperature=0.3)  # creative — question variety matters
-    structured_llm = llm.with_structured_output(ExamOutput, include_raw=True)
+    structured_llm = llm.with_structured_output(
+        ExamOutput, include_raw=True, method="function_calling"
+    )
     raw_result = structured_llm.invoke(prompt)
 
     parsed: ExamOutput = raw_result["parsed"]
@@ -144,7 +148,9 @@ def node_verifier(state: GraphState) -> Dict[str, Any]:
     prompt = build_verifier_prompt(text, quizzes)
 
     llm = get_llm(temperature=0.0)  # deterministic — strict grounding verification
-    structured_llm = llm.with_structured_output(VerifierFeedback, include_raw=True)
+    structured_llm = llm.with_structured_output(
+        VerifierFeedback, include_raw=True, method="function_calling"
+    )
     raw_result = structured_llm.invoke(prompt)
 
     feedback: VerifierFeedback = raw_result["parsed"]
