@@ -1,0 +1,210 @@
+{% extends 'articles/base.html' %}
+
+{% block title %}Trang chủ - IELTS AI Reading Quiz{% endblock %}
+
+{% block content %}
+<div class="space-y-12 my-6">
+
+    <!-- Top Section: Hero Banner / Call to Action -->
+    <div class="relative overflow-hidden bg-gradient-to-r from-blue-950 via-slate-900 to-indigo-950 rounded-3xl p-8 md:p-12 shadow-xl border border-slate-800 text-white">
+        <!-- Abstract decorative shapes -->
+        <div class="absolute -top-12 -right-12 h-64 w-64 rounded-full bg-blue-600/10 blur-3xl"></div>
+        <div class="absolute -bottom-12 -left-12 h-64 w-64 rounded-full bg-indigo-500/10 blur-3xl"></div>
+
+        <div class="relative z-10 max-w-3xl space-y-6">
+            <span class="inline-flex items-center gap-1.5 px-3 py-1 text-xs font-bold rounded-full bg-blue-500/10 text-blue-400 border border-blue-500/20">
+                🚀 IELTS AI Reading Practice
+            </span>
+            <h1 class="text-3xl md:text-5xl font-extrabold tracking-tight leading-tight">
+                Test your understanding of <br/>
+                <span class="bg-gradient-to-r from-blue-400 to-indigo-400 bg-clip-text text-transparent">Any Reading Paper</span>
+            </h1>
+            <p class="text-slate-350 text-sm md:text-base leading-relaxed">
+                Nâng cao điểm số IELTS Reading bằng cách luyện tập với các bài báo thực tế từ khắp nơi trên thế giới. AI của chúng tôi sẽ phân tích văn bản và thiết lập câu hỏi theo đúng chuẩn đề thi thật.
+            </p>
+            <div class="flex flex-wrap gap-4 pt-2">
+                <a href="{% url 'import_article' %}" class="px-5 py-3 text-xs font-bold text-white bg-blue-600 hover:bg-blue-500 rounded-xl shadow-lg shadow-blue-500/10 transition duration-150 flex items-center gap-1.5">
+                    <span>✨</span> Import New Article
+                </a>
+                <a href="{% url 'all_tests' %}" class="px-5 py-3 text-xs font-bold text-slate-300 hover:text-white bg-white/5 hover:bg-white/10 rounded-xl transition duration-150 border border-white/10">
+                    📖 Browse All Tests
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bottom Section: Navigation Tabs (Trending vs My Library) -->
+    <div class="space-y-6">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 pb-4">
+            <!-- Tabs -->
+            <div class="flex items-center gap-2" id="homepage-tabs">
+                <button onclick="switchTab('trending')" id="tab-trending-btn" 
+                        class="px-4 py-2 text-sm font-bold rounded-xl bg-slate-900 text-white shadow-sm border border-slate-900 transition">
+                    🔥 Trending Articles
+                </button>
+                {% if user.is_authenticated %}
+                <button onclick="switchTab('library')" id="tab-library-btn" 
+                        class="px-4 py-2 text-sm font-bold rounded-xl text-slate-500 hover:text-slate-900 hover:bg-slate-50 transition border border-transparent">
+                    📚 My Library
+                </button>
+                {% endif %}
+            </div>
+
+            <!-- View More / Quick Links -->
+            <div>
+                <a href="{% url 'all_tests' %}" class="text-xs font-bold text-blue-600 hover:text-blue-700 flex items-center gap-1">
+                    Xem tất cả bài test <span>→</span>
+                </a>
+            </div>
+        </div>
+
+        <!-- Tab 1 Content: Trending Articles Grid -->
+        <div id="tab-trending-content" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 animate-in fade-in duration-200">
+            {% if trending_articles %}
+                {% for art in trending_articles %}
+                <!-- Thumbnail Card -->
+                <div class="group bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden flex flex-col justify-between hover:shadow-md transition duration-200">
+                    <div>
+                        <!-- Thumbnail banner image -->
+                        <div class="h-40 w-full bg-gradient-to-br from-slate-100 to-slate-200 relative overflow-hidden flex items-center justify-center">
+                            <!-- Curved overlay for background aesthetic -->
+                            <div class="absolute inset-0 opacity-10 bg-cover" style="background-image: url('https://images.unsplash.com/photo-1456513080510-7bf3a84b82f8?auto=format&fit=crop&q=80&w=400');"></div>
+                            <div class="absolute inset-0 bg-gradient-to-t from-slate-900/40 to-transparent"></div>
+                            
+                            <!-- Topic icon or badges -->
+                            <span class="absolute top-3 left-3 bg-white/95 text-slate-800 text-[10px] font-bold px-2 py-0.5 rounded-full shadow-sm">
+                                ⭐ Standard
+                            </span>
+                            <span class="absolute bottom-3 right-3 text-white text-[10px] font-bold flex items-center gap-1 bg-black/40 backdrop-blur-sm px-2 py-0.5 rounded-full">
+                                ⏱️ 20m
+                            </span>
+                        </div>
+
+                        <!-- Card text info -->
+                        <div class="p-5 space-y-2">
+                            <span class="text-[10px] font-bold text-blue-600 uppercase tracking-wider block">{{ art.source_name|default:"VietNam News" }}</span>
+                            <h3 class="font-bold text-slate-800 line-clamp-2 text-base group-hover:text-blue-600 transition min-h-[3rem]">
+                                {{ art.title|default:"Chưa có tiêu đề" }}
+                            </h3>
+                            <p class="text-slate-400 text-xs line-clamp-2 leading-relaxed">
+                                {{ art.original_text|truncatewords:20 }}
+                            </p>
+                        </div>
+                    </div>
+
+                    <!-- Button Footer -->
+                    <div class="p-5 pt-0">
+                        <a href="{% if user.is_authenticated %}{% url 'article_detail' art.id %}{% else %}{% url 'login' %}{% endif %}" 
+                           class="w-full py-2.5 px-4 bg-slate-50 hover:bg-blue-600 group-hover:bg-blue-600 text-slate-700 group-hover:text-white font-bold rounded-xl text-xs transition duration-150 flex items-center justify-center gap-1.5 border border-slate-100 group-hover:border-blue-600">
+                            📖 Practice Quiz
+                        </a>
+                    </div>
+                </div>
+                {% endfor %}
+            {% else %}
+                <div class="col-span-full bg-slate-50 border border-dashed border-slate-200 rounded-2xl p-12 text-center text-slate-500">
+                    <p class="text-sm font-semibold">Chưa có bài viết trending nào trong hệ thống.</p>
+                </div>
+            {% endif %}
+        </div>
+
+        {% if user.is_authenticated %}
+        <!-- Tab 2 Content: User Library (My Imports) -->
+        <div id="tab-library-content" class="hidden animate-in fade-in duration-200">
+            {% if user_articles %}
+                <div class="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left border-collapse">
+                            <thead>
+                                <tr class="bg-slate-50 border-b border-slate-100">
+                                    <th class="py-4 px-6 text-xs font-bold uppercase tracking-wider text-slate-400">Tiêu đề</th>
+                                    <th class="py-4 px-6 text-xs font-bold uppercase tracking-wider text-slate-400">Nguồn</th>
+                                    <th class="py-4 px-6 text-xs font-bold uppercase tracking-wider text-slate-400">Ngày tạo</th>
+                                    <th class="py-4 px-6 text-xs font-bold uppercase tracking-wider text-slate-400">Trạng thái</th>
+                                    <th class="py-4 px-6 text-xs font-bold uppercase tracking-wider text-slate-400 text-right">Hành động</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-slate-100">
+                                {% for art in user_articles %}
+                                <tr class="hover:bg-slate-50/50 transition">
+                                    <td class="py-4 px-6 max-w-md">
+                                        <div class="font-bold text-slate-800 truncate">{{ art.title|default:"Chưa có tiêu đề" }}</div>
+                                        <a href="{{ art.url }}" target="_blank" class="text-xs text-blue-500 hover:underline truncate block max-w-sm mt-1">{{ art.url }}</a>
+                                    </td>
+                                    <td class="py-4 px-6 text-sm text-slate-500 font-medium">
+                                        {{ art.source_name|default:"VietNam News" }}
+                                    </td>
+                                    <td class="py-4 px-6 text-sm text-slate-400 font-medium">
+                                        {{ art.created_at|date:"d/m/Y H:i" }}
+                                    </td>
+                                    <td class="py-4 px-6">
+                                        {% if art.status == 'completed' %}
+                                            <span class="inline-flex items-center gap-1.5 px-3 py-1 text-xs font-semibold rounded-full bg-emerald-50 text-emerald-700 border border-emerald-100">
+                                                <span class="h-1.5 w-1.5 rounded-full bg-emerald-500"></span> Completed
+                                            </span>
+                                        {% elif art.status == 'failed' %}
+                                            <span class="inline-flex items-center gap-1.5 px-3 py-1 text-xs font-semibold rounded-full bg-red-50 text-red-700 border border-red-100">
+                                                <span class="h-1.5 w-1.5 rounded-full bg-red-500"></span> Failed
+                                            </span>
+                                        {% else %}
+                                            <span class="inline-flex items-center gap-1.5 px-3 py-1 text-xs font-semibold rounded-full bg-blue-50 text-blue-700 border border-blue-100">
+                                                <span class="h-1.5 w-1.5 rounded-full bg-blue-500 animate-ping"></span> Generating...
+                                            </span>
+                                        {% endif %}
+                                    </td>
+                                    <td class="py-4 px-6 text-right">
+                                        <a href="{% url 'article_detail' art.id %}" class="inline-flex items-center justify-center px-4 py-2 text-xs font-bold text-slate-700 hover:text-blue-600 bg-slate-100 hover:bg-blue-50 rounded-lg transition">
+                                            {% if art.status == 'completed' %}Làm bài tập{% else %}Xem chi tiết{% endif %} →
+                                        </a>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            {% else %}
+                <div class="bg-white rounded-2xl border border-slate-100 shadow-sm p-12 text-center max-w-lg mx-auto">
+                    <div class="text-5xl mb-4">📚</div>
+                    <h3 class="text-xl font-bold text-slate-800 mb-2">Thư viện trống</h3>
+                    <p class="text-slate-400 text-sm mb-6">Bạn chưa nhập bài báo tiếng Anh nào. Dán link bài báo để AI sinh quiz bài tập độc quyền cho bạn nhé!</p>
+                    <a href="{% url 'import_article' %}" class="inline-flex items-center gap-2 px-5 py-3 text-sm font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-xl shadow-lg shadow-blue-100 transition">
+                        ✨ Nhập bài báo đầu tiên
+                    </a>
+                </div>
+            {% endif %}
+        </div>
+        {% endif %}
+    </div>
+
+</div>
+
+<script>
+    function switchTab(tabName) {
+        const trendingBtn = document.getElementById('tab-trending-btn');
+        const libraryBtn = document.getElementById('tab-library-btn');
+        const trendingContent = document.getElementById('tab-trending-content');
+        const libraryContent = document.getElementById('tab-library-content');
+
+        if (tabName === 'trending') {
+            // Update buttons styling
+            trendingBtn.className = "px-4 py-2 text-sm font-bold rounded-xl bg-slate-900 text-white shadow-sm border border-slate-900 transition";
+            if (libraryBtn) {
+                libraryBtn.className = "px-4 py-2 text-sm font-bold rounded-xl text-slate-500 hover:text-slate-900 hover:bg-slate-50 transition border border-transparent";
+            }
+            // Toggle contents
+            trendingContent.classList.remove('hidden');
+            if (libraryContent) libraryContent.classList.add('hidden');
+        } else if (tabName === 'library') {
+            // Update buttons styling
+            if (libraryBtn) {
+                libraryBtn.className = "px-4 py-2 text-sm font-bold rounded-xl bg-slate-900 text-white shadow-sm border border-slate-900 transition";
+            }
+            trendingBtn.className = "px-4 py-2 text-sm font-bold rounded-xl text-slate-500 hover:text-slate-900 hover:bg-slate-50 transition border border-transparent";
+            // Toggle contents
+            trendingContent.classList.add('hidden');
+            if (libraryContent) libraryContent.classList.remove('hidden');
+        }
+    }
+</script>
+{% endblock %}

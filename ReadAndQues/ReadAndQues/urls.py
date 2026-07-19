@@ -19,6 +19,6 @@ from django.urls import path, include
 
 urlpatterns = [
     path('admin/', admin.site.urls),
-    path('articles/', include('articles.urls')), # Kích hoạt đường dẫn cho app
-
+    path('articles/', include('articles.urls')),
+    path('', include('accounts.urls')),
 ]

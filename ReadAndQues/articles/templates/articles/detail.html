@@ -5,13 +5,51 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{{ article.title }} - IELTS Reading Practice</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .fib-blank {
+            display: inline-block;
+            min-width: 120px;
+            border-bottom: 2px solid #3b82f6;
+            padding: 2px 8px;
+            margin: 0 4px;
+            font-weight: 600;
+            color: #1e40af;
+            background: #eff6ff;
+            border-radius: 4px;
+            text-align: center;
+            transition: border-color 0.2s;
+        }
+        .fib-blank:focus {
+            outline: none;
+            border-color: #2563eb;
+            background: #dbeafe;
+        }
+        .fib-blank::placeholder {
+            color: #93c5fd;
+            font-weight: 400;
+        }
+    </style>
 </head>
 <body class="bg-gray-50 h-screen overflow-hidden flex flex-col">
 
-    <header class="bg-blue-900 text-white p-4 shadow-md flex justify-between items-center z-10">
-        <h1 class="text-xl font-bold truncate w-2/3">{{ article.title }}</h1>
-        <div class="text-lg font-semibold bg-blue-700 px-4 py-1 rounded-full">
-            Score: <span id="score-display">0</span> / {% if article.exams and article.exams.0.quizzes %}{{ article.exams.0.quizzes|length }}{% else %}0{% endif %}
+    <header class="bg-slate-900 text-white px-6 py-4 shadow-md flex justify-between items-center z-10 border-b border-slate-800">
+        <div class="flex items-center gap-4 w-2/3">
+            <a href="{% url 'home' %}" class="inline-flex items-center gap-1.5 text-sm font-semibold text-slate-400 hover:text-white transition">
+                <span>←</span> Dashboard
+            </a>
+            <div class="h-4 w-[1px] bg-slate-800"></div>
+            <h1 class="text-lg font-bold truncate">{{ article.title }}</h1>
+        </div>
+        <div class="text-sm font-semibold bg-slate-800 px-4 py-2 rounded-xl flex items-center gap-4">
+            <div class="flex items-center gap-1.5 text-amber-400">
+                <span>⏱️</span>
+                <span id="timer-display">20:00</span>
+            </div>
+            <div class="h-4 w-[1px] bg-slate-700"></div>
+            <div class="flex items-center gap-1.5">
+                <span>Score:</span>
+                <span id="score-display" class="text-emerald-400 font-bold">0</span> / <span class="text-slate-300">{% if article.exams and article.exams.0.quizzes %}{{ article.exams.0.quizzes|length }}{% else %}0{% endif %}</span>
+            </div>
         </div>
     </header>
 
@@ -30,12 +68,16 @@
                 {% if article.exams and article.exams.0.quizzes %}
 
                     {% for quiz in article.exams.0.quizzes %}
-                    <div class="quiz-item bg-white p-6 rounded-lg shadow-sm border border-gray-200 mb-6" data-answer="{{ quiz.correct_answer }}">
-                        <p class="font-semibold text-lg mb-4 text-gray-800">
-                            <span class="mr-2 text-blue-600">{{ forloop.counter }}.</span>{{ quiz.question }}
-                        </p>
+                    <div class="quiz-item bg-white p-6 rounded-lg shadow-sm border border-gray-200 mb-6"
+                         data-answer="{{ quiz.correct_answer }}"
+                         data-quiz-type="{{ quiz.quiz_type }}">
 
-                        {% if quiz.quiz_type == 'multiple_choice' %}
+                        {# ── YES / NO / NOT GIVEN ── #}
+                        {% if quiz.quiz_type == 'yes_no_notgiven' %}
+                            <p class="font-semibold text-lg mb-1 text-gray-800">
+                                <span class="mr-2 text-blue-600">{{ forloop.counter }}.</span>{{ quiz.question }}
+                            </p>
+                            <p class="text-xs text-gray-400 mb-4 italic">Yes / No / Not Given</p>
                             <div class="space-y-3 options-container">
                                 {% for option in quiz.options %}
                                 <label class="flex items-center p-3 border rounded cursor-pointer hover:bg-gray-50 transition-colors option-label">
@@ -44,10 +86,31 @@
                                 </label>
                                 {% endfor %}
                             </div>
-                        {% elif quiz.quiz_type == 'fill_in_blank' %}
-                            <div class="mt-2 options-container">
-                                <input type="text" name="question_{{ forloop.counter }}" class="w-full p-3 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:outline-none" placeholder="Type your answer here...">
+
+                        {# ── MULTIPLE CHOICE (legacy / future) ── #}
+                        {% elif quiz.quiz_type == 'multiple_choice' %}
+                            <p class="font-semibold text-lg mb-4 text-gray-800">
+                                <span class="mr-2 text-blue-600">{{ forloop.counter }}.</span>{{ quiz.question }}
+                            </p>
+                            <div class="space-y-3 options-container">
+                                {% for option in quiz.options %}
+                                <label class="flex items-center p-3 border rounded cursor-pointer hover:bg-gray-50 transition-colors option-label">
+                                    <input type="radio" name="question_{{ forloop.parentloop.counter }}" value="{{ option }}" class="w-5 h-5 text-blue-600 border-gray-300 focus:ring-blue-500 mr-3">
+                                    <span class="text-gray-700">{{ option }}</span>
+                                </label>
+                                {% endfor %}
                             </div>
+
+                        {# ── FILL IN THE BLANK (Summary Completion) ── #}
+                        {% elif quiz.quiz_type == 'fill_in_blank' %}
+                            <p class="font-semibold text-lg mb-1 text-gray-800">
+                                <span class="mr-2 text-blue-600">{{ forloop.counter }}.</span>Summary Completion
+                            </p>
+                            <p class="text-xs text-gray-400 mb-4 italic">Fill each blank with a word or short phrase from the passage.</p>
+                            <div class="fib-paragraph text-gray-700 leading-loose options-container" data-raw-question="{{ quiz.question }}">
+                                {# JS will parse [1]...[5] into inline inputs #}
+                            </div>
+
                         {% endif %}
 
                         <div class="explanation hidden mt-4 p-4 bg-blue-50 border-l-4 border-blue-500 text-sm text-gray-700 rounded-r">
@@ -74,46 +137,60 @@
     </main>
 
     <script>
-        // Poll server status if generation is still in progress; reload page when done so questions render into right pane.
+        // ── Render FIB paragraphs: replace [1]...[5] with inline <input> blanks ──
+        document.querySelectorAll('.fib-paragraph').forEach(container => {
+            const raw = container.getAttribute('data-raw-question');
+            if (!raw) return;
+            // Split by [1], [2], ... [N] pattern, interleave with inputs
+            const parts = raw.split(/\[(\d+)\]/);
+            container.innerHTML = '';
+            for (let i = 0; i < parts.length; i++) {
+                if (i % 2 === 0) {
+                    // Text segment
+                    container.appendChild(document.createTextNode(parts[i]));
+                } else {
+                    // Blank number → input
+                    const input = document.createElement('input');
+                    input.type = 'text';
+                    input.className = 'fib-blank';
+                    input.placeholder = parts[i];
+                    input.setAttribute('data-blank-index', parts[i]);
+                    container.appendChild(input);
+                }
+            }
+        });
+
+        // ── Poll server for async generation status ──
         (function() {
-            const articleId = '{{ article.id|default:article.id|default:request.path|slice:"/articles/" }}';
             function getArticleId() {
-                // prefer article.id, fallback to URL extraction
                 {% if article.id %}
                     return '{{ article.id }}';
                 {% else %}
                     return '{{ request.path|cut:"/articles/"|cut:"/" }}';
                 {% endif %}
             }
-
             const id = getArticleId();
-
             function poll() {
                 fetch(`/articles/status/${id}/`)
                     .then(r => r.json())
                     .then(data => {
                         if (data.status === 'completed') {
-                            // Full content is ready — reload to render questions without complex client-side rendering
                             window.location.reload();
                         } else if (data.status === 'failed' || data.status === 'error') {
                             const proc = document.getElementById('processing-right');
-                            if (proc) {
-                                proc.innerHTML = '<p class="text-red-600 font-semibold">Failed to generate questions. Please try again later.</p>';
-                            }
+                            if (proc) proc.innerHTML = '<p class="text-red-600 font-semibold">Failed to generate questions. Please try again later.</p>';
                         } else {
                             setTimeout(poll, 2500);
                         }
                     })
                     .catch(() => setTimeout(poll, 5000));
             }
-
-            // Start polling only if the article is not completed yet
             {% if article.status != 'completed' %}
                 poll();
             {% endif %}
         })();
 
-        // Existing submit handler (only present if quizzes rendered)
+        // ── Submit handler ──
         const submitBtn = document.getElementById('submit-btn');
         if (submitBtn) {
             submitBtn.addEventListener('click', function() {
@@ -122,28 +199,50 @@
 
                 quizItems.forEach(item => {
                     const correctAnswer = item.getAttribute('data-answer').trim().toLowerCase();
-                    const inputs = item.querySelectorAll('input');
-                    let userAnswer = null;
+                    const quizType = item.getAttribute('data-quiz-type');
 
-                    if (inputs.length === 0) return;
-
-                    if (inputs[0].type === 'radio') {
-                        const selected = Array.from(inputs).find(radio => radio.checked);
-                        if (selected) userAnswer = selected.value.trim().toLowerCase();
-                    } else if (inputs[0].type === 'text') {
-                        userAnswer = inputs[0].value.trim().toLowerCase();
-                    }
-
-                    if (userAnswer === correctAnswer) {
-                        correctCount++;
-                        item.classList.add('border-green-500', 'bg-green-50');
+                    if (quizType === 'fill_in_blank') {
+                        // FIB: compare each blank answer (pipe-separated)
+                        const answers = correctAnswer.split('|').map(a => a.trim());
+                        const blanks = item.querySelectorAll('.fib-blank');
+                        let allCorrect = true;
+                        blanks.forEach((blank, idx) => {
+                            const userVal = blank.value.trim().toLowerCase();
+                            const expected = answers[idx] || '';
+                            if (userVal === expected) {
+                                blank.style.borderColor = '#22c55e';
+                                blank.style.background = '#f0fdf4';
+                            } else {
+                                blank.style.borderColor = '#ef4444';
+                                blank.style.background = '#fef2f2';
+                                allCorrect = false;
+                            }
+                            blank.disabled = true;
+                        });
+                        if (allCorrect) {
+                            correctCount++;
+                            item.classList.add('border-green-500', 'bg-green-50');
+                        } else {
+                            item.classList.add('border-red-500', 'bg-red-50');
+                        }
                         item.classList.remove('border-gray-200');
                     } else {
-                        item.classList.add('border-red-500', 'bg-red-50');
+                        // Radio-based (YNNG / MCQ)
+                        const inputs = item.querySelectorAll('input[type="radio"]');
+                        let userAnswer = null;
+                        const selected = Array.from(inputs).find(r => r.checked);
+                        if (selected) userAnswer = selected.value.trim().toLowerCase();
+
+                        if (userAnswer === correctAnswer) {
+                            correctCount++;
+                            item.classList.add('border-green-500', 'bg-green-50');
+                        } else {
+                            item.classList.add('border-red-500', 'bg-red-50');
+                        }
                         item.classList.remove('border-gray-200');
+                        inputs.forEach(input => input.disabled = true);
                     }
 
-                    inputs.forEach(input => input.disabled = true);
                     const expl = item.querySelector('.explanation');
                     if (expl) expl.classList.remove('hidden');
                 });
@@ -155,6 +254,44 @@
                 this.classList.replace('hover:bg-green-700', 'cursor-not-allowed');
             });
         }
+
+        // ── Timer Logic ──
+        (function() {
+            const timerDisplay = document.getElementById('timer-display');
+            if (!timerDisplay) return;
+
+            {% if article.status == 'completed' %}
+                let timeRemaining = 1200; // 20 minutes in seconds
+                let timerInterval = null;
+
+                function updateTimer() {
+                    const minutes = Math.floor(timeRemaining / 60);
+                    const seconds = timeRemaining % 60;
+                    timerDisplay.textContent = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+                    
+                    if (timeRemaining <= 0) {
+                        clearInterval(timerInterval);
+                        const submitBtn = document.getElementById('submit-btn');
+                        if (submitBtn && !submitBtn.disabled) {
+                            submitBtn.click();
+                            alert("Hết giờ làm bài! Bài thi của bạn đã được nộp tự động.");
+                        }
+                    } else {
+                        timeRemaining--;
+                    }
+                }
+
+                updateTimer();
+                timerInterval = setInterval(updateTimer, 1000);
+
+                const submitBtn = document.getElementById('submit-btn');
+                if (submitBtn) {
+                    submitBtn.addEventListener('click', function() {
+                        clearInterval(timerInterval);
+                    });
+                }
+            {% endif %}
+        })();
     </script>
 </body>
 </html>

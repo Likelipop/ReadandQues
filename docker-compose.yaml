@@ -31,6 +31,20 @@ services:
     depends_on:
       - mongo
 
+  postgres:
+    image: postgres:15-alpine
+    container_name: postgresdb
+    restart: unless-stopped
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_DB: readandques
+      POSTGRES_USER: myuser
+      POSTGRES_PASSWORD: mypassword
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
 volumes:
   mongo_data:
   mongo_config:
+  postgres_data:

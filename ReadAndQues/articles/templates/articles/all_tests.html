@@ -1,0 +1,116 @@
+{% extends 'articles/base.html' %}
+
+{% block title %}Tất cả bài test - IELTS AI Reading Quiz{% endblock %}
+
+{% block content %}
+<div class="space-y-8 my-6">
+
+    <!-- Header Section -->
+    <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+            <h1 class="text-3xl font-extrabold tracking-tight text-slate-900">Tất cả đề thi IELTS Reading</h1>
+            <p class="text-slate-500 text-sm mt-1">Danh sách toàn bộ các đề thi đã được biên dịch hoàn chỉnh. Luyện tập hoàn toàn miễn phí không giới hạn.</p>
+        </div>
+        
+        <!-- Search bar -->
+        <div class="w-full md:w-80 relative">
+            <input type="text" id="search-input" placeholder="Tìm kiếm đề thi..." 
+                   class="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-200 focus:ring-4 focus:ring-blue-100 focus:border-blue-500 focus:outline-none transition text-sm text-slate-700">
+            <span class="absolute left-3.5 top-3 text-slate-400 text-sm">🔍</span>
+        </div>
+    </div>
+
+    <!-- Articles Grid -->
+    <div id="tests-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {% if articles %}
+            {% for art in articles %}
+            <!-- Thumbnail Card -->
+            <div class="test-card group bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden flex flex-col justify-between hover:shadow-md transition duration-200"
+                 data-title="{{ art.title|lower }}" data-source="{{ art.source_name|default:'vietnam news'|lower }}">
+                <div>
+                    <!-- Thumbnail banner image -->
+                    <div class="h-40 w-full bg-gradient-to-br from-slate-100 to-slate-200 relative overflow-hidden flex items-center justify-center">
+                        <div class="absolute inset-0 opacity-10 bg-cover" style="background-image: url('https://images.unsplash.com/photo-1456513080510-7bf3a84b82f8?auto=format&fit=crop&q=80&w=400');"></div>
+                        <div class="absolute inset-0 bg-gradient-to-t from-slate-900/40 to-transparent"></div>
+                        
+                        <!-- Badges -->
+                        <span class="absolute top-3 left-3 bg-white/95 text-slate-800 text-[10px] font-bold px-2 py-0.5 rounded-full shadow-sm">
+                            ⭐ Standard
+                        </span>
+                        <span class="absolute bottom-3 right-3 text-white text-[10px] font-bold flex items-center gap-1 bg-black/40 backdrop-blur-sm px-2 py-0.5 rounded-full">
+                            ⏱️ 20m
+                        </span>
+                    </div>
+
+                    <!-- Card details -->
+                    <div class="p-5 space-y-2">
+                        <span class="text-[10px] font-bold text-blue-600 uppercase tracking-wider block">{{ art.source_name|default:"VietNam News" }}</span>
+                        <h3 class="font-bold text-slate-800 line-clamp-2 text-base group-hover:text-blue-600 transition min-h-[3rem]">
+                            {{ art.title|default:"Chưa có tiêu đề" }}
+                        </h3>
+                        <p class="text-slate-400 text-xs line-clamp-2 leading-relaxed">
+                            {{ art.original_text|truncatewords:20 }}
+                        </p>
+                    </div>
+                </div>
+
+                <!-- Footer Button (redirect to detail if logged in, else redirect to login) -->
+                <div class="p-5 pt-0">
+                    <a href="{% if user.is_authenticated %}{% url 'article_detail' art.id %}{% else %}{% url 'login' %}{% endif %}" 
+                       class="w-full py-2.5 px-4 bg-slate-50 hover:bg-blue-600 group-hover:bg-blue-600 text-slate-700 group-hover:text-white font-bold rounded-xl text-xs transition duration-150 flex items-center justify-center gap-1.5 border border-slate-100 group-hover:border-blue-600">
+                        📖 Practice Quiz
+                    </a>
+                </div>
+            </div>
+            {% endfor %}
+        {% else %}
+            <div class="col-span-full bg-white border border-slate-100 rounded-2xl p-16 text-center text-slate-500 max-w-lg mx-auto shadow-sm">
+                <div class="text-5xl mb-4">📰</div>
+                <h3 class="text-lg font-bold text-slate-800 mb-2">Chưa có bài test nào</h3>
+                <p class="text-slate-450 text-sm">Hiện tại chưa có đề thi nào được biên dịch hoàn tất trong hệ thống. Hãy đăng nhập và tạo bài viết đầu tiên!</p>
+            </div>
+        {% endif %}
+    </div>
+    
+    <!-- Empty search result state -->
+    <div id="no-results" class="hidden bg-white border border-slate-100 rounded-2xl p-16 text-center text-slate-550 max-w-md mx-auto shadow-sm">
+        <div class="text-4xl mb-3">🔍</div>
+        <h3 class="text-base font-bold text-slate-800 mb-1">Không tìm thấy bài test phù hợp</h3>
+        <p class="text-slate-450 text-xs">Vui lòng kiểm tra lại từ khóa tìm kiếm của bạn.</p>
+    </div>
+
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const searchInput = document.getElementById('search-input');
+        const cards = document.querySelectorAll('.test-card');
+        const noResults = document.getElementById('no-results');
+
+        if (searchInput) {
+            searchInput.addEventListener('input', function() {
+                const query = this.value.trim().toLowerCase();
+                let hasMatches = false;
+
+                cards.forEach(card => {
+                    const title = card.getAttribute('data-title') || '';
+                    const source = card.getAttribute('data-source') || '';
+                    
+                    if (title.includes(query) || source.includes(query)) {
+                        card.classList.remove('hidden');
+                        hasMatches = true;
+                    } else {
+                        card.classList.add('hidden');
+                    }
+                });
+
+                if (hasMatches || cards.length === 0) {
+                    noResults.classList.add('hidden');
+                } else {
+                    noResults.classList.remove('hidden');
+                }
+            });
+        }
+    });
+</script>
+{% endblock %}
