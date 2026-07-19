@@ -1,0 +1,120 @@
+.
+├── docker-compose.yaml
+├── LICENSE
+├── main.py
+├── pyproject.toml
+├── ReadAndQues
+│   ├── accounts
+│   │   ├── admin.py
+│   │   ├── apps.py
+│   │   ├── backends.py
+│   │   ├── __init__.py
+│   │   ├── migrations
+│   │   │   ├── 0001_initial.py
+│   │   │   ├── 0002_emailverification.py
+│   │   │   ├── 0003_userprofile_avg_incorrect_questions_and_more.py
+│   │   │   ├── 0004_userprofile_last_login_date_and_more.py
+│   │   │   ├── __init__.py
+│   │   │   └── __pycache__
+│   │   │       ├── 0001_initial.cpython-313.pyc
+│   │   │       ├── 0002_emailverification.cpython-313.pyc
+│   │   │       ├── 0003_userprofile_avg_incorrect_questions_and_more.cpython-313.pyc
+│   │   │       ├── 0004_userprofile_last_login_date_and_more.cpython-313.pyc
+│   │   │       └── __init__.cpython-313.pyc
+│   │   ├── models.py
+│   │   ├── __pycache__
+│   │   │   ├── admin.cpython-313.pyc
+│   │   │   ├── apps.cpython-313.pyc
+│   │   │   ├── backends.cpython-313.pyc
+│   │   │   ├── __init__.cpython-313.pyc
+│   │   │   ├── models.cpython-313.pyc
+│   │   │   ├── tests.cpython-313.pyc
+│   │   │   ├── urls.cpython-313.pyc
+│   │   │   └── views.cpython-313.pyc
+│   │   ├── templates
+│   │   │   └── accounts
+│   │   │       ├── home.html
+│   │   │       ├── login.html
+│   │   │       ├── profile.html
+│   │   │       ├── register.html
+│   │   │       └── verify.html
+│   │   ├── tests.py
+│   │   ├── urls.py
+│   │   └── views.py
+│   ├── ai_core
+│   │   ├── config.py
+│   │   ├── graph.py
+│   │   ├── __init__.py
+│   │   ├── prompts.py
+│   │   ├── __pycache__
+│   │   │   ├── config.cpython-313.pyc
+│   │   │   ├── graph.cpython-313.pyc
+│   │   │   ├── __init__.cpython-313.pyc
+│   │   │   ├── prompts.cpython-313.pyc
+│   │   │   └── schemas.cpython-313.pyc
+│   │   └── schemas.py
+│   ├── articles
+│   │   ├── admin.py
+│   │   ├── apps.py
+│   │   ├── __init__.py
+│   │   ├── migrations
+│   │   │   ├── __init__.py
+│   │   │   └── __pycache__
+│   │   │       └── __init__.cpython-313.pyc
+│   │   ├── models.py
+│   │   ├── __pycache__
+│   │   │   ├── admin.cpython-313.pyc
+│   │   │   ├── apps.cpython-313.pyc
+│   │   │   ├── __init__.cpython-313.pyc
+│   │   │   ├── models.cpython-313.pyc
+│   │   │   ├── services.cpython-313.pyc
+│   │   │   ├── tests.cpython-313.pyc
+│   │   │   ├── urls.cpython-313.pyc
+│   │   │   ├── views.cpython-313.pyc
+│   │   │   └── views.cpython-314.pyc
+│   │   ├── services.py
+│   │   ├── templates
+│   │   │   └── articles
+│   │   │       ├── all_tests.html
+│   │   │       ├── base.html
+│   │   │       ├── detail.html
+│   │   │       ├── import.html
+│   │   │       ├── loading.html
+│   │   │       └── workspace.html
+│   │   ├── tests.py
+│   │   ├── urls.py
+│   │   ├── utils
+│   │   │   ├── crawler.py
+│   │   │   ├── db.py
+│   │   │   ├── __init__.py
+│   │   │   └── __pycache__
+│   │   │       ├── crawler.cpython-313.pyc
+│   │   │       ├── db.cpython-313.pyc
+│   │   │       ├── db.cpython-314.pyc
+│   │   │       └── __init__.cpython-313.pyc
+│   │   └── views.py
+│   ├── db.sqlite3
+│   ├── main.py
+│   ├── manage.py
+│   ├── __pycache__
+│   │   ├── main.cpython-313.pyc
+│   │   └── manage.cpython-313.pyc
+│   ├── ReadAndQues
+│   │   ├── asgi.py
+│   │   ├── __init__.py
+│   │   ├── __pycache__
+│   │   │   ├── asgi.cpython-313.pyc
+│   │   │   ├── __init__.cpython-313.pyc
+│   │   │   ├── settings.cpython-313.pyc
+│   │   │   ├── urls.cpython-313.pyc
+│   │   │   └── wsgi.cpython-313.pyc
+│   │   ├── settings.py
+│   │   ├── urls.py
+│   │   └── wsgi.py
+│   └── README.md
+├── README.md
+├── requirements.txt
+├── tree.txt
+└── uv.lock
+
+21 directories, 97 files

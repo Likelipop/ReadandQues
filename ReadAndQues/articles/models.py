@@ -21,14 +21,13 @@ class ArticleChunk(BaseModel):
 # 2. DETAILED EXAM QUESTIONS (QUIZ ITEM)
 # ==========================================
 class QuizItem(BaseModel):
-    quiz_type: str = Field(..., description="multiple_choice or fill_in_blank")
+    quiz_type: str = Field(..., description="'yes_no_notgiven', 'multiple_choice', or 'fill_in_blank'")
     question: str = Field(...)
     options: Optional[List[str]] = Field(default=None, description="Only for multiple_choice")
     correct_answer: str = Field(...)
     explanation: str = Field(...)
     
-    # IELTS Psychometrics Traceability
-    source_chunk_ids: Union[List[str], str] = Field(..., description="IDs of chunks or -1 for whole passage")
+    source_chunk_ids: Optional[Union[List[str], str]] = Field(default=None, description="IDs of chunks or -1 for whole passage")
     supporting_text: str = Field(..., description="Verbatim sentence from the text")
 
 # ==========================================

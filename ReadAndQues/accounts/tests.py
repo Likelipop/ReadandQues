@@ -1,5 +1,5 @@
 import datetime
-from django.test import TestCase, Client
+from django.test import TestCase, Client, override_settings
 from django.contrib.auth.models import User
 from django.utils import timezone
 from django.urls import reverse
@@ -188,3 +188,99 @@ class AccountsAuthTests(TestCase):
 
         # Verify password was updated (should be able to check password)
         self.assertTrue(user.check_password("newpassword456"))
+
+
+class ProfileAndStarsTests(TestCase):
+    def setUp(self):
+        self.client = Client()
+        self.user = User.objects.create_user(username="testuser", email="test@example.com", password="password123")
+        self.user.is_active = True
+        self.user.save()
+        self.client.force_login(self.user)
+
+    @override_settings(DEBUG=True)
+    def test_default_stars_allocation_dev(self):
+        """Verify that default star allocation is 100 in dev (settings.DEBUG is True)."""
+        dev_user = User.objects.create_user(username="devuser", email="dev@example.com", password="password123")
+        self.assertEqual(dev_user.profile.stars, 100)
+
+    def test_default_stars_allocation_prod(self):
+        """Verify that default star allocation is 10 in prod (settings.DEBUG is False)."""
+        from django.conf import settings
+        # Temporarily mock settings.DEBUG to False
+        original_debug = settings.DEBUG
+        settings.DEBUG = False
+        try:
+            prod_user = User.objects.create_user(username="produser", email="prod@example.com", password="password123")
+            self.assertEqual(prod_user.profile.stars, 10)
+        finally:
+            settings.DEBUG = original_debug
+
+    def test_login_days_count_increment(self):
+        """Verify that login_days_count increments only once per day."""
+        profile = self.user.profile
+        self.assertEqual(profile.login_days_count, 0)
+        
+        # Trigger login signal
+        from django.contrib.auth.signals import user_logged_in
+        user_logged_in.send(sender=User, request=None, user=self.user)
+        
+        profile.refresh_from_db()
+        self.assertEqual(profile.login_days_count, 1)
+        
+        # Same day login -> should not increment
+        user_logged_in.send(sender=User, request=None, user=self.user)
+        profile.refresh_from_db()
+        self.assertEqual(profile.login_days_count, 1)
+
+    def test_change_password_success(self):
+        """Verify that a user can successfully change their password."""
+        response = self.client.post(reverse("profile"), {
+            "old_password": "password123",
+            "new_password1": "newsecurepassword123",
+            "new_password2": "newsecurepassword123",
+        })
+        self.assertEqual(response.status_code, 302)
+        self.assertRedirects(response, reverse("profile"))
+        
+        # Check password updated
+        self.user.refresh_from_db()
+        self.assertTrue(self.user.check_password("newsecurepassword123"))
+
+    def test_change_password_mismatch(self):
+        """Verify password change fails when new passwords do not match."""
+        response = self.client.post(reverse("profile"), {
+            "old_password": "password123",
+            "new_password1": "newsecurepassword123",
+            "new_password2": "newsecurepassword456",
+        })
+        self.assertEqual(response.status_code, 200) # Form errors displayed
+        self.assertContains(response, "Vui lòng sửa các lỗi bên dưới")
+
+        # Verify old password still works
+        self.user.refresh_from_db()
+        self.assertTrue(self.user.check_password("password123"))
+
+    def test_article_import_limits_by_stars(self):
+        """Verify that user cannot import articles if they have 0 stars."""
+        profile = self.user.profile
+        profile.stars = 0
+        profile.save()
+
+        # Regular post attempt
+        response = self.client.post(reverse("import_article"), {
+            "url": "https://vietnamnews.vn/economy/123456"
+        })
+        # Should render import page with errors
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Bạn đã hết Star!")
+
+        # Ajax attempt
+        response = self.client.post(
+            reverse("import_article"),
+            {"url": "https://vietnamnews.vn/economy/123456"},
+            HTTP_X_REQUESTED_WITH="XMLHttpRequest"
+        )
+        self.assertEqual(response.status_code, 403)
+        self.assertEqual(response.json().get("message"), "NO_STARS")
+

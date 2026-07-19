@@ -40,9 +40,16 @@
             <div class="h-4 w-[1px] bg-slate-800"></div>
             <h1 class="text-lg font-bold truncate">{{ article.title }}</h1>
         </div>
-        <div class="text-sm font-semibold bg-slate-800 px-4 py-2 rounded-xl flex items-center gap-2">
-            <span>Score:</span>
-            <span id="score-display" class="text-emerald-400 font-bold">0</span> / <span class="text-slate-300">{% if article.exams and article.exams.0.quizzes %}{{ article.exams.0.quizzes|length }}{% else %}0{% endif %}</span>
+        <div class="text-sm font-semibold bg-slate-800 px-4 py-2 rounded-xl flex items-center gap-4">
+            <div class="flex items-center gap-1.5 text-amber-400">
+                <span>⏱️</span>
+                <span id="timer-display">20:00</span>
+            </div>
+            <div class="h-4 w-[1px] bg-slate-700"></div>
+            <div class="flex items-center gap-1.5">
+                <span>Score:</span>
+                <span id="score-display" class="text-emerald-400 font-bold">0</span> / <span class="text-slate-300">{% if article.exams and article.exams.0.quizzes %}{{ article.exams.0.quizzes|length }}{% else %}0{% endif %}</span>
+            </div>
         </div>
     </header>
 
@@ -247,6 +254,44 @@
                 this.classList.replace('hover:bg-green-700', 'cursor-not-allowed');
             });
         }
+
+        // ── Timer Logic ──
+        (function() {
+            const timerDisplay = document.getElementById('timer-display');
+            if (!timerDisplay) return;
+
+            {% if article.status == 'completed' %}
+                let timeRemaining = 1200; // 20 minutes in seconds
+                let timerInterval = null;
+
+                function updateTimer() {
+                    const minutes = Math.floor(timeRemaining / 60);
+                    const seconds = timeRemaining % 60;
+                    timerDisplay.textContent = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+                    
+                    if (timeRemaining <= 0) {
+                        clearInterval(timerInterval);
+                        const submitBtn = document.getElementById('submit-btn');
+                        if (submitBtn && !submitBtn.disabled) {
+                            submitBtn.click();
+                            alert("Hết giờ làm bài! Bài thi của bạn đã được nộp tự động.");
+                        }
+                    } else {
+                        timeRemaining--;
+                    }
+                }
+
+                updateTimer();
+                timerInterval = setInterval(updateTimer, 1000);
+
+                const submitBtn = document.getElementById('submit-btn');
+                if (submitBtn) {
+                    submitBtn.addEventListener('click', function() {
+                        clearInterval(timerInterval);
+                    });
+                }
+            {% endif %}
+        })();
     </script>
 </body>
 </html>

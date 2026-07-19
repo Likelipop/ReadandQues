@@ -14,6 +14,7 @@ from .utils.db import (
     get_articles_by_user,
     insert_article_document,
     update_article_document,
+    get_completed_articles,
 )
 
 
@@ -34,6 +35,10 @@ def _run_article_generation(url: str, pk: str) -> None:
         })
 
 
+from django.db import transaction
+from accounts.models import UserProfile
+
+
 def _is_ajax(request) -> bool:
     return request.headers.get("x-requested-with") == "XMLHttpRequest"
 
@@ -41,27 +46,58 @@ def _is_ajax(request) -> bool:
 @login_required(login_url="login")
 def import_article_view(request):
     if request.method != "POST":
-        return render(request, "articles/import.html")
+        return render(request, "articles/import.html", {"stars": request.user.profile.stars})
+
+    # Cyber Security: Check & decrement star count atomically to prevent race condition attacks
+    try:
+        with transaction.atomic():
+            profile = UserProfile.objects.select_for_update().get(user=request.user)
+            if profile.stars <= 0:
+                if _is_ajax(request):
+                    return JsonResponse({"status": "error", "message": "NO_STARS"}, status=403)
+                messages.error(request, "Bạn đã hết Star! Vui lòng liên hệ để yêu cầu thêm star.")
+                return render(request, "articles/import.html", {"stars": 0})
+            
+            # Deduct star
+            profile.stars -= 1
+            profile.save()
+    except Exception as e:
+        if _is_ajax(request):
+            return JsonResponse({"status": "error", "message": "Lỗi hệ thống khi cập nhật số lượng Star."}, status=500)
+        messages.error(request, "Lỗi hệ thống khi cập nhật số lượng Star.")
+        return render(request, "articles/import.html", {"stars": request.user.profile.stars})
 
     url = request.POST.get("url", "").strip()
     if not url:
+        # Rollback star since the import didn't go through due to invalid input
+        with transaction.atomic():
+            profile = UserProfile.objects.select_for_update().get(user=request.user)
+            profile.stars += 1
+            profile.save()
+
         if _is_ajax(request):
             return JsonResponse(
                 {"status": "error", "message": "Vui lòng nhập một URL bài báo hợp lệ!"},
                 status=400,
             )
         messages.error(request, "Vui lòng nhập một URL bài báo hợp lệ!")
-        return render(request, "articles/import.html")
+        return render(request, "articles/import.html", {"stars": request.user.profile.stars})
 
     from .utils.crawler import crawl_article_content
 
     crawl_res = crawl_article_content(url)
     if not crawl_res.get("success"):
+        # Rollback star since crawl failed
+        with transaction.atomic():
+            profile = UserProfile.objects.select_for_update().get(user=request.user)
+            profile.stars += 1
+            profile.save()
+
         err_msg = crawl_res.get("error", "Không thể trích xuất nội dung từ bài báo này.")
         if _is_ajax(request):
             return JsonResponse({"status": "error", "message": err_msg}, status=400)
         messages.error(request, err_msg)
-        return render(request, "articles/import.html")
+        return render(request, "articles/import.html", {"stars": request.user.profile.stars})
 
     pending_document = {
         "url": url,
@@ -87,6 +123,7 @@ def import_article_view(request):
 
 
 import_article = import_article_view
+
 
 
 @login_required(login_url="login")
@@ -126,7 +163,9 @@ def article_detail(request, pk):
         messages.error(request, "Không tìm thấy bài báo yêu cầu!")
         return redirect("home")
 
-    if doc.get("user_id") != request.user.id:
+    # Relax restriction: users can view/practice completed articles created by others (All Tests / Trending)
+    # But pending or failed imports are restricted to their owner.
+    if doc.get("status") != "completed" and doc.get("user_id") != request.user.id:
         messages.error(request, "Bạn không có quyền xem bài báo này!")
         return redirect("home")
 
@@ -145,3 +184,8 @@ def article_detail(request, pk):
         })()
 
     return render(request, "articles/detail.html", {"article": article})
+
+
+def all_tests_view(request):
+    articles = get_completed_articles()
+    return render(request, "articles/all_tests.html", {"articles": articles})

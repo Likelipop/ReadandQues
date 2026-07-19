@@ -13,4 +13,5 @@ dependencies = [
     "newspaper3k>=0.2.8",
     "pydantic>=2.13.4",
     "pymongo>=4.17.0",
+    "psycopg2-binary>=2.9.12",
 ]

@@ -4,26 +4,33 @@ import random
 import datetime
 from django.shortcuts import render, redirect
 from django.contrib import messages
-from django.contrib.auth import authenticate, login, logout
+from django.contrib.auth import authenticate, login, logout, update_session_auth_hash
+from django.contrib.auth.forms import PasswordChangeForm
 from django.contrib.auth.models import User
 from django.contrib.auth.decorators import login_required
 from django.core.mail import send_mail
 from django.utils import timezone
 from django.conf import settings
-from articles.utils.db import get_articles_by_user
+from articles.utils.db import get_articles_by_user, get_completed_articles
 from .models import EmailVerification
 
 
 def home_view(request):
+    trending_articles = get_completed_articles(limit=6)
+    user_articles = []
+    
     if request.user.is_authenticated:
-        articles = get_articles_by_user(request.user.id)
+        user_articles = get_articles_by_user(request.user.id)
         profile = request.user.profile
-        profile.total_articles_imported = len(articles)
+        profile.total_articles_imported = len(user_articles)
         profile.save()
         
-        return render(request, "accounts/home.html", {"articles": articles})
-    else:
-        return render(request, "accounts/home.html")
+    context = {
+        "trending_articles": trending_articles,
+        "user_articles": user_articles,
+    }
+    return render(request, "accounts/home.html", context)
+
 
 
 def register_view(request):
@@ -304,3 +311,30 @@ def logout_view(request):
     logout(request)
     messages.success(request, "Đăng xuất tài khoản thành công!")
     return redirect("home")
+
+
+@login_required(login_url="login")
+def profile_view(request):
+    profile = request.user.profile
+    articles = get_articles_by_user(request.user.id)
+    total_articles = len(articles)
+
+    if request.method == "POST":
+        password_form = PasswordChangeForm(request.user, request.POST)
+        if password_form.is_valid():
+            user = password_form.save()
+            update_session_auth_hash(request, user)
+            messages.success(request, "Mật khẩu của bạn đã được cập nhật thành công!")
+            return redirect("profile")
+        else:
+            messages.error(request, "Vui lòng sửa các lỗi bên dưới để đổi mật khẩu.")
+    else:
+        password_form = PasswordChangeForm(request.user)
+
+    context = {
+        "profile": profile,
+        "total_articles": total_articles,
+        "password_form": password_form,
+    }
+    return render(request, "accounts/profile.html", context)
+

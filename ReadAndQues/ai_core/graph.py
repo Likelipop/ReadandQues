@@ -1,6 +1,6 @@
 """Single-call IELTS exam generator graph."""
 
-import random
+import uuid
 from typing import Any, Dict, List, Optional
 
 from langgraph.graph import END, START, StateGraph
@@ -9,27 +9,7 @@ from typing_extensions import TypedDict
 
 from .config import ExamConfig, get_llm
 from .prompts import build_prompt
-
-
-class QuizItem(BaseModel):
-    quiz_type: str = Field(..., description="'yes_no_notgiven' or 'fill_in_blank'")
-    question: str
-    options: Optional[List[str]] = None
-    correct_answer: str
-    explanation: str
-    supporting_text: str = Field(
-        ..., description="Verbatim sentence(s) from the article"
-    )
-
-
-class ExamOutput(BaseModel):
-    quizzes: List[QuizItem]
-
-
-class GraphState(TypedDict):
-    original_text: str
-    exam_config: Dict[str, Any]
-    final_exam: Dict[str, Any]
+from .schemas import ExamOutput, GraphState, QuizItem
 
 
 def _log_token_usage(raw_message: Any) -> None:
@@ -54,7 +34,7 @@ def node_generator(state: GraphState) -> Dict[str, Any]:
     return {
         "exam_config": config.model_dump(),
         "final_exam": {
-            "exam_id": f"EXAM_{random.randint(1000, 9999)}",
+            "exam_id": f"EXAM_{uuid.uuid4().hex[:12].upper()}",
             "total_questions": len(parsed.quizzes),
             "quizzes": [q.model_dump() for q in parsed.quizzes],
         },

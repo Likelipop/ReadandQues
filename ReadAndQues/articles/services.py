@@ -1,4 +1,4 @@
-import os
+import uuid
 from typing import Any, Optional
 
 from pydantic import BaseModel
@@ -25,7 +25,7 @@ def process_and_analyze_article(url: str) -> Optional[dict]:
     title = crawl_result.get("title", "").strip()
     plain_text = crawl_result.get("content", "").strip()
 
-    session_id = f"session_{int(os.times().elapsed * 1000)}"
+    session_id = f"session_{uuid.uuid4().hex}"
     graph_config = {"configurable": {"thread_id": session_id}}
 
     ai_result = app.invoke({"original_text": plain_text}, graph_config)
