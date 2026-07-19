@@ -18,13 +18,13 @@ from .utils.db import (
 )
 
 
-def _run_article_generation(url: str, pk: str) -> None:
+def _run_article_generation(url: str, original_text: str, pk: str) -> None:
     try:
-        payload = process_and_analyze_article(url)
+        payload = process_and_analyze_article(url, original_text)
         if not payload:
             update_article_document(pk, {
                 "status": "failed",
-                "error_message": "Không thể trích xuất nội dung từ bài báo này.",
+                "error_message": "AI pipeline không thể xử lý bài báo này.",
             })
             return
         update_article_document(pk, payload)
@@ -111,7 +111,7 @@ def import_article_view(request):
 
     thread = threading.Thread(
         target=_run_article_generation,
-        args=(url, inserted_id),
+        args=(url, crawl_res.get("content", ""), inserted_id),
         daemon=True,
     )
     thread.start()
@@ -175,12 +175,13 @@ def article_detail(request, pk):
         article = ArticleMongoModel.model_validate(doc)
     except ValidationError:
         article = type("PendingArticle", (), {
-            "title": doc.get("title", ""),
+            "title":         doc.get("title", ""),
             "original_text": doc.get("original_text", ""),
-            "exams": doc.get("exams") or [{"quizzes": []}],
-            "status": doc.get("status", "pending"),
-            "id": str(doc.get("_id")),
-            "url": doc.get("url", ""),
+            "exams":         doc.get("exams") or [{"quizzes": []}],
+            "status":        doc.get("status", "pending"),
+            "id":            str(doc.get("_id")),
+            "url":           doc.get("url", ""),
+            "analysis":      doc.get("analysis"),   # may be None for older docs
         })()
 
     return render(request, "articles/detail.html", {"article": article})

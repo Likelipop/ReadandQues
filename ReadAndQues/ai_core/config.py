@@ -35,10 +35,16 @@ class ExamConfig(BaseModel):
         return cls(word_count=wc, total_questions=total)
 
 
-def get_llm() -> ChatOpenAI:
+def get_llm(temperature: float = 0.3) -> ChatOpenAI:
+    """
+    Return a configured LLM instance.
+
+    temperature=0.0  → deterministic; use for analyzer (genre grounding) and verifier.
+    temperature=0.3  → default; use for question_planner (needs creative variation).
+    """
     return ChatOpenAI(
         base_url=_ENDPOINT,
         api_key=SecretStr(_API_KEY),
         model=_MODEL,
-        temperature=0.3,
+        temperature=temperature,
     )
