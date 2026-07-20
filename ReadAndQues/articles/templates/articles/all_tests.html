@@ -20,6 +20,31 @@
         </div>
     </div>
 
+    <!-- Theme & Genre Filter Bar -->
+    <div class="bg-white rounded-2xl p-5 border border-slate-100 shadow-sm space-y-4">
+        <!-- Theme Filters -->
+        <div class="flex flex-wrap items-center gap-2">
+            <span class="text-xs font-bold text-slate-400 uppercase tracking-wider mr-2">Chủ đề (Theme):</span>
+            {% for theme_item in themes %}
+                <a href="?theme={{ theme_item }}&genre={{ selected_genre }}" 
+                   class="px-3.5 py-1.5 rounded-full text-xs font-bold transition-all duration-150 {% if selected_theme == theme_item %}bg-blue-600 text-white shadow-sm shadow-blue-200{% else %}bg-slate-100 text-slate-600 hover:bg-slate-200{% endif %}">
+                    {% if theme_item == 'All' %}Tất cả{% else %}{{ theme_item }}{% endif %}
+                </a>
+            {% endfor %}
+        </div>
+
+        <!-- Genre Filters -->
+        <div class="flex flex-wrap items-center gap-2 pt-2 border-t border-slate-100">
+            <span class="text-xs font-bold text-slate-400 uppercase tracking-wider mr-2">Thể loại (Genre):</span>
+            {% for genre_item in genres %}
+                <a href="?theme={{ selected_theme }}&genre={{ genre_item }}" 
+                   class="px-3 py-1 rounded-lg text-xs font-semibold transition-all duration-150 capitalize {% if selected_genre == genre_item %}bg-slate-900 text-white{% else %}bg-slate-50 text-slate-500 hover:bg-slate-100{% endif %}">
+                    {% if genre_item == 'All' %}Tất cả thể loại{% else %}{{ genre_item }}{% endif %}
+                </a>
+            {% endfor %}
+        </div>
+    </div>
+
     <!-- Articles Grid -->
     <div id="tests-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {% if articles %}
@@ -34,8 +59,11 @@
                         <div class="absolute inset-0 bg-gradient-to-t from-slate-900/40 to-transparent"></div>
                         
                         <!-- Badges -->
-                        <span class="absolute top-3 left-3 bg-white/95 text-slate-800 text-[10px] font-bold px-2 py-0.5 rounded-full shadow-sm">
-                            ⭐ Standard
+                        <span class="absolute top-3 left-3 bg-white/95 text-slate-800 text-[10px] font-bold px-2 py-0.5 rounded-full shadow-sm flex items-center gap-1">
+                            🏷️ {{ art.theme|default:"General" }}
+                        </span>
+                        <span class="absolute top-3 right-3 bg-blue-600/90 text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-sm capitalize">
+                            {{ art.genre|default:"general" }}
                         </span>
                         <span class="absolute bottom-3 right-3 text-white text-[10px] font-bold flex items-center gap-1 bg-black/40 backdrop-blur-sm px-2 py-0.5 rounded-full">
                             ⏱️ 20m
@@ -67,7 +95,7 @@
             <div class="col-span-full bg-white border border-slate-100 rounded-2xl p-16 text-center text-slate-500 max-w-lg mx-auto shadow-sm">
                 <div class="text-5xl mb-4">📰</div>
                 <h3 class="text-lg font-bold text-slate-800 mb-2">Chưa có bài test nào</h3>
-                <p class="text-slate-450 text-sm">Hiện tại chưa có đề thi nào được biên dịch hoàn tất trong hệ thống. Hãy đăng nhập và tạo bài viết đầu tiên!</p>
+                <p class="text-slate-450 text-sm">Không tìm thấy bài test nào phù hợp với bộ lọc hiện tại. Hãy chọn chủ đề khác hoặc tạo bài viết mới!</p>
             </div>
         {% endif %}
     </div>

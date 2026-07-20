@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{{ article.title }} - IELTS Reading Practice</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <style>
         .fib-blank {
             display: inline-block;
@@ -27,6 +28,17 @@
         .fib-blank::placeholder {
             color: #93c5fd;
             font-weight: 400;
+        }
+        .prose p {
+            margin-bottom: 2rem !important;
+            line-height: 1.8;
+        }
+        .prose ul, .prose ol {
+            margin-top: 1.5rem !important;
+            margin-bottom: 1.5rem !important;
+        }
+        .prose li {
+            margin-bottom: 0.75rem !important;
         }
     </style>
 </head>
@@ -56,7 +68,8 @@
     <main class="flex-1 flex overflow-hidden">
         
         <section class="w-1/2 p-8 overflow-y-auto bg-white border-r border-gray-200">
-            <div class="prose max-w-none text-gray-800 leading-relaxed text-lg">
+            <div id="raw-article-text" class="hidden">{{ article.original_text }}</div>
+            <div id="article-rendered-text" class="prose max-w-none text-gray-800 leading-relaxed text-lg">
                 {{ article.original_text|linebreaks }}
             </div>
         </section>
@@ -137,6 +150,18 @@
     </main>
 
     <script>
+        // ── Render Markdown passage ──
+        (function() {
+            const rawEl = document.getElementById('raw-article-text');
+            const targetEl = document.getElementById('article-rendered-text');
+            if (rawEl && targetEl && typeof marked !== 'undefined') {
+                const text = rawEl.textContent || '';
+                if (text.trim()) {
+                    targetEl.innerHTML = marked.parse(text, { breaks: true, gfm: true });
+                }
+            }
+        })();
+
         // ── Render FIB paragraphs: replace [1]...[5] with inline <input> blanks ──
         document.querySelectorAll('.fib-paragraph').forEach(container => {
             const raw = container.getAttribute('data-raw-question');

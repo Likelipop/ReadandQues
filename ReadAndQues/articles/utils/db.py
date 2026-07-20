@@ -60,9 +60,14 @@ def get_articles_by_user(user_id: int) -> list:
         return []
 
 
-def get_completed_articles(limit=None) -> list:
+def get_completed_articles(limit=None, theme=None, genre=None) -> list:
     try:
         query = {"status": "completed"}
+        if theme and theme != "All":
+            query["theme"] = theme
+        if genre and genre != "All":
+            query["genre"] = genre
+
         cursor = article_collection.find(query).sort("created_at", -1)
         if limit:
             cursor = cursor.limit(limit)
