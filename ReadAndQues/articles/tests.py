@@ -81,13 +81,13 @@ class ArticlesViewsAndDbTests(TestCase):
 
 class ToMarkdownFormatterTests(TestCase):
     def test_to_markdown_basic_paragraphs(self):
-        from articles.utils.formatter import to_markdown
+        from worker_service.data_pipeline.utils.formatter import to_markdown
         raw = "Paragraph one.\nParagraph two."
-        expected = "Paragraph one.\nParagraph two."
+        expected = "Paragraph one.\n\nParagraph two."
         self.assertEqual(to_markdown(raw), expected)
 
     def test_to_markdown_colon_bullet_conversion(self):
-        from articles.utils.formatter import to_markdown
+        from worker_service.data_pipeline.utils.formatter import to_markdown
         raw = (
             "Here are the key points:\n"
             "First short point.\n"
@@ -98,14 +98,14 @@ class ToMarkdownFormatterTests(TestCase):
         expected = (
             "Here are the key points:\n"
             "- First short point.\n"
-            "- Second short point.\n"
-            "This is a long sentence containing more than thirteen words in order to test the paragraph threshold logic.\n"
+            "- Second short point.\n\n"
+            "This is a long sentence containing more than thirteen words in order to test the paragraph threshold logic.\n\n"
             "Subsequent normal text."
         )
         self.assertEqual(to_markdown(raw), expected)
 
     def test_to_markdown_sentence_count_limit(self):
-        from articles.utils.formatter import to_markdown
+        from worker_service.data_pipeline.utils.formatter import to_markdown
         # Line 1 (Four. Five.) has 2 sentences <= 2 -> Bullet point
         # Line 2 (One. Two. Three.) has 3 sentences > 2 -> Exits bullet mode, not a bullet point
         raw = (
@@ -136,7 +136,7 @@ class CategoryAndThemeTests(TestCase):
             self.assertEqual(source_name, expected)
 
     def test_semantic_analysis_theme_schema(self):
-        from ai_core.schemas import SemanticAnalysis, TextGenre, ThemeCategory, CoreAnalysis
+        from worker_service.ai_core.schemas import SemanticAnalysis, TextGenre, ThemeCategory, CoreAnalysis
         analysis = SemanticAnalysis(
             genre=TextGenre.scientific,
             theme=ThemeCategory.technology,
@@ -145,17 +145,21 @@ class CategoryAndThemeTests(TestCase):
         self.assertEqual(analysis.genre, "scientific")
         self.assertEqual(analysis.theme, "Technology")
 
-    def test_article_mongo_model_theme(self):
+    def test_article_mongo_model_theme_and_images(self):
         from articles.models import ArticleMongoModel
         model = ArticleMongoModel(
             url="https://example.com/test",
             title="Test Title",
             original_text="Test body text",
             source_name="example.com",
+            image_url="https://example.com/image.jpg",
+            image_urls=["https://example.com/image.jpg", "https://example.com/img2.jpg"],
             theme="Education",
             genre="scientific"
         )
         self.assertEqual(model.theme, "Education")
         self.assertEqual(model.genre, "scientific")
+        self.assertEqual(model.image_url, "https://example.com/image.jpg")
+        self.assertEqual(len(model.image_urls), 2)
 
 

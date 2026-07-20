@@ -68,6 +68,11 @@
     <main class="flex-1 flex overflow-hidden">
         
         <section class="w-1/2 p-8 overflow-y-auto bg-white border-r border-gray-200">
+            {% if article.image_url %}
+            <div class="mb-6 rounded-2xl overflow-hidden shadow-sm border border-slate-100 bg-slate-100 max-h-80 flex items-center justify-center">
+                <img src="{{ article.image_url }}" alt="{{ article.title }}" class="w-full h-full max-h-80 object-cover" onerror="this.parentElement.style.display='none';">
+            </div>
+            {% endif %}
             <div id="raw-article-text" class="hidden">{{ article.original_text }}</div>
             <div id="article-rendered-text" class="prose max-w-none text-gray-800 leading-relaxed text-lg">
                 {{ article.original_text|linebreaks }}
@@ -145,6 +150,40 @@
                     </div>
                 {% endif %}
 
+                <!-- Related Articles Section (Hidden by default, shown after submit) -->
+                {% if related_articles %}
+                <div id="related-articles-section" class="hidden mt-12 pt-8 border-t border-slate-200">
+                    <div class="flex items-center justify-between mb-6">
+                        <h3 class="text-xl font-bold text-slate-800">✨ Có thể bạn sẽ thích</h3>
+                        <a href="{% url 'all_tests' %}" class="text-sm font-semibold text-blue-600 hover:text-blue-700 transition">Xem tất cả bài kiểm tra →</a>
+                    </div>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        {% for r_art in related_articles %}
+                        <a href="{% url 'article_detail' r_art.id %}" class="group bg-white rounded-xl border border-slate-100 shadow-sm overflow-hidden flex flex-col hover:shadow-md transition duration-200">
+                            <!-- Thumbnail banner image -->
+                            <div class="h-24 w-full relative overflow-hidden flex items-center justify-center">
+                                {% if r_art.image_url %}
+                                    <div class="absolute inset-0 opacity-100 bg-cover bg-center" style="background-image: url('{{ r_art.image_url }}');"></div>
+                                {% else %}
+                                    <div class="absolute inset-0 opacity-10 bg-cover bg-center" style="background-image: url('https://images.unsplash.com/photo-1456513080510-7bf3a84b82f8?auto=format&fit=crop&q=80&w=400');"></div>
+                                {% endif %}
+                                <div class="absolute inset-0 bg-gradient-to-t from-slate-900/40 to-transparent"></div>
+                                <span class="absolute bottom-2 right-2 text-white text-[10px] font-bold bg-black/40 backdrop-blur-sm px-2 py-0.5 rounded-full">
+                                    {{ r_art.source_name|default:"Unknown" }}
+                                </span>
+                            </div>
+                            <!-- Card text info -->
+                            <div class="p-3">
+                                <h4 class="font-bold text-slate-800 line-clamp-2 text-sm group-hover:text-blue-600 transition min-h-[2.5rem]">
+                                    {{ r_art.title|default:"Chưa có tiêu đề" }}
+                                </h4>
+                            </div>
+                        </a>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endif %}
+
             </div>
         </section>
     </main>
@@ -163,7 +202,7 @@
         })();
 
         // ── Render FIB paragraphs: replace [1]...[5] with inline <input> blanks ──
-        document.querySelectorAll('.fib-paragraph').forEach(container => {
+        document.querySelectorAll('.fib-paragraph').forEach((container, pIdx) => {
             const raw = container.getAttribute('data-raw-question');
             if (!raw) return;
             // Split by [1], [2], ... [N] pattern, interleave with inputs
@@ -180,10 +219,71 @@
                     input.className = 'fib-blank';
                     input.placeholder = parts[i];
                     input.setAttribute('data-blank-index', parts[i]);
+                    // Stable ID for caching
+                    input.setAttribute('data-cache-id', `fib_${pIdx}_${parts[i]}`);
                     container.appendChild(input);
                 }
             }
         });
+
+        // ── State Manager: Timer and Answer Auto-save ──
+        {% if article.status == 'completed' %}
+            const articleId = '{{ article.id }}';
+            const storageKey = `exam_state_${articleId}`;
+            
+            let examState = { elapsedTime: 0, answers: {} };
+            try {
+                const stored = localStorage.getItem(storageKey);
+                if (stored) examState = JSON.parse(stored);
+            } catch(e) {}
+
+            function saveState() {
+                localStorage.setItem(storageKey, JSON.stringify(examState));
+            }
+
+            // 1. Timer Logic
+            const timerDisplay = document.getElementById('timer-display');
+            window.examTimerInterval = null;
+
+            if (timerDisplay) {
+                function updateTimer() {
+                    const minutes = Math.floor(examState.elapsedTime / 60);
+                    const seconds = examState.elapsedTime % 60;
+                    timerDisplay.textContent = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+                    examState.elapsedTime++;
+                    saveState();
+                }
+                updateTimer();
+                window.examTimerInterval = setInterval(updateTimer, 1000);
+            }
+
+            // 2. Answer Restore & Auto-save Binding
+            // Restore FIBs
+            document.querySelectorAll('.fib-blank').forEach(input => {
+                const cacheId = input.getAttribute('data-cache-id');
+                if (examState.answers[cacheId]) {
+                    input.value = examState.answers[cacheId];
+                }
+                input.addEventListener('input', (e) => {
+                    examState.answers[cacheId] = e.target.value;
+                    saveState();
+                });
+            });
+
+            // Restore Radios
+            document.querySelectorAll('input[type="radio"]').forEach(input => {
+                const cacheId = input.name;
+                if (examState.answers[cacheId] === input.value) {
+                    input.checked = true;
+                }
+                input.addEventListener('change', (e) => {
+                    if (e.target.checked) {
+                        examState.answers[cacheId] = e.target.value;
+                        saveState();
+                    }
+                });
+            });
+        {% endif %}
 
         // ── Poll server for async generation status ──
         (function() {
@@ -219,10 +319,39 @@
         const submitBtn = document.getElementById('submit-btn');
         if (submitBtn) {
             submitBtn.addEventListener('click', function() {
-                let correctCount = 0;
-                const quizItems = document.querySelectorAll('.quiz-item');
+                // 1. Check completeness
+                let allAnswered = true;
+                const items = document.querySelectorAll('.quiz-item');
+                items.forEach(item => {
+                    const qType = item.getAttribute('data-quiz-type');
+                    if (qType === 'fill_in_blank') {
+                        const blanks = item.querySelectorAll('.fib-blank');
+                        blanks.forEach(b => { if (!b.value.trim()) allAnswered = false; });
+                    } else {
+                        const inputs = item.querySelectorAll('input[type="radio"]');
+                        const answered = Array.from(inputs).some(r => r.checked);
+                        if (!answered) allAnswered = false;
+                    }
+                });
 
-                quizItems.forEach(item => {
+                if (!allAnswered) {
+                    const confirmSubmit = confirm('Bạn chưa điền đủ các câu trả lời. Bạn có chắc chắn muốn nộp bài?');
+                    if (!confirmSubmit) return;
+                }
+
+                submitBtn.disabled = true;
+                submitBtn.textContent = 'Đã nộp bài';
+                submitBtn.classList.replace('bg-green-600', 'bg-slate-400');
+                submitBtn.classList.replace('hover:bg-green-700', 'hover:bg-slate-500');
+
+                // Stop the timer
+                if (window.examTimerInterval) {
+                    clearInterval(window.examTimerInterval);
+                }
+
+                // 2. Evaluate answers
+                let correctCount = 0;
+                items.forEach(item => {
                     const correctAnswer = item.getAttribute('data-answer').trim().toLowerCase();
                     const quizType = item.getAttribute('data-quiz-type');
 
@@ -271,52 +400,25 @@
                     const expl = item.querySelector('.explanation');
                     if (expl) expl.classList.remove('hidden');
                 });
+                
+                // Clear cache on submit
+                {% if article.status == 'completed' %}
+                    localStorage.removeItem(storageKey);
+                {% endif %}
+                
+                // Show related articles
+                const relatedSection = document.getElementById('related-articles-section');
+                if (relatedSection) {
+                    relatedSection.classList.remove('hidden');
+                    // Smooth scroll to the recommendations
+                    setTimeout(() => {
+                        relatedSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    }, 500);
+                }
 
                 document.getElementById('score-display').textContent = correctCount;
-                this.textContent = 'Exam Submitted';
-                this.disabled = true;
-                this.classList.replace('bg-green-600', 'bg-gray-400');
-                this.classList.replace('hover:bg-green-700', 'cursor-not-allowed');
             });
         }
-
-        // ── Timer Logic ──
-        (function() {
-            const timerDisplay = document.getElementById('timer-display');
-            if (!timerDisplay) return;
-
-            {% if article.status == 'completed' %}
-                let timeRemaining = 1200; // 20 minutes in seconds
-                let timerInterval = null;
-
-                function updateTimer() {
-                    const minutes = Math.floor(timeRemaining / 60);
-                    const seconds = timeRemaining % 60;
-                    timerDisplay.textContent = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
-                    
-                    if (timeRemaining <= 0) {
-                        clearInterval(timerInterval);
-                        const submitBtn = document.getElementById('submit-btn');
-                        if (submitBtn && !submitBtn.disabled) {
-                            submitBtn.click();
-                            alert("Hết giờ làm bài! Bài thi của bạn đã được nộp tự động.");
-                        }
-                    } else {
-                        timeRemaining--;
-                    }
-                }
-
-                updateTimer();
-                timerInterval = setInterval(updateTimer, 1000);
-
-                const submitBtn = document.getElementById('submit-btn');
-                if (submitBtn) {
-                    submitBtn.addEventListener('click', function() {
-                        clearInterval(timerInterval);
-                    });
-                }
-            {% endif %}
-        })();
     </script>
 </body>
 </html>

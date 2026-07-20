@@ -67,8 +67,11 @@
                     <div>
                         <!-- Thumbnail banner image -->
                         <div class="h-40 w-full bg-gradient-to-br from-slate-100 to-slate-200 relative overflow-hidden flex items-center justify-center">
-                            <!-- Curved overlay for background aesthetic -->
-                            <div class="absolute inset-0 opacity-10 bg-cover" style="background-image: url('https://images.unsplash.com/photo-1456513080510-7bf3a84b82f8?auto=format&fit=crop&q=80&w=400');"></div>
+                        {% if art.image_url %}
+                            <div class="absolute inset-0 opacity-100 bg-cover bg-center" style="background-image: url('{{ art.image_url }}');"></div>
+                        {% else %}
+                            <div class="absolute inset-0 opacity-10 bg-cover bg-center" style="background-image: url('https://images.unsplash.com/photo-1456513080510-7bf3a84b82f8?auto=format&fit=crop&q=80&w=400');"></div>
+                        {% endif %}
                             <div class="absolute inset-0 bg-gradient-to-t from-slate-900/40 to-transparent"></div>
                             
                             <!-- Topic icon or badges -->

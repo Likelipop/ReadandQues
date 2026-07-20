@@ -12,8 +12,8 @@ from typing import List, Optional
 from django.db import models  # noqa: F401  (required for Django app registry)
 from pydantic import BaseModel, Field
 
-# ── Import canonical domain models from ai_core (SSOT) ─────────────────────
-from ai_core.schemas import QuizItem, SemanticAnalysis, TokenUsageLog  # noqa: F401
+# ── Import canonical domain models from worker_service.ai_core (SSOT) ───────
+from worker_service.ai_core.schemas import QuizItem, SemanticAnalysis, TokenUsageLog  # noqa: F401
 
 __all__ = [
     "QuizItem",
@@ -58,6 +58,8 @@ class ArticleMongoModel(BaseModel):
     title:         str = Field(...)
     original_text: str = Field(...)
     source_name:   Optional[str] = Field(default="Unknown")
+    image_url:     Optional[str] = Field(default=None)
+    image_urls:    List[str] = Field(default_factory=list)
     theme:         Optional[str] = Field(default="General", description="Primary theme category (Economy, Society, Education, etc.)")
     genre:         Optional[str] = Field(default="general", description="Text genre (scientific, narrative, persuasive, etc.)")
 

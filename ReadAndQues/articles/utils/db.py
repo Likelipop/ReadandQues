@@ -8,7 +8,7 @@ mongo_uri = getattr(settings, "MONGO_URI", None)
 if not mongo_uri or mongo_uri.startswith("******"):
     # If you run Mongo locally via docker-compose with port mapping (27017 -> host), use localhost.
     # If Django runs inside Docker in same compose network, replace 'localhost' with 'mongo'.
-    mongo_uri = "mongodb://admin:changeme@localhost:27017/mydb?authSource=admin"
+    mongo_uri = "mongodb://admin:changeme@localhost:27017/articles?authSource=admin"
 
 client = MongoClient(
     mongo_uri,
@@ -23,9 +23,9 @@ except Exception:
     # Connection may not be available yet (e.g., docker-compose starting). Operations will raise later.
     pass
 
-DB_NAME = getattr(settings, "MONGO_DB_NAME", "mydb")
+DB_NAME = getattr(settings, "MONGO_DB_NAME", "articles")
 db = client[DB_NAME]
-article_collection = db["articles"]
+article_collection = db["gold_articles"]
 
 
 def insert_article_document(data: dict) -> str:

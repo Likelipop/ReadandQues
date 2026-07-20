@@ -11,7 +11,7 @@ from typing import Any, Optional
 
 from pydantic import BaseModel
 
-from ai_core.graph import app
+from worker_service.ai_core.graph import app
 
 
 def _recursive_dump(value: Any) -> Any:
