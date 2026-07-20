@@ -58,6 +58,8 @@ class ArticleMongoModel(BaseModel):
     title:         str = Field(...)
     original_text: str = Field(...)
     source_name:   Optional[str] = Field(default="Unknown")
+    theme:         Optional[str] = Field(default="General", description="Primary theme category (Economy, Society, Education, etc.)")
+    genre:         Optional[str] = Field(default="general", description="Text genre (scientific, narrative, persuasive, etc.)")
 
     # ── AI-generated data ────────────────────────────────────────────────────
     # SemanticAnalysis produced by Node 1 (analyzer).

@@ -68,9 +68,13 @@ def process_and_analyze_article(url: str, original_text: str) -> Optional[dict]:
         return None
 
     # semantic_analysis goes to articles.analysis field in MongoDB
-    semantic_analysis = result.get("semantic_analysis")
+    semantic_analysis = result.get("semantic_analysis") or {}
+    theme = semantic_analysis.get("theme", "General")
+    genre = semantic_analysis.get("genre", "general")
 
     return {
+        "theme":    theme,
+        "genre":    genre,
         "analysis": semantic_analysis,           # SemanticAnalysis dict — new field
         "exams":    [final_exam],                # List[Exam] — embedded 1-to-N
         "status":   "completed",

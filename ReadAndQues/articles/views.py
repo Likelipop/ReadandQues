@@ -103,6 +103,7 @@ def import_article_view(request):
         "url": url,
         "title": crawl_res.get("title", ""),
         "original_text": crawl_res.get("content", ""),
+        "source_name": crawl_res.get("source_name", "Unknown"),
         "status": "pending",
         "user_id": request.user.id,
         "created_at": datetime.utcnow(),
@@ -188,5 +189,22 @@ def article_detail(request, pk):
 
 
 def all_tests_view(request):
-    articles = get_completed_articles()
-    return render(request, "articles/all_tests.html", {"articles": articles})
+    selected_theme = request.GET.get("theme", "All")
+    selected_genre = request.GET.get("genre", "All")
+
+    articles = get_completed_articles(
+        theme=selected_theme if selected_theme != "All" else None,
+        genre=selected_genre if selected_genre != "All" else None,
+    )
+
+    themes = ["All", "Economy", "Society", "Education", "Technology", "Science", "Environment", "Culture", "Health", "General"]
+    genres = ["All", "scientific", "narrative", "persuasive", "poetry", "general"]
+
+    context = {
+        "articles": articles,
+        "themes": themes,
+        "genres": genres,
+        "selected_theme": selected_theme,
+        "selected_genre": selected_genre,
+    }
+    return render(request, "articles/all_tests.html", context)

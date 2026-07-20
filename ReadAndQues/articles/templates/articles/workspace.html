@@ -1,39 +1,73 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <title>IELTS Exam Workspace</title>
     <script src="https://unpkg.com/htmx.org@1.9.10"></script>
     <style>
-        .container { display: flex; height: 100vh; }
-        .left-panel { width: 50%; padding: 20px; overflow-y: scroll; border-right: 2px solid #ccc; }
-        .right-panel { width: 50%; padding: 20px; overflow-y: scroll; background-color: #f9f9f9; }
-        .spinner { border: 4px solid #f3f3f3; border-top: 4px solid #3498db; border-radius: 50%; width: 30px; height: 30px; animation: spin 1s linear infinite; }
-        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        .container {
+            display: flex;
+            height: 100vh;
+        }
+
+        .left-panel {
+            width: 50%;
+            padding: 20px;
+            overflow-y: scroll;
+            border-right: 2px solid #ccc;
+        }
+
+        .right-panel {
+            width: 50%;
+            padding: 20px;
+            overflow-y: scroll;
+            background-color: #f9f9f9;
+        }
+
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #3498db;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% {
+                transform: rotate(0deg);
+            }
+
+            100% {
+                transform: rotate(360deg);
+            }
+        }
     </style>
 </head>
+
 <body>
 
     <div class="container">
         <div class="left-panel">
             <h1>{{ article.title }}</h1>
-            <div style="white-space: pre-wrap; line-height: 1.6;">
+            <div style="white-space: pre-wrap; line-height: 1.6; margin-bottom: 50px;">
                 {{ article.content }}
             </div>
         </div>
 
         <div class="right-panel" id="exam-section">
-            <div hx-get="/articles/check-status/{{ article_id }}/" 
-                 hx-trigger="every 3s" 
-                 hx-target="#exam-section" 
-                 hx-swap="outerHTML">
-                
+            <div hx-get="/articles/check-status/{{ article_id }}/" hx-trigger="every 3s" hx-target="#exam-section"
+                hx-swap="outerHTML">
+
                 <h3>🤖 AI đang phân tích bài viết và dựng đề thi...</h3>
                 <div class="spinner"></div>
-                <p style="color: gray; font-size: 14px;">Quá trình này thường mất từ 10-15 giây. Bạn có thể tranh thủ đọc trước bài báo bên cánh trái.</p>
+                <p style="color: gray; font-size: 14px;">Quá trình này thường mất từ 10-15 giây. Bạn có thể tranh thủ
+                    đọc trước bài báo bên cánh trái.</p>
             </div>
         </div>
     </div>
 
 </body>
+
 </html>

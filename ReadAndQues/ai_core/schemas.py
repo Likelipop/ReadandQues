@@ -26,6 +26,18 @@ class TextGenre(str, Enum):
     general     = "general"      # everything else (default)
 
 
+class ThemeCategory(str, Enum):
+    economy     = "Economy"      # Kinh tế, thương mại, tài chính
+    society     = "Society"      # Xã hội, con người, đời sống
+    education   = "Education"    # Giáo dục, học tập, trường học
+    technology  = "Technology"   # Công nghệ, kỹ thuật, trí tuệ nhân tạo
+    science     = "Science"      # Khoa học, tự nhiên, vũ trụ, sinh học
+    environment = "Environment"  # Môi trường, biến đổi khí hậu, sinh thái
+    culture     = "Culture"      # Văn hóa, nghệ thuật, lịch sử, âm nhạc
+    health      = "Health"       # Sức khỏe, y tế, y học
+    general     = "General"      # Tổng hợp / Khác
+
+
 # ==========================================
 # CORE LAYER — applies to ALL text types
 # ==========================================
@@ -160,6 +172,7 @@ class PersuasiveAnalysis(BaseModel):
 
 class SemanticAnalysis(BaseModel):
     genre: TextGenre
+    theme: ThemeCategory = Field(default=ThemeCategory.general, description="Primary theme/topic of the reading passage")
     core: CoreAnalysis
     narrative:  Optional[NarrativeAnalysis]  = Field(default=None)
     poetry:     Optional[PoetryAnalysis]     = Field(default=None)

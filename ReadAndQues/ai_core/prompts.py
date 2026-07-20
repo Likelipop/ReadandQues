@@ -22,12 +22,24 @@ def build_analysis_prompt(text: str) -> str:
 
 Your task is to perform a deep semantic analysis of the article below.
 
-STEP 1 — CLASSIFY the genre. Choose exactly one:
+STEP 1 — CLASSIFY the genre and theme:
+Genre (choose exactly one):
   • "narrative"   — fiction, novel excerpt, short story, drama
   • "poetry"      — poem, lyric
   • "scientific"  — research paper, academic or scientific article
   • "persuasive"  — opinion piece, editorial, news analysis, argumentative essay
   • "general"     — anything that does not fit the above
+
+Theme (choose exactly one primary category):
+  • "Economy"     — economics, trade, business, finance, markets
+  • "Society"     — sociology, human affairs, social issues, community
+  • "Education"   — schooling, teaching, learning, literacy, academic study
+  • "Technology"  — computer science, AI, engineering, digital innovation
+  • "Science"     — physics, biology, astronomy, natural sciences, research
+  • "Environment" — climate change, ecology, conservation, natural habitats
+  • "Culture"     — history, art, music, literature, heritage
+  • "Health"      — medicine, healthcare, wellness, psychology
+  • "General"     — miscellaneous or multi-domain topics
 
 STEP 2 — Fill in `core` (applies to ALL genres). Be specific and grounded in the text.
 
@@ -88,17 +100,17 @@ def build_question_prompt(
     # Distribution: ~50% YNNG, ~30% FIB (1 task = 5 blanks), ~20% MCQ
     # But FIB is always exactly 1 task worth 5 sub-answers → counts as 1 quiz item
     if total <= 7:
-        ynng_count = total - 2
-        fib_count  = 1      # 1 summary completion task (worth 5 blanks)
-        mcq_count  = 1
-    elif total <= 10:
         ynng_count = total - 3
-        fib_count  = 1
+        fib_count  = 1      # 1 summary completion task (worth 5 blanks)
         mcq_count  = 2
-    else:  # 14+
+    elif total <= 10:
         ynng_count = total - 4
         fib_count  = 1
         mcq_count  = 3
+    else:  # 14+
+        ynng_count = total - 5
+        fib_count  = 1
+        mcq_count  = 4
 
     return f"""You are a world-class IELTS Exam Architect.
 

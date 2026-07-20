@@ -77,3 +77,85 @@ class ArticlesViewsAndDbTests(TestCase):
         response = self.client.get(reverse("article_detail", args=[self.id_completed_u1]))
         self.assertEqual(response.status_code, 302)
         self.assertTrue("login" in response.url)
+
+
+class ToMarkdownFormatterTests(TestCase):
+    def test_to_markdown_basic_paragraphs(self):
+        from articles.utils.formatter import to_markdown
+        raw = "Paragraph one.\nParagraph two."
+        expected = "Paragraph one.\nParagraph two."
+        self.assertEqual(to_markdown(raw), expected)
+
+    def test_to_markdown_colon_bullet_conversion(self):
+        from articles.utils.formatter import to_markdown
+        raw = (
+            "Here are the key points:\n"
+            "First short point.\n"
+            "Second short point.\n"
+            "This is a long sentence containing more than thirteen words in order to test the paragraph threshold logic.\n"
+            "Subsequent normal text."
+        )
+        expected = (
+            "Here are the key points:\n"
+            "- First short point.\n"
+            "- Second short point.\n"
+            "This is a long sentence containing more than thirteen words in order to test the paragraph threshold logic.\n"
+            "Subsequent normal text."
+        )
+        self.assertEqual(to_markdown(raw), expected)
+
+    def test_to_markdown_sentence_count_limit(self):
+        from articles.utils.formatter import to_markdown
+        # Line 1 (Four. Five.) has 2 sentences <= 2 -> Bullet point
+        # Line 2 (One. Two. Three.) has 3 sentences > 2 -> Exits bullet mode, not a bullet point
+        raw = (
+            "Key topics:\n"
+            "Four. Five.\n"
+            "One. Two. Three."
+        )
+        expected = (
+            "Key topics:\n"
+            "- Four. Five.\n\n"
+            "One. Two. Three."
+        )
+        self.assertEqual(to_markdown(raw), expected)
+
+
+class CategoryAndThemeTests(TestCase):
+    def test_source_domain_extraction(self):
+        from urllib.parse import urlparse
+        urls = [
+            ("https://vietnamnews.vn/society/123.html", "vietnamnews.vn"),
+            ("https://www.bbc.com/news/world-123", "bbc.com"),
+            ("http://nature.com/articles/456", "nature.com"),
+        ]
+        for url, expected in urls:
+            parsed = urlparse(url)
+            domain = parsed.netloc or parsed.path.split('/')[0]
+            source_name = domain.replace('www.', '').strip() if domain else "Unknown"
+            self.assertEqual(source_name, expected)
+
+    def test_semantic_analysis_theme_schema(self):
+        from ai_core.schemas import SemanticAnalysis, TextGenre, ThemeCategory, CoreAnalysis
+        analysis = SemanticAnalysis(
+            genre=TextGenre.scientific,
+            theme=ThemeCategory.technology,
+            core=CoreAnalysis(summary="Test summary")
+        )
+        self.assertEqual(analysis.genre, "scientific")
+        self.assertEqual(analysis.theme, "Technology")
+
+    def test_article_mongo_model_theme(self):
+        from articles.models import ArticleMongoModel
+        model = ArticleMongoModel(
+            url="https://example.com/test",
+            title="Test Title",
+            original_text="Test body text",
+            source_name="example.com",
+            theme="Education",
+            genre="scientific"
+        )
+        self.assertEqual(model.theme, "Education")
+        self.assertEqual(model.genre, "scientific")
+
+
