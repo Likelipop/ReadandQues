@@ -104,6 +104,8 @@ def import_article_view(request):
         "title": crawl_res.get("title", ""),
         "original_text": crawl_res.get("content", ""),
         "source_name": crawl_res.get("source_name", "Unknown"),
+        "image_url": crawl_res.get("image_url"),
+        "image_urls": crawl_res.get("image_urls") or [],
         "status": "pending",
         "user_id": request.user.id,
         "created_at": datetime.utcnow(),
@@ -182,6 +184,8 @@ def article_detail(request, pk):
             "status":        doc.get("status", "pending"),
             "id":            str(doc.get("_id")),
             "url":           doc.get("url", ""),
+            "image_url":     doc.get("image_url"),
+            "image_urls":    doc.get("image_urls") or [],
             "analysis":      doc.get("analysis"),   # may be None for older docs
         })()
 
