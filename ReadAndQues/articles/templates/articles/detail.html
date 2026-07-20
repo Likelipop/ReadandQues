@@ -55,7 +55,7 @@
         <div class="text-sm font-semibold bg-slate-800 px-4 py-2 rounded-xl flex items-center gap-4">
             <div class="flex items-center gap-1.5 text-amber-400">
                 <span>⏱️</span>
-                <span id="timer-display">20:00</span>
+                <span id="timer-display">00:00</span>
             </div>
             <div class="h-4 w-[1px] bg-slate-700"></div>
             <div class="flex items-center gap-1.5">
@@ -68,6 +68,11 @@
     <main class="flex-1 flex overflow-hidden">
         
         <section class="w-1/2 p-8 overflow-y-auto bg-white border-r border-gray-200">
+            {% if article.image_url %}
+            <div class="mb-6 rounded-2xl overflow-hidden shadow-sm border border-slate-100 bg-slate-100 max-h-80 flex items-center justify-center">
+                <img src="{{ article.image_url }}" alt="{{ article.title }}" class="w-full h-full max-h-80 object-cover" onerror="this.parentElement.style.display='none';">
+            </div>
+            {% endif %}
             <div id="raw-article-text" class="hidden">{{ article.original_text }}</div>
             <div id="article-rendered-text" class="prose max-w-none text-gray-800 leading-relaxed text-lg">
                 {{ article.original_text|linebreaks }}
@@ -280,30 +285,20 @@
             });
         }
 
-        // ── Timer Logic ──
+        // ── Stopwatch Timer Logic (Count Up) ──
         (function() {
             const timerDisplay = document.getElementById('timer-display');
             if (!timerDisplay) return;
 
             {% if article.status == 'completed' %}
-                let timeRemaining = 1200; // 20 minutes in seconds
+                let timeElapsed = 0; // seconds
                 let timerInterval = null;
 
                 function updateTimer() {
-                    const minutes = Math.floor(timeRemaining / 60);
-                    const seconds = timeRemaining % 60;
+                    const minutes = Math.floor(timeElapsed / 60);
+                    const seconds = timeElapsed % 60;
                     timerDisplay.textContent = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
-                    
-                    if (timeRemaining <= 0) {
-                        clearInterval(timerInterval);
-                        const submitBtn = document.getElementById('submit-btn');
-                        if (submitBtn && !submitBtn.disabled) {
-                            submitBtn.click();
-                            alert("Hết giờ làm bài! Bài thi của bạn đã được nộp tự động.");
-                        }
-                    } else {
-                        timeRemaining--;
-                    }
+                    timeElapsed++;
                 }
 
                 updateTimer();
