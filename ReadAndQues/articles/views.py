@@ -9,14 +9,13 @@ from pydantic import ValidationError
 
 from .models import ArticleMongoModel
 
-from .utils.db import (
+from database.Mongo.crud import (
     get_article_document_by_id,
     get_articles_by_user,
     insert_article_document,
     update_article_document,
     get_completed_articles,
 )
-
 
 def _is_ajax(request) -> bool:
     return request.headers.get("x-requested-with") == "XMLHttpRequest"
@@ -119,7 +118,7 @@ def article_detail(request, pk):
             "source_name":   doc.get("source_name", "Unknown"),
         })()
 
-    from .services import get_related_articles_via_chroma
+    from database.Chroma.operations import get_related_articles_via_chroma
     related_articles = get_related_articles_via_chroma(article, exclude_id=str(pk))
 
     return render(request, "articles/detail.html", {

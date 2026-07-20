@@ -2,7 +2,8 @@ from django.test import TestCase, Client
 from django.contrib.auth.models import User
 from django.urls import reverse
 from bson import ObjectId
-from articles.utils.db import article_collection, insert_article_document
+from database.Mongo.connection import article_collection
+from database.Mongo.crud import insert_article_document
 
 
 class ArticlesViewsAndDbTests(TestCase):
@@ -44,7 +45,7 @@ class ArticlesViewsAndDbTests(TestCase):
 
     def test_get_completed_articles_db_helper(self):
         """Verify get_completed_articles returns completed articles only."""
-        from articles.utils.db import get_completed_articles
+        from database.Mongo.crud import get_completed_articles
         completed = get_completed_articles()
         # Should contain at least our completed test article
         ids = [doc["id"] for doc in completed]
@@ -81,13 +82,13 @@ class ArticlesViewsAndDbTests(TestCase):
 
 class ToMarkdownFormatterTests(TestCase):
     def test_to_markdown_basic_paragraphs(self):
-        from worker_service.data_pipeline.utils.formatter import to_markdown
+        from database.Crawler.formatter import to_markdown
         raw = "Paragraph one.\nParagraph two."
         expected = "Paragraph one.\n\nParagraph two."
         self.assertEqual(to_markdown(raw), expected)
 
     def test_to_markdown_colon_bullet_conversion(self):
-        from worker_service.data_pipeline.utils.formatter import to_markdown
+        from database.Crawler.formatter import to_markdown
         raw = (
             "Here are the key points:\n"
             "First short point.\n"
@@ -105,7 +106,7 @@ class ToMarkdownFormatterTests(TestCase):
         self.assertEqual(to_markdown(raw), expected)
 
     def test_to_markdown_sentence_count_limit(self):
-        from worker_service.data_pipeline.utils.formatter import to_markdown
+        from database.Crawler.formatter import to_markdown
         # Line 1 (Four. Five.) has 2 sentences <= 2 -> Bullet point
         # Line 2 (One. Two. Three.) has 3 sentences > 2 -> Exits bullet mode, not a bullet point
         raw = (
