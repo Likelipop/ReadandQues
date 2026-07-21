@@ -1,10 +1,19 @@
+"""
+worker_service/ai_core/config.py — LLM configuration (standalone, no Django).
+
+Loads .env from the project root directory.
+"""
+
 import os
+from pathlib import Path
 
 from dotenv import load_dotenv
 from langchain_openai import ChatOpenAI
 from pydantic import BaseModel, SecretStr
 
-load_dotenv()
+# Load .env from project root (two levels up from this file)
+_PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
+load_dotenv(_PROJECT_ROOT / ".env")
 
 _API_KEY = os.getenv("AZURE_OPENAI_API_KEY")
 _ENDPOINT = os.getenv(

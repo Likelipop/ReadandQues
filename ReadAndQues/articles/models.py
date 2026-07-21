@@ -12,8 +12,9 @@ from typing import List, Optional,Dict,Any
 from django.db import models  # noqa: F401  (required for Django app registry)
 from pydantic import BaseModel, Field
 
-# ── Import canonical domain models from ai_core (SSOT) ─────────────────────
-from ai_core.schemas import QuizItem, SemanticAnalysis, TokenUsageLog  # noqa: F401
+# ── Import canonical domain models from AI_core ───────
+from AI_core.schemas import QuizItem, SemanticAnalysis, TokenUsageLog  # noqa: F401
+
 
 __all__ = [
     "QuizItem",
@@ -21,6 +22,7 @@ __all__ = [
     "TokenUsageLog",
     "Exam",
     "ArticleMongoModel",
+    "AttemptMongoModel",
 ]
 
 
@@ -103,4 +105,25 @@ class ArticleMongoModel(BaseModel):
         "populate_by_name": True,
         "arbitrary_types_allowed": True,
         "use_enum_values": True,
+    }
+
+
+# ==========================================
+# ATTEMPT MONGO DOCUMENT
+# ==========================================
+
+class AttemptMongoModel(BaseModel):
+    id: Optional[str] = Field(default=None, alias="_id")
+    user_id: int = Field(...)
+    article_id: str = Field(...)
+    score: int = Field(...)
+    total_questions: int = Field(...)
+    answers: dict = Field(default_factory=dict, description="Dictionary of quiz ID to user's answer")
+    highlighted_markdown: str = Field(..., description="The article text with ==highlights== markup")
+    elapsed_time: int = Field(..., description="Time taken in seconds")
+    submitted_at: datetime = Field(default_factory=datetime.utcnow)
+
+    model_config = {
+        "populate_by_name": True,
+        "arbitrary_types_allowed": True,
     }

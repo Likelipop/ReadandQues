@@ -97,6 +97,34 @@ def node_analyzer(state: GraphState) -> Dict[str, Any]:
 
 
 # ──────────────────────────────────────────────────────────────────────────────
+# Node 1.5 — Text Cleaner
+# ──────────────────────────────────────────────────────────────────────────────
+
+def node_text_cleaner(state: GraphState) -> Dict[str, Any]:
+    """
+    Remove irrelevant snippets (ads, boilerplate) identified by the analyzer.
+    Outputs: original_text (cleaned version)
+    """
+    text = state["original_text"]
+    analysis = state.get("semantic_analysis", {})
+    snippets = analysis.get("irrelevant_snippets", [])
+
+    removed_count = 0
+    for snippet in snippets:
+        if snippet and snippet in text:
+            # Replace verbatim snippet with empty string (and strip extra whitespace)
+            text = text.replace(snippet, "").strip()
+            removed_count += 1
+
+    if removed_count > 0:
+        print(f"[text_cleaner] Removed {removed_count} irrelevant snippets.")
+
+    return {
+        "original_text": text
+    }
+
+
+# ──────────────────────────────────────────────────────────────────────────────
 # Node 2 — Question Planner
 # ──────────────────────────────────────────────────────────────────────────────
 
@@ -228,12 +256,14 @@ def route_after_verifier(state: GraphState) -> str:
 workflow = StateGraph(GraphState)
 
 workflow.add_node("analyzer",          node_analyzer)
+workflow.add_node("text_cleaner",      node_text_cleaner)
 workflow.add_node("question_planner",  node_question_planner)
 workflow.add_node("verifier",          node_verifier)
 workflow.add_node("formatter",         node_formatter)
 
 workflow.add_edge(START,              "analyzer")
-workflow.add_edge("analyzer",         "question_planner")
+workflow.add_edge("analyzer",         "text_cleaner")
+workflow.add_edge("text_cleaner",     "question_planner")
 workflow.add_edge("question_planner", "verifier")
 workflow.add_conditional_edges(
     "verifier",
