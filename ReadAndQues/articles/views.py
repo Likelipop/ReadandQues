@@ -121,11 +121,15 @@ def article_detail(request, pk):
 
     from database.Chroma.operations import get_related_articles_via_chroma
     related_articles = get_related_articles_via_chroma(article, exclude_id=str(pk))
+    if not related_articles:
+        all_completed = get_completed_articles(limit=10)
+        related_articles = [a for a in all_completed if str(a.get("id")) != str(pk) and str(a.get("_id")) != str(pk)][:4]
 
     return render(request, "articles/detail.html", {
         "article": article,
         "related_articles": related_articles
     })
+
 
 
 def all_tests_view(request):
