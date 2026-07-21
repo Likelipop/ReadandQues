@@ -13,6 +13,8 @@ Hiện tại logic của DJango sẽ không tùy tiện gọi các hàm/ lớp t
 2. **`data_pipeline/`**: Đường ống xử lý dữ liệu 3 tầng theo kiến trúc **Medallion Architecture (Bronze ➔ Silver ➔ Gold)**.
 3. **`ai_core/`**: Hệ thống AI Agent xây dựng trên **LangGraph**, chịu trách nhiệm phân tích bài đọc, thiết lập bộ Exam chuẩn hóa và tự kiểm định chất lượng (Self-Verification).
 
+# Lưu ý:
+khi thực hiện chạy các logic liên quan đến việc sinh câu hỏi thông qua llm (azure openai) tuyệt đối phải restrict Max number/ số lần gọi api (để tránh sử dụng hết credit ai huhu)
 
 ---
 
@@ -125,13 +127,16 @@ graph TD
 
 ---
 
-## 🔍 4. Vector Storage & Semantic RAG (`chroma_client.py`)
+## 🔍 4. Vector Storage & Semantic RAG (ChromaDB Integration)
 
 Hệ thống tích hợp **ChromaDB** làm Vector Database cho các bài báo đã được AI xử lý thành công:
 
 - **Bộ sưu tập (Collection)**: `articles_collection`.
 - **Dữ liệu lưu trữ**: Đoạn văn tóm tắt bài đọc (`summary`), Tiêu đề (`title`), URL và `gold_id`.
-- **Mục đích**: Cung cấp khả năng tìm kiếm ngữ nghĩa (Semantic Search / RAG). Khi người dùng xem một bài đọc, giao diện sẽ gợi ý các bài đọc khác có nội dung và chủ đề tương đồng nhất.
+- **Chức năng chính**:
+  - **Lưu trữ Vector Embedding (`add_article_vector`)**: Sau khi sinh đề thi thành công, tóm tắt bài viết được nhúng vào ChromaDB.
+  - **Truy vấn bài viết liên quan (`get_related_articles_via_chroma`)**: Sử dụng tóm tắt của bài báo đang xem để tìm kiếm vector gần nhất (Cosine Similarity), từ đó trả về danh sách các bài viết liên quan (Related Articles/Documents) hiển thị trên giao diện người dùng.
+
 
 ---
 
@@ -177,8 +182,11 @@ worker_service/database/
   - **Indexing**: `init_mongo_indexes()` quản lý chỉ mục cho tất cả các collection.
 
 ### 6.2. Mô-đun `Chroma` (`worker_service/database/Chroma`)
-* **`connection.py`**: Khởi tạo client kết nối tới ChromaDB container.
-* **`operations.py`**: Đóng gói logic nhúng văn bản tóm tắt bài báo (`add_article_vector`), đảm bảo giao diện đọc không bị lỗi nếu server ChromaDB chưa sẵn sàng.
+* **`connection.py`**: Khởi tạo client kết nối tới ChromaDB container (port 8002).
+* **`operations.py`**:
+  - `add_article_vector(gold_id, summary, title, url)`: Thêm/cập nhật Vector Embedding tóm tắt bài báo vào ChromaDB.
+  - `get_related_articles_via_chroma(article, exclude_id, limit)`: Truy vấn các bài viết liên quan theo khoảng cách vector ngữ nghĩa (Semantic RAG Search).
+
 
 ### 6.3. Mô-đun `Crawler` (`worker_service/database/Crawler`)
 * **`scraper.py`**: Chứa hàm `crawl_article_content(url)` thực hiện cào tiêu đề, văn bản thô và chọn lọc ảnh tiêu biểu (Top Image / Image List).
