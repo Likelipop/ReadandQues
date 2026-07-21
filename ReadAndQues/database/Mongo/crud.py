@@ -54,3 +54,27 @@ def save_exam_attempt(data: dict) -> str:
         return str(result.inserted_id)
     except Exception:
         return ""
+
+def get_articles_by_ids(ids: list[str]) -> list[dict]:
+    """Lấy nhiều articles theo list IDs, giữ nguyên thứ tự."""
+    try:
+        object_ids = [ObjectId(i) for i in ids]
+        docs = list(article_collection.find(
+            {"_id": {"$in": object_ids}},
+            {"title": 1, "url": 1, "theme": 1, "genre": 1, "image_url": 1, "source_name": 1}
+        ))
+        
+        # Restore order by score
+        id_to_doc = {str(d["_id"]): d for d in docs}
+        ordered = []
+        for i in ids:
+            if i in id_to_doc:
+                doc = id_to_doc[i]
+                doc["id"] = str(doc["_id"])
+                # Remove _id so it can be JSON serialized in the view response
+                if "_id" in doc:
+                    del doc["_id"]
+                ordered.append(doc)
+        return ordered
+    except Exception:
+        return []
