@@ -166,3 +166,9 @@ MONGO_DB_NAME = os.environ.get("MONGO_DB_NAME", "articles")
 # Ensure explicit fallback for local Docker development
 if MONGO_URI.startswith('******') or not MONGO_URI:
     MONGO_URI = 'mongodb://admin:changeme@localhost:27017/articles?authSource=admin'
+
+#Config for trafilatura
+TRAFILATURA_CONFIG_FILE = BASE_DIR / "trafilatura.cfg"
+ARTICLE_MIN_WORDS = int(os.getenv("ARTICLE_MIN_WORDS", "120"))
+ARTICLE_MAX_WORDS = int(os.getenv("ARTICLE_MAX_WORDS", "15000"))
+ARTICLE_MAX_IMAGES = int(os.getenv("ARTICLE_MAX_IMAGES", "20"))

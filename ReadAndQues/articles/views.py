@@ -29,7 +29,7 @@ def import_article_view(request):
 
     # 1. Deduct Star
     from .services import deduct_user_star, refund_user_star, import_and_trigger_pipeline
-    
+
     success, err_msg = deduct_user_star(request.user)
     if not success:
         if _is_ajax(request):
@@ -38,17 +38,16 @@ def import_article_view(request):
         return render(request, "articles/import.html", {"stars": request.user.profile.stars if request.user.profile else 0})
 
     url = request.POST.get("url", "").strip()
-    
+
     # 2. Trigger Pipeline
     success, err_msg, inserted_id = import_and_trigger_pipeline(url, request.user.id)
-    
+
     if not success:
         refund_user_star(request.user)
         if _is_ajax(request):
             return JsonResponse({"status": "error", "message": err_msg}, status=400)
         messages.error(request, err_msg)
         return render(request, "articles/import.html", {"stars": request.user.profile.stars})
-
 
     if _is_ajax(request):
         return JsonResponse({"status": "started", "id": inserted_id})
@@ -137,7 +136,7 @@ def article_detail(request, pk):
 
 def all_tests_view(request):
     from django.core.paginator import Paginator
-    
+
     selected_theme = request.GET.get("theme", "All")
     selected_genre = request.GET.get("genre", "All")
 

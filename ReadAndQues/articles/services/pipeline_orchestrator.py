@@ -39,9 +39,17 @@ def import_and_trigger_pipeline(url: str, user_id: int) -> Tuple[bool, str, Opti
     # 3. Insert pending document into MongoDB
     pending_document = {
         "url": url,
+        "canonical_url": cleaned_doc.get("canonical_url") or url,
         "title": cleaned_doc.get("title", ""),
         "original_text": cleaned_doc.get("original_text", ""),
         "source_name": cleaned_doc.get("source_name", "Unknown"),
+        "author": cleaned_doc.get("author"),
+        "published_at": cleaned_doc.get("published_at"),
+        "language": cleaned_doc.get("language", "en"),
+        "word_count": cleaned_doc.get("word_count", 0),
+        "image_url": cleaned_doc.get("image_url"),
+        "image_urls": cleaned_doc.get("image_urls") or [],
+        "crawl_metadata": cleaned_doc.get("crawl_metadata") or {},
         "status": "pending",
         "user_id": user_id,
         "created_at": datetime.now(timezone.utc),
