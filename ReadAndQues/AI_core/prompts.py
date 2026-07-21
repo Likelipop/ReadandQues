@@ -41,7 +41,7 @@ CRITICAL RULES:
 • `key_terms` must be a dict mapping term → concise definition (max 2 sentences).
 • `ambiguities` should list passages/claims that could be read multiple ways.
 • `likely_misunderstood` should list traps that test surface readers.
-• `irrelevant_snippets` MUST contain exact, verbatim quotes from the text that are NOT part of the actual article content.
+• `irrelevant_snippets` MUST contain exact, verbatim quotes from the text that are NOT part of the actual article content, for example "Read more:",...
 • Be precise. Do NOT pad with vague filler text.
 
 === ARTICLE ===

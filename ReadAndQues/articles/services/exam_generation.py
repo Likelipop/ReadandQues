@@ -99,5 +99,11 @@ def generate_exam_for_article_async(article_id: str, original_text: str, title: 
                     title=title,
                     url=url
                 )
+            # Rebuild BM25 index with new article
+            try:
+                from database.BM25.connection import rebuild_index
+                rebuild_index()
+            except Exception as e:
+                logger.error(f"Failed to rebuild BM25 index after adding article {article_id}: {e}")
     except Exception as e:
         logger.error(f"Failed to update article document {article_id}: {e}")

@@ -126,7 +126,7 @@ def article_detail(request, pk):
     related_articles = get_related_articles_via_chroma(article, exclude_id=str(pk))
     if not related_articles:
         all_completed = get_completed_articles(limit=10)
-        related_articles = [a for a in all_completed if str(a.get("id")) != str(pk) and str(a.get("_id")) != str(pk)][:4]
+        related_articles = [a for a in all_completed if str(a.get("id")) != str(pk) and str(a.get("_id")) != str(pk)][:5]
 
     return render(request, "articles/detail.html", {
         "article": article,
@@ -194,7 +194,17 @@ def submit_exam_attempt(request, pk):
 
         inserted_id = save_exam_attempt(model.model_dump(by_alias=True, exclude={"id"}))
         if inserted_id:
-            return JsonResponse({"status": "success", "id": inserted_id})
+            from .services.marker_search import get_related_articles_from_markers
+            related = get_related_articles_from_markers(
+                highlighted_markdown=highlighted_markdown,
+                article_id=str(pk),
+                limit=5,
+            )
+            return JsonResponse({
+                "status": "success", 
+                "id": inserted_id,
+                "related_articles": related
+            })
         else:
             return JsonResponse({"status": "error", "message": "Failed to save attempt to DB"}, status=500)
 

@@ -184,7 +184,7 @@
                     </div>
                 {% endif %}
 
-                <!-- Related Articles Section (Hidden by default, shown after submit) -->
+                <!-- Chroma Related Articles Section (Hidden by default, shown after submit) -->
                 {% if related_articles %}
                 <div id="related-articles-section" class="hidden mt-12 pt-8 border-t border-slate-200">
                     <div class="flex items-center justify-between mb-6">
@@ -217,6 +217,15 @@
                     </div>
                 </div>
                 {% endif %}
+
+                <!-- BM25 Related Articles Section (Injected by JS) -->
+                <div id="bm25-related-section" class="hidden mt-8 pt-8 border-t border-slate-200">
+                    <div class="flex items-center justify-between mb-6">
+                        <h3 class="text-xl font-bold text-slate-800">💡 Dựa trên những gì bạn đã highlight</h3>
+                    </div>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4" id="bm25-grid">
+                    </div>
+                </div>
 
             </div>
         </section>
@@ -511,17 +520,7 @@
                     localStorage.removeItem(storageKey);
                 {% endif %}
                 
-                // Show related articles
-                const relatedSection = document.getElementById('related-articles-section');
-                if (relatedSection) {
-                    relatedSection.classList.remove('hidden');
-                    // Smooth scroll to the recommendations
-                    setTimeout(() => {
-                        relatedSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                    }, 500);
-                }
 
-                }
 
                 // Send to backend
                 const highlightedMarkdown = getHighlightedMarkdown();
@@ -576,6 +575,54 @@
                     })
                 }).then(r => r.json()).then(data => {
                     console.log("Exam submitted:", data);
+                    
+                    // 1. Show ChromaDB related articles (always show on submit if available)
+                    const chromaSection = document.getElementById('related-articles-section');
+                    if (chromaSection) {
+                        chromaSection.classList.remove('hidden');
+                    }
+
+                    // 2. Show BM25 related articles (only if user highlighted and returned > 0)
+                    if (data.related_articles && data.related_articles.length > 0) {
+                        const bm25Section = document.getElementById('bm25-related-section');
+                        const bm25Grid = document.getElementById('bm25-grid');
+                        if (bm25Section && bm25Grid) {
+                            bm25Grid.innerHTML = '';
+                            data.related_articles.forEach(r_art => {
+                                const a = document.createElement('a');
+                                a.href = `/articles/${r_art.id}/`;
+                                a.className = 'group bg-white rounded-xl border border-slate-100 shadow-sm overflow-hidden flex flex-col hover:shadow-md transition duration-200';
+                                
+                                const imgUrl = r_art.image_url ? r_art.image_url : 'https://images.unsplash.com/photo-1456513080510-7bf3a84b82f8?auto=format&fit=crop&q=80&w=400';
+                                const opacityClass = r_art.image_url ? 'opacity-100' : 'opacity-10';
+                                
+                                a.innerHTML = `
+                                    <div class="h-24 w-full relative overflow-hidden flex items-center justify-center">
+                                        <div class="absolute inset-0 ${opacityClass} bg-cover bg-center" style="background-image: url('${imgUrl}');"></div>
+                                        <div class="absolute inset-0 bg-gradient-to-t from-slate-900/40 to-transparent"></div>
+                                        <span class="absolute bottom-2 right-2 text-white text-[10px] font-bold bg-black/40 backdrop-blur-sm px-2 py-0.5 rounded-full">
+                                            ${r_art.source_name || "Unknown"}
+                                        </span>
+                                    </div>
+                                    <div class="p-3">
+                                        <h4 class="font-bold text-slate-800 line-clamp-2 text-sm group-hover:text-blue-600 transition min-h-[2.5rem]">
+                                            ${r_art.title || "Chưa có tiêu đề"}
+                                        </h4>
+                                    </div>
+                                `;
+                                bm25Grid.appendChild(a);
+                            });
+                            bm25Section.classList.remove('hidden');
+                        }
+                    }
+
+                    // 3. Smooth scroll to the first visible section
+                    const scrollToSection = document.getElementById('related-articles-section') || document.getElementById('bm25-related-section');
+                    if (scrollToSection) {
+                        setTimeout(() => {
+                            scrollToSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                        }, 500);
+                    }
                 }).catch(err => console.error("Error submitting exam:", err));
 
                 document.getElementById('score-display').textContent = correctCount;
