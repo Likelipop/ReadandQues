@@ -36,6 +36,13 @@ def clean_and_validate_article(crawl_result: Dict[str, Any]) -> Tuple[bool, str,
         "original_text": content,
         "source_name": source_name,
         "word_count": word_count,
+        "canonical_url": crawl_result.get("canonical_url"),
+        "author": crawl_result.get("author"),
+        "published_at": crawl_result.get("published_at"),
+        "language": crawl_result.get("language", "en"),
+        "image_url": crawl_result.get("image_url"),
+        "image_urls": crawl_result.get("image_urls") or [],
+        "crawl_metadata": crawl_result.get("crawl_metadata") or {},
     }
 
     return True, "", cleaned_doc
