@@ -15,4 +15,6 @@ dependencies = [
     "pymongo>=4.17.0",
     "psycopg2-binary>=2.9.12",
     "chromadb>=1.5.9",
+    "rank-bm25>=0.2.2",
+    "spacy>=3.8.14",
 ]
