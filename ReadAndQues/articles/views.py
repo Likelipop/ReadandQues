@@ -101,11 +101,17 @@ def import_article_view(request):
 
     pending_document = {
         "url": url,
+        "canonical_url": crawl_res.get("canonical_url") or url,
         "title": crawl_res.get("title", ""),
         "original_text": crawl_res.get("content", ""),
         "source_name": crawl_res.get("source_name", "Unknown"),
+        "author": crawl_res.get("author"),
+        "published_at": crawl_res.get("published_at"),
+        "language": crawl_res.get("language", "en"),
+        "word_count": crawl_res.get("word_count", 0),
         "image_url": crawl_res.get("image_url"),
         "image_urls": crawl_res.get("image_urls") or [],
+        "crawl_metadata": crawl_res.get("crawl_metadata") or {},
         "status": "pending",
         "user_id": request.user.id,
         "created_at": datetime.utcnow(),

@@ -7,7 +7,7 @@ This file only defines the MongoDB *document* wrappers that Django views use.
 """
 
 from datetime import datetime
-from typing import List, Optional
+from typing import List, Optional,Dict,Any
 
 from django.db import models  # noqa: F401  (required for Django app registry)
 from pydantic import BaseModel, Field
@@ -60,6 +60,15 @@ class ArticleMongoModel(BaseModel):
     source_name:   Optional[str] = Field(default="Unknown")
     image_url:     Optional[str] = Field(default=None, description="Main thumbnail/cover image hotlink")
     image_urls:    List[str] = Field(default_factory=list, description="List of hotlink image URLs extracted from article")
+    canonical_url: Optional[str] = Field(
+        default=None,
+        description="Canonical/final URL after redirects",
+    )
+    author: Optional[str] = Field(default=None)
+    published_at: Optional[datetime] = Field(default=None)
+    language: str = Field(default="en")
+    word_count: int = Field(default=0, ge=0)
+    crawl_metadata: Dict[str, Any] = Field(default_factory=dict)
     theme:         Optional[str] = Field(default="General", description="Primary theme category (Economy, Society, Education, etc.)")
     genre:         Optional[str] = Field(default="general", description="Text genre (scientific, narrative, persuasive, etc.)")
 
