@@ -8,36 +8,15 @@ from django.shortcuts import redirect, render
 from pydantic import ValidationError
 
 from .models import ArticleMongoModel
-from .services import process_and_analyze_article
-from .utils.db import (
+
+from database.Mongo.crud import (
     get_article_document_by_id,
     get_articles_by_user,
     insert_article_document,
     update_article_document,
     get_completed_articles,
+    save_exam_attempt,
 )
-
-
-def _run_article_generation(url: str, original_text: str, pk: str) -> None:
-    try:
-        payload = process_and_analyze_article(url, original_text)
-        if not payload:
-            update_article_document(pk, {
-                "status": "failed",
-                "error_message": "AI pipeline không thể xử lý bài báo này.",
-            })
-            return
-        update_article_document(pk, payload)
-    except Exception as e:
-        update_article_document(pk, {
-            "status": "failed",
-            "error_message": str(e),
-        })
-
-
-from django.db import transaction
-from accounts.models import UserProfile
-
 
 def _is_ajax(request) -> bool:
     return request.headers.get("x-requested-with") == "XMLHttpRequest"
@@ -48,76 +27,28 @@ def import_article_view(request):
     if request.method != "POST":
         return render(request, "articles/import.html", {"stars": request.user.profile.stars})
 
-    # Cyber Security: Check & decrement star count atomically to prevent race condition attacks
-    try:
-        with transaction.atomic():
-            profile = UserProfile.objects.select_for_update().get(user=request.user)
-            if profile.stars <= 0:
-                if _is_ajax(request):
-                    return JsonResponse({"status": "error", "message": "NO_STARS"}, status=403)
-                messages.error(request, "Bạn đã hết Star! Vui lòng liên hệ để yêu cầu thêm star.")
-                return render(request, "articles/import.html", {"stars": 0})
-            
-            # Deduct star
-            profile.stars -= 1
-            profile.save()
-    except Exception as e:
+    # 1. Deduct Star
+    from .services import deduct_user_star, refund_user_star, import_and_trigger_pipeline
+    
+    success, err_msg = deduct_user_star(request.user)
+    if not success:
         if _is_ajax(request):
-            return JsonResponse({"status": "error", "message": "Lỗi hệ thống khi cập nhật số lượng Star."}, status=500)
-        messages.error(request, "Lỗi hệ thống khi cập nhật số lượng Star.")
-        return render(request, "articles/import.html", {"stars": request.user.profile.stars})
+            return JsonResponse({"status": "error", "message": err_msg}, status=403 if err_msg == "NO_STARS" else 500)
+        messages.error(request, "Bạn đã hết Star! Vui lòng liên hệ để yêu cầu thêm star." if err_msg == "NO_STARS" else err_msg)
+        return render(request, "articles/import.html", {"stars": request.user.profile.stars if request.user.profile else 0})
 
     url = request.POST.get("url", "").strip()
-    if not url:
-        # Rollback star since the import didn't go through due to invalid input
-        with transaction.atomic():
-            profile = UserProfile.objects.select_for_update().get(user=request.user)
-            profile.stars += 1
-            profile.save()
-
-        if _is_ajax(request):
-            return JsonResponse(
-                {"status": "error", "message": "Vui lòng nhập một URL bài báo hợp lệ!"},
-                status=400,
-            )
-        messages.error(request, "Vui lòng nhập một URL bài báo hợp lệ!")
-        return render(request, "articles/import.html", {"stars": request.user.profile.stars})
-
-    from .utils.crawler import crawl_article_content
-
-    crawl_res = crawl_article_content(url)
-    if not crawl_res.get("success"):
-        # Rollback star since crawl failed
-        with transaction.atomic():
-            profile = UserProfile.objects.select_for_update().get(user=request.user)
-            profile.stars += 1
-            profile.save()
-
-        err_msg = crawl_res.get("error", "Không thể trích xuất nội dung từ bài báo này.")
+    
+    # 2. Trigger Pipeline
+    success, err_msg, inserted_id = import_and_trigger_pipeline(url, request.user.id)
+    
+    if not success:
+        refund_user_star(request.user)
         if _is_ajax(request):
             return JsonResponse({"status": "error", "message": err_msg}, status=400)
         messages.error(request, err_msg)
         return render(request, "articles/import.html", {"stars": request.user.profile.stars})
 
-    pending_document = {
-        "url": url,
-        "title": crawl_res.get("title", ""),
-        "original_text": crawl_res.get("content", ""),
-        "source_name": crawl_res.get("source_name", "Unknown"),
-        "image_url": crawl_res.get("image_url"),
-        "image_urls": crawl_res.get("image_urls") or [],
-        "status": "pending",
-        "user_id": request.user.id,
-        "created_at": datetime.utcnow(),
-    }
-    inserted_id = insert_article_document(pending_document)
-
-    thread = threading.Thread(
-        target=_run_article_generation,
-        args=(url, crawl_res.get("content", ""), inserted_id),
-        daemon=True,
-    )
-    thread.start()
 
     if _is_ajax(request):
         return JsonResponse({"status": "started", "id": inserted_id})
@@ -184,15 +115,29 @@ def article_detail(request, pk):
             "status":        doc.get("status", "pending"),
             "id":            str(doc.get("_id")),
             "url":           doc.get("url", ""),
-            "image_url":     doc.get("image_url"),
+            "analysis":      doc.get("analysis"),
+            "image_url":     doc.get("image_url", ""),
             "image_urls":    doc.get("image_urls") or [],
-            "analysis":      doc.get("analysis"),   # may be None for older docs
+            "source_name":   doc.get("source_name", "Unknown"),
+
         })()
 
-    return render(request, "articles/detail.html", {"article": article})
+    from database.Chroma.operations import get_related_articles_via_chroma
+    related_articles = get_related_articles_via_chroma(article, exclude_id=str(pk))
+    if not related_articles:
+        all_completed = get_completed_articles(limit=10)
+        related_articles = [a for a in all_completed if str(a.get("id")) != str(pk) and str(a.get("_id")) != str(pk)][:4]
+
+    return render(request, "articles/detail.html", {
+        "article": article,
+        "related_articles": related_articles
+    })
+
 
 
 def all_tests_view(request):
+    from django.core.paginator import Paginator
+    
     selected_theme = request.GET.get("theme", "All")
     selected_genre = request.GET.get("genre", "All")
 
@@ -204,11 +149,56 @@ def all_tests_view(request):
     themes = ["All", "Economy", "Society", "Education", "Technology", "Science", "Environment", "Culture", "Health", "General"]
     genres = ["All", "scientific", "narrative", "persuasive", "poetry", "general"]
 
+    paginator = Paginator(articles, 12)
+    page_number = request.GET.get("page")
+    page_obj = paginator.get_page(page_number)
+
     context = {
-        "articles": articles,
+        "page_obj": page_obj,
         "themes": themes,
         "genres": genres,
         "selected_theme": selected_theme,
         "selected_genre": selected_genre,
     }
     return render(request, "articles/all_tests.html", context)
+
+
+@login_required(login_url="login")
+def submit_exam_attempt(request, pk):
+    if request.method != "POST":
+        return HttpResponseNotAllowed(["POST"])
+
+    try:
+        import json
+        data = json.loads(request.body)
+        score = data.get("score", 0)
+        total_questions = data.get("total_questions", 0)
+        answers = data.get("answers", {})
+        highlighted_markdown = data.get("highlighted_markdown", "")
+        elapsed_time = data.get("elapsed_time", 0)
+
+        attempt_data = {
+            "user_id": request.user.id,
+            "article_id": pk,
+            "score": score,
+            "total_questions": total_questions,
+            "answers": answers,
+            "highlighted_markdown": highlighted_markdown,
+            "elapsed_time": elapsed_time,
+            "submitted_at": datetime.utcnow()
+        }
+
+        # validate with pydantic
+        from .models import AttemptMongoModel
+        model = AttemptMongoModel(**attempt_data)
+
+        inserted_id = save_exam_attempt(model.model_dump(by_alias=True, exclude={"id"}))
+        if inserted_id:
+            return JsonResponse({"status": "success", "id": inserted_id})
+        else:
+            return JsonResponse({"status": "error", "message": "Failed to save attempt to DB"}, status=500)
+
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return JsonResponse({"status": "error", "message": str(e)}, status=400)

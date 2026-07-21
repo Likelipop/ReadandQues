@@ -47,8 +47,8 @@
 
     <!-- Articles Grid -->
     <div id="tests-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {% if articles %}
-            {% for art in articles %}
+        {% if page_obj %}
+            {% for art in page_obj %}
             <!-- Thumbnail Card -->
             <div class="test-card group bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden flex flex-col justify-between hover:shadow-md transition duration-200"
                  data-title="{{ art.title|lower }}" data-source="{{ art.source_name|default:'vietnam news'|lower }}">
@@ -61,6 +61,7 @@
                             <div class="absolute inset-0 opacity-40 bg-cover bg-center" style="background-image: url('https://images.unsplash.com/photo-1456513080510-7bf3a84b82f8?auto=format&fit=crop&q=80&w=400');"></div>
                         {% endif %}
                         <div class="absolute inset-0 bg-gradient-to-t from-slate-900/60 via-slate-900/10 to-transparent"></div>
+
                         
                         <!-- Badges -->
                         <span class="absolute top-3 left-3 bg-white/95 text-slate-800 text-[10px] font-bold px-2 py-0.5 rounded-full shadow-sm flex items-center gap-1">
@@ -103,6 +104,45 @@
             </div>
         {% endif %}
     </div>
+    
+    <!-- Pagination Controls -->
+    {% if page_obj.has_other_pages %}
+    <div class="flex justify-center mt-12 mb-8">
+        <nav class="inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
+            {% if page_obj.has_previous %}
+                <a href="?page={{ page_obj.previous_page_number }}&theme={{ selected_theme }}&genre={{ selected_genre }}" class="relative inline-flex items-center px-4 py-2 rounded-l-md border border-slate-300 bg-white text-sm font-medium text-slate-700 hover:bg-slate-50">
+                    Trước
+                </a>
+            {% else %}
+                <span class="relative inline-flex items-center px-4 py-2 rounded-l-md border border-slate-300 bg-slate-100 text-sm font-medium text-slate-400 cursor-not-allowed">
+                    Trước
+                </span>
+            {% endif %}
+
+            {% for i in page_obj.paginator.page_range %}
+                {% if page_obj.number == i %}
+                    <span class="relative inline-flex items-center px-4 py-2 border border-blue-500 bg-blue-50 text-sm font-bold text-blue-600">
+                        {{ i }}
+                    </span>
+                {% else %}
+                    <a href="?page={{ i }}&theme={{ selected_theme }}&genre={{ selected_genre }}" class="relative inline-flex items-center px-4 py-2 border border-slate-300 bg-white text-sm font-medium text-slate-700 hover:bg-slate-50">
+                        {{ i }}
+                    </a>
+                {% endif %}
+            {% endfor %}
+
+            {% if page_obj.has_next %}
+                <a href="?page={{ page_obj.next_page_number }}&theme={{ selected_theme }}&genre={{ selected_genre }}" class="relative inline-flex items-center px-4 py-2 rounded-r-md border border-slate-300 bg-white text-sm font-medium text-slate-700 hover:bg-slate-50">
+                    Tiếp
+                </a>
+            {% else %}
+                <span class="relative inline-flex items-center px-4 py-2 rounded-r-md border border-slate-300 bg-slate-100 text-sm font-medium text-slate-400 cursor-not-allowed">
+                    Tiếp
+                </span>
+            {% endif %}
+        </nav>
+    </div>
+    {% endif %}
     
     <!-- Empty search result state -->
     <div id="no-results" class="hidden bg-white border border-slate-100 rounded-2xl p-16 text-center text-slate-550 max-w-md mx-auto shadow-sm">

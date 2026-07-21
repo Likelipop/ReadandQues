@@ -13,9 +13,16 @@ https://docs.djangoproject.com/en/6.0/ref/settings/
 from pathlib import Path
 from dotenv import load_dotenv
 import os
+import sys
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
+
+# Add project root (parent of ReadAndQues/) to sys.path so that
+# worker_service.ai_core can be imported from Django code.
+_PROJECT_ROOT = BASE_DIR.parent
+if str(_PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(_PROJECT_ROOT))
 
 load_dotenv(BASE_DIR / '.env')
 # Fallback to parent directory if .env is in the repo root
@@ -150,12 +157,12 @@ STATIC_URL = 'static/'
 
 raw_mongo_uri = os.environ.get("MONGO_URI", "")
 if not raw_mongo_uri or raw_mongo_uri.startswith("******"):
-    MONGO_URI = "mongodb://admin:changeme@localhost:27017/mydb?authSource=admin"
+    MONGO_URI = "mongodb://admin:changeme@localhost:27017/articles?authSource=admin"
 else:
     MONGO_URI = raw_mongo_uri
 
-MONGO_DB_NAME = os.environ.get("MONGO_DB_NAME", "mydb")
+MONGO_DB_NAME = os.environ.get("MONGO_DB_NAME", "articles")
 
 # Ensure explicit fallback for local Docker development
 if MONGO_URI.startswith('******') or not MONGO_URI:
-    MONGO_URI = 'mongodb://admin:changeme@localhost:27017/mydb?authSource=admin'
+    MONGO_URI = 'mongodb://admin:changeme@localhost:27017/articles?authSource=admin'

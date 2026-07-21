@@ -44,7 +44,17 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
 
+  chromadb:
+    image: chromadb/chroma:latest
+    container_name: chromadb
+    restart: unless-stopped
+    ports:
+      - "8002:8000"
+    volumes:
+      - chroma_data:/chroma/chroma
+
 volumes:
   mongo_data:
   mongo_config:
   postgres_data:
+  chroma_data:

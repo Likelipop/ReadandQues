@@ -11,7 +11,7 @@ from django.contrib.auth.decorators import login_required
 from django.core.mail import send_mail
 from django.utils import timezone
 from django.conf import settings
-from articles.utils.db import get_articles_by_user, get_completed_articles
+from database.Mongo.crud import get_articles_by_user, get_completed_articles
 from .models import EmailVerification
 
 

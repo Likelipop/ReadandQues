@@ -75,6 +75,10 @@ class CoreAnalysis(BaseModel):
         default=None,
         description="What the author aimed to achieve by writing this text"
     )
+    irrelevant_snippets: List[str] = Field(
+        default_factory=list,
+        description="Verbatim strings of text that are irrelevant to the article (e.g. ads, 'subscribe now', UI boilerplate, preambles). Must be exact matches to the original text."
+    )
 
 
 # ==========================================
