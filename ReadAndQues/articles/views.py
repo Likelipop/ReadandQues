@@ -15,6 +15,7 @@ from database.Mongo.crud import (
     insert_article_document,
     update_article_document,
     get_completed_articles,
+    save_exam_attempt,
 )
 
 def _is_ajax(request) -> bool:
@@ -153,3 +154,44 @@ def all_tests_view(request):
         "selected_genre": selected_genre,
     }
     return render(request, "articles/all_tests.html", context)
+
+
+@login_required(login_url="login")
+def submit_exam_attempt(request, pk):
+    if request.method != "POST":
+        return HttpResponseNotAllowed(["POST"])
+
+    try:
+        import json
+        data = json.loads(request.body)
+        score = data.get("score", 0)
+        total_questions = data.get("total_questions", 0)
+        answers = data.get("answers", {})
+        highlighted_markdown = data.get("highlighted_markdown", "")
+        elapsed_time = data.get("elapsed_time", 0)
+
+        attempt_data = {
+            "user_id": request.user.id,
+            "article_id": pk,
+            "score": score,
+            "total_questions": total_questions,
+            "answers": answers,
+            "highlighted_markdown": highlighted_markdown,
+            "elapsed_time": elapsed_time,
+            "submitted_at": datetime.utcnow()
+        }
+
+        # validate with pydantic
+        from .models import AttemptMongoModel
+        model = AttemptMongoModel(**attempt_data)
+
+        inserted_id = save_exam_attempt(model.model_dump(by_alias=True, exclude={"id"}))
+        if inserted_id:
+            return JsonResponse({"status": "success", "id": inserted_id})
+        else:
+            return JsonResponse({"status": "error", "message": "Failed to save attempt to DB"}, status=500)
+
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return JsonResponse({"status": "error", "message": str(e)}, status=400)

@@ -1,5 +1,5 @@
 from bson import ObjectId
-from .connection import article_collection
+from .connection import article_collection, attempts_collection
 
 def insert_article_document(data: dict) -> str:
     result = article_collection.insert_one(data)
@@ -47,3 +47,10 @@ def get_completed_articles(limit=None, theme=None, genre=None) -> list:
         return articles
     except Exception:
         return []
+
+def save_exam_attempt(data: dict) -> str:
+    try:
+        result = attempts_collection.insert_one(data)
+        return str(result.inserted_id)
+    except Exception:
+        return ""

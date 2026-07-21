@@ -28,3 +28,4 @@ client = get_mongo_client()
 DB_NAME = getattr(settings, "MONGO_DB_NAME", "articles")
 db = client[DB_NAME]
 article_collection = db["gold_articles"]
+attempts_collection = db["attempts"]

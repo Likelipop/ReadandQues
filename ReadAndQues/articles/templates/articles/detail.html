@@ -40,6 +40,29 @@
         .prose li {
             margin-bottom: 0.75rem !important;
         }
+        
+        /* Toolbox Styles */
+        .tool-btn { outline: none; }
+        .tool-btn#tool-marker.active {
+            color: #eab308;
+            background-color: #fef9c3;
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.05);
+        }
+        .tool-btn#tool-eraser.active {
+            color: #ec4899;
+            background-color: #fce7f3;
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.05);
+        }
+        mark.user-highlight {
+            background-color: #fef08a;
+            border-radius: 0.25rem;
+            padding: 0.125rem 0.25rem;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        mark.user-highlight:hover {
+            background-color: #fde047;
+        }
     </style>
 </head>
 <body class="bg-gray-50 h-screen overflow-hidden flex flex-col">
@@ -65,9 +88,19 @@
         </div>
     </header>
 
-    <main class="flex-1 flex overflow-hidden">
+    <main class="flex-1 flex overflow-hidden relative">
+
+        <!-- Floating Toolbox UI -->
+        <div id="toolbox" class="absolute left-[14px] top-1/2 -translate-y-1/2 flex flex-col gap-3 p-3 bg-white/70 backdrop-blur-md border border-slate-200/50 rounded-2xl shadow-xl z-50 transition-all hover:bg-white/90">
+            <button id="tool-marker" class="tool-btn p-3 rounded-xl bg-transparent hover:bg-slate-100 text-slate-600 hover:text-yellow-500 transition-colors" title="Highlighter Tool">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11.5 3a2.5 2.5 0 0 1 3.5 0l4 4a2.5 2.5 0 0 1 0 3.5l-4 4a2.5 2.5 0 0 1-3.5 0l-4-4a2.5 2.5 0 0 1 0-3.5z"/><path d="M7 16l-3.5 3.5a1 1 0 0 0 .7 1.7H17"/></svg>
+            </button>
+            <button id="tool-eraser" class="tool-btn p-3 rounded-xl bg-transparent hover:bg-slate-100 text-slate-600 hover:text-pink-500 transition-colors" title="Eraser Tool">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m7 21-4.3-4.3c-1-1-1-2.5 0-3.4l9.6-9.6c1-1 2.5-1 3.4 0l5.6 5.6c1 1 1 2.5 0 3.4L13 21"/><path d="M22 21H7"/><path d="m5 11 9 9"/></svg>
+            </button>
+        </div>
         
-        <section class="w-1/2 p-8 overflow-y-auto bg-white border-r border-gray-200">
+        <section class="w-1/2 p-8 pl-24 overflow-y-auto bg-white border-r border-gray-200 relative" id="article-section">
             {% if article.image_url %}
             <div class="mb-6 rounded-2xl overflow-hidden shadow-sm border border-slate-100 bg-slate-100 max-h-80 flex items-center justify-center">
                 <img src="{{ article.image_url }}" alt="{{ article.title }}" class="w-full h-full max-h-80 object-cover" onerror="this.parentElement.style.display='none';">
@@ -200,6 +233,78 @@
                 }
             }
         })();
+
+        // ── Toolbox Logic (Marker & Eraser) ──
+        let activeTool = null;
+        const btnMarker = document.getElementById('tool-marker');
+        const btnEraser = document.getElementById('tool-eraser');
+        const articleSectionContent = document.getElementById('article-rendered-text');
+
+        function setActiveTool(tool) {
+            activeTool = (activeTool === tool) ? null : tool;
+            if (btnMarker) btnMarker.classList.toggle('active', activeTool === 'marker');
+            if (btnEraser) btnEraser.classList.toggle('active', activeTool === 'eraser');
+            
+            if (activeTool === 'marker') {
+                articleSectionContent.style.cursor = 'text';
+            } else if (activeTool === 'eraser') {
+                articleSectionContent.style.cursor = 'crosshair';
+            } else {
+                articleSectionContent.style.cursor = 'auto';
+            }
+        }
+
+        if (btnMarker && btnEraser) {
+            btnMarker.addEventListener('click', () => setActiveTool('marker'));
+            btnEraser.addEventListener('click', () => setActiveTool('eraser'));
+        }
+
+        // Apply Marker
+        if (articleSectionContent) {
+            articleSectionContent.addEventListener('mouseup', () => {
+                if (activeTool !== 'marker') return;
+                const selection = window.getSelection();
+                if (!selection.rangeCount || selection.isCollapsed) return;
+
+                const range = selection.getRangeAt(0);
+                if (!articleSectionContent.contains(range.commonAncestorContainer)) return;
+
+                const content = range.extractContents();
+                const mark = document.createElement('mark');
+                mark.className = 'user-highlight';
+                mark.appendChild(content);
+                range.insertNode(mark);
+                selection.removeAllRanges();
+            });
+
+            // Apply Eraser
+            articleSectionContent.addEventListener('click', (e) => {
+                if (activeTool !== 'eraser') return;
+                let target = e.target;
+                if (target.tagName.toLowerCase() === 'mark' && target.classList.contains('user-highlight')) {
+                    const parent = target.parentNode;
+                    while (target.firstChild) {
+                        parent.insertBefore(target.firstChild, target);
+                    }
+                    parent.removeChild(target);
+                    parent.normalize();
+                }
+            });
+        }
+
+        // Helper to serialize highlighted content
+        function getHighlightedMarkdown() {
+            if (!articleSectionContent) return "";
+            const clone = articleSectionContent.cloneNode(true);
+            const marks = clone.querySelectorAll('mark.user-highlight');
+            marks.forEach(m => {
+                const text = m.textContent;
+                const textNode = document.createTextNode(`==${text}==`);
+                m.parentNode.replaceChild(textNode, m);
+            });
+            // Ideally convert back to markdown properly, here we just take the innerText to keep it clean but preserve ==highlight==
+            return clone.innerText;
+        }
 
         // ── Render FIB paragraphs: replace [1]...[5] with inline <input> blanks ──
         document.querySelectorAll('.fib-paragraph').forEach((container, pIdx) => {
@@ -415,6 +520,61 @@
                         relatedSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
                     }, 500);
                 }
+
+                // Send to backend
+                const highlightedMarkdown = getHighlightedMarkdown();
+                const totalQuestions = items.length;
+                let finalAnswers = {};
+                if (typeof examState !== 'undefined') {
+                    finalAnswers = examState.answers;
+                } else {
+                    // Fallback extract
+                    items.forEach(item => {
+                        const qType = item.getAttribute('data-quiz-type');
+                        if (qType === 'fill_in_blank') {
+                            const blanks = item.querySelectorAll('.fib-blank');
+                            blanks.forEach(b => finalAnswers[b.getAttribute('data-cache-id')] = b.value);
+                        } else {
+                            const inputs = item.querySelectorAll('input[type="radio"]');
+                            const selected = Array.from(inputs).find(r => r.checked);
+                            if (selected) finalAnswers[inputs[0].name] = selected.value;
+                        }
+                    });
+                }
+                const elapsedTime = (typeof examState !== 'undefined') ? examState.elapsedTime : 0;
+                
+                function getCookie(name) {
+                    let cookieValue = null;
+                    if (document.cookie && document.cookie !== '') {
+                        const cookies = document.cookie.split(';');
+                        for (let i = 0; i < cookies.length; i++) {
+                            const cookie = cookies[i].trim();
+                            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                                break;
+                            }
+                        }
+                    }
+                    return cookieValue;
+                }
+                const csrftoken = getCookie('csrftoken');
+
+                fetch(`/articles/{{ article.id|default:request.resolver_match.kwargs.pk }}/submit/`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': csrftoken
+                    },
+                    body: JSON.stringify({
+                        score: correctCount,
+                        total_questions: totalQuestions,
+                        answers: finalAnswers,
+                        highlighted_markdown: highlightedMarkdown,
+                        elapsed_time: elapsedTime
+                    })
+                }).then(r => r.json()).then(data => {
+                    console.log("Exam submitted:", data);
+                }).catch(err => console.error("Error submitting exam:", err));
 
                 document.getElementById('score-display').textContent = correctCount;
             });

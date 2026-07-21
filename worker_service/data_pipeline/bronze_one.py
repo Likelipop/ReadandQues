@@ -17,8 +17,12 @@ import logging
 from datetime import datetime, timezone
 from typing import Optional
 
-from .utils.crawler import crawl_article_content
-from .utils.mongo_client import bronze_col, logs_col
+from worker_service.database.Crawler.scraper import crawl_article_content
+from worker_service.database.Mongo.crud import (
+    get_bronze_by_url,
+    insert_bronze_doc,
+    insert_pipeline_log,
+)
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
@@ -42,7 +46,7 @@ def ingest_one(url: str, user_id: Optional[int] = None) -> dict:
         error    : str (if failed)
     """
     # Check if already exists in bronze
-    existing = bronze_col.find_one({"url": url}, {"_id": 1})
+    existing = get_bronze_by_url(url)
     if existing:
         return {
             "success": True,
@@ -54,14 +58,12 @@ def ingest_one(url: str, user_id: Optional[int] = None) -> dict:
     crawl_res = crawl_article_content(url)
     if not crawl_res.get("success"):
         error_msg = crawl_res.get("error", "Unknown crawl error")
-        logs_col.insert_one({
-            "stage": "bronze_one",
-            "document_id": None,
-            "url": url,
-            "status": "failed",
-            "message": error_msg,
-            "timestamp": datetime.now(timezone.utc),
-        })
+        insert_pipeline_log(
+            stage="bronze_one",
+            status="failed",
+            message=error_msg,
+            url=url,
+        )
         return {"success": False, "error": error_msg}
 
     bronze_doc = {
@@ -77,8 +79,7 @@ def ingest_one(url: str, user_id: Optional[int] = None) -> dict:
     }
 
     try:
-        result = bronze_col.insert_one(bronze_doc)
-        bronze_id = str(result.inserted_id)
+        bronze_id = insert_bronze_doc(bronze_doc)
         logger.info(f"✅ Bronze ingested: {url} → {bronze_id}")
         return {
             "success": True,
@@ -89,7 +90,7 @@ def ingest_one(url: str, user_id: Optional[int] = None) -> dict:
     except Exception as e:
         # Likely duplicate URL due to race condition
         logger.warning(f"⚠️  Bronze insert failed for {url}: {e}")
-        existing = bronze_col.find_one({"url": url}, {"_id": 1})
+        existing = get_bronze_by_url(url)
         if existing:
             return {
                 "success": True,

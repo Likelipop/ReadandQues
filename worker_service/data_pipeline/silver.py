@@ -12,34 +12,18 @@ Usage:
 import logging
 from datetime import datetime, timezone
 
-from bson import ObjectId
-
 from .pipeline_config import SILVER_MIN_WORD_COUNT, SILVER_MAX_WORD_COUNT
-from .utils.formatter import to_markdown
-from .utils.mongo_client import bronze_col, silver_col, logs_col
+from worker_service.database.Crawler.formatter import to_markdown
+from worker_service.database.Mongo.crud import (
+    get_unprocessed_bronze_docs,
+    get_bronze_by_id,
+    get_silver_by_bronze_id,
+    save_silver_doc,
+    insert_pipeline_log,
+)
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
-
-
-def get_unprocessed_bronze_docs() -> list[dict]:
-    """Find bronze documents that have not yet been cleaned into silver."""
-    # Get all bronze_ids already in silver
-    existing_bronze_ids = set()
-    for doc in silver_col.find({}, {"bronze_id": 1}):
-        bid = doc.get("bronze_id")
-        if bid:
-            existing_bronze_ids.add(bid)
-
-    # Find bronze docs not yet processed
-    new_docs = []
-    for doc in bronze_col.find().sort("crawled_at", -1):
-        doc_id = str(doc["_id"])
-        if doc_id not in existing_bronze_ids:
-            doc["_str_id"] = doc_id
-            new_docs.append(doc)
-
-    return new_docs
 
 
 def validate_document(doc: dict) -> tuple[bool, list[str]]:
@@ -136,43 +120,39 @@ def process_silver():
             for issue in issues:
                 logger.warning(f"     → {issue}")
 
-            logs_col.insert_one({
-                "stage": "silver",
-                "document_id": bronze_id,
-                "url": url,
-                "status": "rejected",
-                "message": "; ".join(issues),
-                "timestamp": datetime.now(timezone.utc),
-            })
+            insert_pipeline_log(
+                stage="silver",
+                status="rejected",
+                message="; ".join(issues),
+                document_id=bronze_id,
+                url=url,
+            )
             continue
 
         silver_doc = clean_document(doc)
 
         try:
-            result = silver_col.insert_one(silver_doc)
+            silver_id = save_silver_doc(silver_doc)
             stats["cleaned"] += 1
-            logger.info(f"  ✅ Cleaned [{bronze_id}] → silver {result.inserted_id}")
+            logger.info(f"  ✅ Cleaned [{bronze_id}] → silver {silver_id}")
         except Exception as e:
             stats["rejected"] += 1
             logger.warning(f"  ⚠️  Insert failed [{bronze_id}]: {e}")
-            logs_col.insert_one({
-                "stage": "silver",
-                "document_id": bronze_id,
-                "url": url,
-                "status": "error",
-                "message": str(e),
-                "timestamp": datetime.now(timezone.utc),
-            })
+            insert_pipeline_log(
+                stage="silver",
+                status="error",
+                message=str(e),
+                document_id=bronze_id,
+                url=url,
+            )
 
     logger.info(f"\n📈 Silver complete: {stats['cleaned']} cleaned, {stats['rejected']} rejected")
 
-    logs_col.insert_one({
-        "stage": "silver_batch",
-        "document_id": None,
-        "status": "completed",
-        "message": f"Cleaned: {stats['cleaned']}, Rejected: {stats['rejected']}",
-        "timestamp": datetime.now(timezone.utc),
-    })
+    insert_pipeline_log(
+        stage="silver_batch",
+        status="completed",
+        message=f"Cleaned: {stats['cleaned']}, Rejected: {stats['rejected']}",
+    )
 
 
 def process_one_silver(bronze_id: str) -> dict:
@@ -180,18 +160,14 @@ def process_one_silver(bronze_id: str) -> dict:
     Process a single bronze document synchronously (used for user imports).
     Returns dict with keys: success, silver_id, silver_doc, error.
     """
-    try:
-        doc = bronze_col.find_one({"_id": ObjectId(bronze_id)})
-    except Exception as e:
-        return {"success": False, "error": f"Invalid bronze_id format: {e}"}
-
+    doc = get_bronze_by_id(bronze_id)
     if not doc:
         return {"success": False, "error": "Bronze document not found."}
 
     doc["_str_id"] = str(doc["_id"])
 
     # Check if already processed
-    existing_silver = silver_col.find_one({"bronze_id": doc["_str_id"]})
+    existing_silver = get_silver_by_bronze_id(doc["_str_id"])
     if existing_silver:
         return {
             "success": True, 
@@ -203,23 +179,22 @@ def process_one_silver(bronze_id: str) -> dict:
     is_valid, issues = validate_document(doc)
     if not is_valid:
         msg = "; ".join(issues)
-        logs_col.insert_one({
-            "stage": "silver_one",
-            "document_id": doc["_str_id"],
-            "url": doc.get("url"),
-            "status": "rejected",
-            "message": msg,
-            "timestamp": datetime.now(timezone.utc),
-        })
+        insert_pipeline_log(
+            stage="silver_one",
+            status="rejected",
+            message=msg,
+            document_id=doc["_str_id"],
+            url=doc.get("url"),
+        )
         return {"success": False, "error": f"Article validation failed: {msg}"}
 
     silver_doc = clean_document(doc)
     try:
-        result = silver_col.insert_one(silver_doc)
-        silver_doc["_id"] = result.inserted_id
+        silver_id = save_silver_doc(silver_doc)
+        silver_doc["_id"] = silver_id
         return {
             "success": True,
-            "silver_id": str(result.inserted_id),
+            "silver_id": silver_id,
             "silver_doc": silver_doc,
             "already_exists": False
         }

@@ -16,8 +16,12 @@ from datetime import datetime, timezone
 import feedparser
 
 from .pipeline_config import RSS_FEEDS_FILE, MAX_INGESTED_NUMBER, BATCH_SIZE
-from .utils.crawler import crawl_article_content
-from .utils.mongo_client import bronze_col, logs_col
+from worker_service.database.Crawler.scraper import crawl_article_content
+from worker_service.database.Mongo.crud import (
+    find_existing_bronze_urls,
+    insert_bronze_doc,
+    insert_pipeline_log,
+)
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
@@ -61,9 +65,7 @@ def deduplicate(entries: list[dict]) -> list[dict]:
     if not entries:
         return []
     urls = [e["url"] for e in entries]
-    existing = set()
-    for doc in bronze_col.find({"url": {"$in": urls}}, {"url": 1}):
-        existing.add(doc["url"])
+    existing = find_existing_bronze_urls(urls)
     return [e for e in entries if e["url"] not in existing]
 
 
@@ -83,14 +85,12 @@ def ingest_batch(entries: list[dict], dry_run: bool = False) -> dict:
         if not crawl_res.get("success"):
             logger.warning(f"  ❌ Failed to crawl: {url} — {crawl_res.get('error', '')}")
             stats["failed"] += 1
-            logs_col.insert_one({
-                "stage": "bronze",
-                "document_id": None,
-                "url": url,
-                "status": "failed",
-                "message": crawl_res.get("error", "Unknown crawl error"),
-                "timestamp": datetime.now(timezone.utc),
-            })
+            insert_pipeline_log(
+                stage="bronze",
+                status="failed",
+                message=crawl_res.get("error", "Unknown crawl error"),
+                url=url,
+            )
             continue
 
         bronze_doc = {
@@ -105,9 +105,9 @@ def ingest_batch(entries: list[dict], dry_run: bool = False) -> dict:
         }
 
         try:
-            result = bronze_col.insert_one(bronze_doc)
+            inserted_id = insert_bronze_doc(bronze_doc)
             stats["success"] += 1
-            logger.info(f"  ✅ Ingested: {url} → {result.inserted_id}")
+            logger.info(f"  ✅ Ingested: {url} → {inserted_id}")
         except Exception as e:
             # Duplicate URL (unique index) or other error
             stats["failed"] += 1
@@ -153,13 +153,11 @@ def main(dry_run: bool = False):
 
     # Log batch run
     if not dry_run:
-        logs_col.insert_one({
-            "stage": "bronze_batch",
-            "document_id": None,
-            "status": "completed",
-            "message": f"Batch: {stats['success']}/{stats['total']} ingested",
-            "timestamp": datetime.now(timezone.utc),
-        })
+        insert_pipeline_log(
+            stage="bronze_batch",
+            status="completed",
+            message=f"Batch: {stats['success']}/{stats['total']} ingested",
+        )
 
 
 if __name__ == "__main__":

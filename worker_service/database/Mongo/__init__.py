@@ -1,4 +1,4 @@
-from worker_service.database.Mongo.connection import (
+from .connection import (
     client,
     db,
     bronze_col,
@@ -17,4 +17,3 @@ __all__ = [
     "logs_col",
     "attempts_col",
 ]
-
