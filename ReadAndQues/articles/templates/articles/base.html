@@ -27,10 +27,9 @@
                     <a href="{% url 'home' %}" class="text-sm font-semibold text-slate-600 hover:text-blue-600 transition">Dashboard</a>
                     <a href="{% url 'import_article' %}" class="text-sm font-semibold text-slate-600 hover:text-blue-600 transition">Import Article</a>
                     <a href="{% url 'all_tests' %}" class="text-sm font-semibold text-slate-600 hover:text-blue-600 transition">All Tests</a>
-                    <a href="{% url 'profile' %}" class="text-sm font-semibold text-slate-600 hover:text-blue-600 transition">Profile</a>
                     <span class="inline-flex items-center gap-1 px-2.5 py-1 bg-amber-50 text-amber-700 border border-amber-100 rounded-full text-xs font-bold">⭐ {{ user.profile.stars }}</span>
                     <div class="h-4 w-[1px] bg-slate-200"></div>
-                    <span class="text-sm text-slate-500 font-medium">Hi, <strong class="text-slate-700 font-semibold">{{ user.username }}</strong></span>
+                    <span class="text-sm text-slate-500 font-medium">Hi, <a href="{% url 'profile' %}" class="text-slate-700 font-semibold hover:text-blue-600 hover:underline transition">{{ user.username }}</a></span>
                     <a href="{% url 'logout' %}" class="text-sm font-bold text-red-500 hover:text-red-700 transition">Logout</a>
                 {% else %}
                     <a href="{% url 'home' %}" class="text-sm font-semibold text-slate-600 hover:text-blue-600 transition">Home</a>

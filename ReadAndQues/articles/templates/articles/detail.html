@@ -78,7 +78,7 @@
         <div class="text-sm font-semibold bg-slate-800 px-4 py-2 rounded-xl flex items-center gap-4">
             <div class="flex items-center gap-1.5 text-amber-400">
                 <span>⏱️</span>
-                <span id="timer-display">20:00</span>
+                <span id="timer-display">00:00</span>
             </div>
             <div class="h-4 w-[1px] bg-slate-700"></div>
             <div class="flex items-center gap-1.5">
@@ -101,6 +101,7 @@
         </div>
         
         <section class="w-1/2 p-8 pl-24 overflow-y-auto bg-white border-r border-gray-200 relative" id="article-section">
+
             {% if article.image_url %}
             <div class="mb-6 rounded-2xl overflow-hidden shadow-sm border border-slate-100 bg-slate-100 max-h-80 flex items-center justify-center">
                 <img src="{{ article.image_url }}" alt="{{ article.title }}" class="w-full h-full max-h-80 object-cover" onerror="this.parentElement.style.display='none';">
@@ -505,7 +506,6 @@
                     const expl = item.querySelector('.explanation');
                     if (expl) expl.classList.remove('hidden');
                 });
-                
                 // Clear cache on submit
                 {% if article.status == 'completed' %}
                     localStorage.removeItem(storageKey);
@@ -519,6 +519,8 @@
                     setTimeout(() => {
                         relatedSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
                     }, 500);
+                }
+
                 }
 
                 // Send to backend

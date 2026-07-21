@@ -49,6 +49,7 @@ def import_article_view(request):
         messages.error(request, err_msg)
         return render(request, "articles/import.html", {"stars": request.user.profile.stars})
 
+
     if _is_ajax(request):
         return JsonResponse({"status": "started", "id": inserted_id})
 
@@ -116,7 +117,9 @@ def article_detail(request, pk):
             "url":           doc.get("url", ""),
             "analysis":      doc.get("analysis"),
             "image_url":     doc.get("image_url", ""),
+            "image_urls":    doc.get("image_urls") or [],
             "source_name":   doc.get("source_name", "Unknown"),
+
         })()
 
     from database.Chroma.operations import get_related_articles_via_chroma
