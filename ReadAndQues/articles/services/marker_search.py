@@ -4,9 +4,9 @@ articles/services/marker_search.py
 Service layer: nhận markers, trả về danh sách article documents đầy đủ.
 Đây là điểm duy nhất views.py gọi vào cho feature này.
 """
+
 import logging
-from bson import ObjectId
-from AI_core.bm25_retriever import find_related_by_markers
+from database.BM25.operations import find_related_by_markers
 from database.Mongo.crud import get_articles_by_ids
 
 logger = logging.getLogger(__name__)
@@ -26,16 +26,14 @@ def get_related_articles_from_markers(
     Returns:
         List[dict] — article documents (title, url, theme, genre, image_url...)
     """
-    # 1. BM25 search → [(id, score)]
     bm25_results = find_related_by_markers(highlighted_markdown, exclude_id=article_id, n=limit)
 
     if not bm25_results:
         logger.info(f"[MarkerSearch] No BM25 results for article {article_id}")
         return []
 
-    # 2. Lấy IDs, kéo documents từ Mongo
     related_ids = [r["id"] for r in bm25_results]
-    articles = get_articles_by_ids(related_ids)  # preserves order by score
+    articles = get_articles_by_ids(related_ids)
 
     logger.info(f"[MarkerSearch] Found {len(articles)} related articles via markers.")
     return articles
