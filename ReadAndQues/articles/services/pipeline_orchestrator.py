@@ -1,17 +1,17 @@
 """
 articles/services/pipeline_orchestrator.py — Pipeline Orchestrator.
 
-Combines ingestion, cleaning, database insertion, and async AI exam generation.
-Delegates URL validation and extraction to the Crawler service as the Single Source of Truth.
+Combines article crawling, cleaning, database insertion, and async AI exam generation.
+Uses crawl_article_content directly from database.Crawler.scraper.
 """
 
 import logging
 from datetime import datetime, timezone
 from typing import Tuple, Optional
 
+from database.Crawler.scraper import crawl_article_content
 from database.Mongo.crud import insert_article_document
 from worker_service.tasks import generate_exam_task
-from .ingestion import ingest_article_content
 from .cleaning import clean_and_validate_article
 
 logger = logging.getLogger(__name__)
@@ -24,7 +24,7 @@ def import_and_trigger_pipeline(url: str, user_id: int) -> Tuple[bool, str, Opti
     Returns (success, error_message, inserted_id).
     """
     # 1. Ingestion stage (Crawler validates URL format, SSRF, HTTP status & extracts content)
-    crawl_result = ingest_article_content(url)
+    crawl_result = crawl_article_content(url)
     if not crawl_result.get("success"):
         return False, crawl_result.get("error", "Không thể trích xuất nội dung từ bài báo này."), None
 

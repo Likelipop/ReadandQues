@@ -5,6 +5,13 @@ Tác giả: likelipop
 ================================================================================
 
 1. WORKER SERVICE (Phần xử lý AI & Celery Background Workers):
+
+--------------------------------------TL; DR--------------------------------------
+ copy the logic in ReadAndQues/scraper into WorkerService/scraper. 
+ refactor the logic of data pipeline.
+ refactor the logic of ai_core:  intergrated with redis and celery for calling api. 
+ remove the ai_core in ReadAndQues, all the logic related in llm calling will be use with celery.
+
 --------------------------------------------------------------------------------
 - Tái cấu trúc file `tasks.py` đơn lẻ thành Python package `worker_service/tasks/`
   được mô đun hóa theo từng nhóm nhiệm vụ chuyên biệt:
