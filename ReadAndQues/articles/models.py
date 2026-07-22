@@ -6,18 +6,18 @@ from pydantic import BaseModel, Field
 
 
 # ==========================================
-# 1. QUIZ ITEM — Align với ai_core/schemas.py
+# 1. QUIZ ITEM — Align with ai_core/schemas.py
 # ==========================================
 class QuizItem(BaseModel):
     """
-    Schema chuẩn cho 1 câu hỏi được lưu vào MongoDB.
-    Hỗ trợ 2 loại:
-      - yes_no_not_given : câu hỏi Yes/No/Not Given (IELTS Reading)
-      - fill_in_blank    : Summary Completion (5 blanks, trả lời phân cách ' | ')
+    Standard schema for a single quiz item saved to MongoDB.
+    Supports two types:
+      - yes_no_not_given : Yes/No/Not Given (IELTS Reading style)
+      - fill_in_blank    : Summary Completion (5 blanks, answers separated by ' | ')
     """
 
     quiz_type: str = Field(
-        ..., description="Loại câu hỏi: 'yes_no_not_given' hoặc 'fill_in_blank'"
+        ..., description="Question type: 'yes_no_not_given' or 'fill_in_blank'"
     )
     question: str = Field(
         ...,
@@ -38,7 +38,7 @@ class QuizItem(BaseModel):
         ),
     )
     explanation: Optional[str] = Field(
-        default="", description="Giải thích chi tiết tại sao đáp án đúng."
+        default="", description="Detailed explanation of why the answer is correct."
     )
     supporting_text: Optional[str] = Field(
         default="",
@@ -54,59 +54,58 @@ class QuizItem(BaseModel):
 
 
 # ==========================================
-# 2. SCHEMA CHÍNH ĐỂ LƯU VÀO MONGODB
+# 2. MAIN SCHEMA FOR MONGODB
 # ==========================================
 class ArticleMongoModel(BaseModel):
     """
-    Document chính lưu vào MongoDB collection 'articles'.
+    Main document stored in MongoDB 'articles' collection.
 
-    Lưu ý thiết kế:
-      - `analysis` đã được loại bỏ: phân tích bài là nội bộ của mega prompt,
-        không cần lưu vào DB để tiết kiệm storage.
-      - `exam_config` được thêm để lưu cấu hình đề thi (số câu, v.v.)
-      - `quizzes` chứa toàn bộ câu hỏi (MCQ + FIB) — align với ai_core/schemas.ExamOutput
+    Design considerations:
+      - `analysis` is excluded to save storage since it's internal to the Mega Prompt.
+      - `exam_config` is included to store exam configurations (e.g., number of questions).
+      - `quizzes` contains all questions (MCQ + FIB) — aligned with ai_core/schemas.ExamOutput.
     """
 
-    # PyMongo trả về _id dưới dạng ObjectId, map sang str
+    # PyMongo returns _id as ObjectId, mapping to str
     id: Optional[str] = Field(default=None, alias="_id")
 
-    url: str = Field(..., description="URL gốc của bài báo")
-    title: str = Field(..., description="Tiêu đề bài báo")
-    original_text: str = Field(..., description="Toàn bộ nội dung thô cào được")
+    url: str = Field(..., description="Original article URL")
+    title: str = Field(..., description="Article title")
+    original_text: str = Field(..., description="Raw crawled content")
     clean_text: Optional[str] = Field(
-        default=None, description="Text đã dọn sạch (sau Smart Cleaner)"
+        default=None, description="Cleaned text (after Smart Cleaner)"
     )
     source_name: Optional[str] = Field(
-        default="Unknown", description="Tên tờ báo, ví dụ: BBC, CNN"
+        default="Unknown", description="Source name, e.g., BBC, CNN"
     )
 
-    # Cấu hình đề thi được dùng khi generate (để audit/re-generate sau này)
+    # Exam configuration used during generation (for auditing/re-generating)
     exam_config: Optional[Dict[str, Any]] = Field(
-        default=None, description='Cấu hình generate, VD: {"total_questions": 10}'
+        default=None, description='Generation config, e.g., {"total_questions": 10}'
     )
 
-    # Toàn bộ câu hỏi (MCQ Yes/No/NG trước, FIB Summary Completion sau)
+    # All questions (MCQ Yes/No/NG followed by FIB Summary Completion)
     quizzes: List[QuizItem] = Field(default_factory=list)
 
-    # Lưu trữ các bài kiểm tra được generate (align với cấu trúc được lưu từ Celery)
+    # Generated exams (aligned with structure from Celery)
     exams: List[Dict[str, Any]] = Field(default_factory=list)
 
-    # Phân loại và hình ảnh
+    # Classification and images
     theme: Optional[str] = Field(
-        default=None, description="Chủ đề bài báo (VD: Technology, Science)"
+        default=None, description="Article theme (e.g., Technology, Science)"
     )
     genre: Optional[str] = Field(
-        default=None, description="Thể loại văn bản (VD: scientific, news)"
+        default=None, description="Text genre (e.g., scientific, news)"
     )
-    image_url: Optional[str] = Field(default=None, description="URL ảnh chính bài báo")
+    image_url: Optional[str] = Field(default=None, description="Main article image URL")
     image_urls: List[str] = Field(
-        default_factory=list, description="Danh sách URL ảnh trong bài"
+        default_factory=list, description="List of all image URLs in the article"
     )
 
-    # Metadata quản lý trạng thái luồng xử lý
+    # Pipeline metadata
     status: str = Field(
         default="pending",
-        description="Trạng thái: pending | processing | completed | failed",
+        description="Status: pending | crawling | processing | completed | failed",
     )
     created_at: datetime = Field(default_factory=datetime.utcnow)
 

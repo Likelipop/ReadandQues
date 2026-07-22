@@ -12,7 +12,7 @@ import spacy
 
 logger = logging.getLogger(__name__)
 
-# Load model một lần khi module được import
+# Load model once when module is imported
 try:
     _nlp = spacy.load("en_core_web_sm", disable=["parser", "ner"])
 except OSError:
@@ -27,20 +27,20 @@ def clean_text(text: str) -> str:
     if not text:
         return ""
     text = re.sub(r"&[a-z]+;", " ", text)  # HTML entities
-    text = re.sub(r"[^a-zA-Z\s]", " ", text)  # giữ lại chữ cái
+    text = re.sub(r"[^a-zA-Z\s]", " ", text)  # Keep only letters
     text = re.sub(r"\s+", " ", text).strip()
     return text.lower()
 
 
 def tokenize_and_lemmatize(text: str) -> list[str]:
     """
-    Dùng spaCy pipeline:
+    Uses spaCy pipeline to:
     - Lemmatize: "running" → "run", "studies" → "study"
     - Remove stopwords ("the", "is", "at"...)
     - Remove short tokens (len < 3)
     """
     if _nlp is None:
-        # Fallback: simple split nếu spaCy không có
+        # Fallback: simple split if spaCy is missing
         return [t for t in text.split() if len(t) > 2]
 
     doc = _nlp(text)

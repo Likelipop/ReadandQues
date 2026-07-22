@@ -38,12 +38,12 @@ def _validate_public_http_url(url: str) -> None:
 
     if parsed.scheme not in {"http", "https"}:
         raise CrawlError(
-            "INVALID_URL", "URL phải bắt đầu bằng http:// hoặc là https:// nha!"
+            "INVALID_URL", "URL must start with http:// or https://"
         )
     if not parsed.hostname:
-        raise CrawlError("INVALID_URL", "URL không có tên miền hợp lệ")
+        raise CrawlError("INVALID_URL", "URL does not have a valid domain")
     if parsed.username or parsed.password:
-        raise CrawlError("INVALID_URL", "URL chứa thông tin đăng nhập!")
+        raise CrawlError("INVALID_URL", "URL contains credentials!")
     try:
         address_info = socket.getaddrinfo(
             parsed.hostname,
@@ -52,7 +52,7 @@ def _validate_public_http_url(url: str) -> None:
         )
     except socket.gaierror as exc:
         raise CrawlError(
-            "INVALID_URL", "Tên miền không hợp lệ hoặc không tồn tại"
+            "INVALID_URL", "Domain is invalid or does not exist"
         ) from exc
 
     for item in address_info:
@@ -69,9 +69,8 @@ def _validate_public_http_url(url: str) -> None:
         ):
             raise CrawlError(
                 "PRIVATE_ADDRESS",
-                "URL trỏ tới địa chỉ mạng không được phép.",
+                "URL points to a restricted private network address.",
             )
-
 
 def _parse_published_at(value: Any) -> datetime | None:
     if not value:
@@ -83,7 +82,7 @@ def _parse_published_at(value: Any) -> datetime | None:
         try:
             parsed = datetime.fromisoformat(text)
         except ValueError:
-            logger.info("Không parse được thời gian")
+            logger.info("Failed to parse published time")
             return None
     if parsed.tzinfo is None:
         parsed = parsed.replace(tzinfo=timezone.utc)
@@ -97,7 +96,7 @@ def _first_src_from_srcset(srcset: str) -> str | None:
     return first_candidate.split()[0]
 
 
-# Dùng để loại bỏ những link ảnh lạ và không hợp lệ
+# Normalize and filter out invalid or suspicious image URLs
 def _normalize_image_url(raw_url: str | None, base_url: str) -> str | None:
     if not raw_url:
         return None
@@ -113,9 +112,7 @@ def _normalize_image_url(raw_url: str | None, base_url: str) -> str | None:
     return normalized
 
 
-# Lấy các hình ảnh ưu tiên lấy hình từ og và twitter
-
-
+# Extract images, prioritizing Open Graph and Twitter metadata
 def _extract_images(
     html_content: bytes | str, base_url: str, limit: int
 ) -> tuple[str | None, list[str]]:
@@ -132,7 +129,8 @@ def _extract_images(
     )
     for xpath in metadata_xpaths:
         candidates.extend(tree.xpath(xpath))
-    # Lấy cả những ảnh trong nội dung văn bản
+        
+    # Also extract images from the main article body
     for image in tree.xpath("//article//img | //main//img | //img"):
         raw_url = (
             image.get("src")
@@ -180,7 +178,7 @@ def _extract_article(
     if document is None:
         raise CrawlError(
             "EXTRACTION_FAILED",
-            "Không thể nhận diện nội dung chính của bài báo.",
+            "Could not identify the main content of this article.",
         )
     extracted = document.as_dict()
     raw_text = (extracted.get("text") or getattr(document, "text", "") or "").strip()
@@ -189,7 +187,7 @@ def _extract_article(
     if not raw_text or not title:
         raise CrawlError(
             "EXTRACTION_FAILED",
-            "Bài báo không có tiêu đề hoặc nội dung có thể trích xuất.",
+            "The article is missing a title or extractable content.",
         )
 
     content = to_markdown(raw_text)
@@ -198,13 +196,13 @@ def _extract_article(
     if word_count < settings.ARTICLE_MIN_WORDS:
         raise CrawlError(
             "CONTENT_TOO_SHORT",
-            f"Bài báo cần ít nhất {settings.ARTICLE_MIN_WORDS} từ để tạo đề.",
+            f"The article needs at least {settings.ARTICLE_MIN_WORDS} words to generate questions.",
         )
 
     if word_count > settings.ARTICLE_MAX_WORDS:
         raise CrawlError(
             "CONTENT_TOO_LARGE",
-            "Bài báo quá dài để xử lý trong một lần.",
+            "The article is too long to process in a single request.",
         )
     parsed_final_url = urlparse(final_url)
     fallback_source = (parsed_final_url.hostname or "Unknown").removeprefix("www.")
@@ -246,16 +244,16 @@ def crawl_article_content(url: str) -> dict[str, Any]:
         response = fetch_response(
             requested_url,
             decode=True,
-            with_headers=True,  # Dùng để lấy header (http,...)
+            with_headers=True,  # To extract HTTP headers
             config=TRAFILATURA_CONFIG,
-        )  # request.data sẽ là text html
+        )  
         if response is None:
-            raise CrawlError("DOWNLOAD_FAILED", "Không thể tải bài báo này.")
+            raise CrawlError("DOWNLOAD_FAILED", "Could not download this article.")
         status = int(response.status or 0)
         if status < 200 or status >= 300:
             raise CrawlError(
                 "HTTP_ERROR",
-                f"Trang báo trả về HTTP status {status}.",
+                f"The website returned HTTP status {status}.",
             )
         if response.url:
             from urllib.parse import urljoin
@@ -264,7 +262,7 @@ def crawl_article_content(url: str) -> dict[str, Any]:
         else:
             final_url = requested_url
 
-        # Kiểm tra lại sau khi redirect xem có chuẩn k
+        # Validate again after redirect
         _validate_public_http_url(final_url)
 
         headers = response.headers or {}
@@ -278,13 +276,13 @@ def crawl_article_content(url: str) -> dict[str, Any]:
         ):
             raise CrawlError(
                 "UNSUPPORTED_CONTENT",
-                "URL không trả về một trang HTML.",
+                "The URL did not return an HTML page.",
             )
         html_content = response.html if response.html is not None else response.data
         if not html_content:
             raise CrawlError(
                 "DOWNLOAD_FAILED",
-                "Website trả về nội dung rỗng.",
+                "The website returned empty content.",
             )
 
         return _extract_article(
@@ -296,15 +294,15 @@ def crawl_article_content(url: str) -> dict[str, Any]:
         )
     except CrawlError as exc:
         logger.info(
-            "Bài báo bị từ chối code = %s url = %s message = %s",
+            "Article rejected: code=%s url=%s message=%s",
             exc.code,
             requested_url,
             exc.public_message,
         )
         return _error(exc.code, exc.public_message)
     except Exception:
-        logger.exception("Lỗi khi đang xử lí %s", requested_url)
+        logger.exception("Error while processing %s", requested_url)
         return _error(
             "UNEXPECTED_ERROR",
-            "Không thể xử lý bài báo này. Vui lòng thử URL khác.",
+            "Could not process this article. Please try another URL.",
         )
