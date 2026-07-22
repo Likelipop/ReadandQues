@@ -30,10 +30,16 @@ def rebuild_index() -> None:
     global _bm25_index, _corpus_ids
 
     logger.info("[BM25] Rebuilding index...")
-    docs = list(article_collection.find(
-        {"status": "completed"},
-        {"_id": 1, "original_text": 1}
-    ))
+    try:
+        docs = list(article_collection.find(
+            {"status": "completed"},
+            {"_id": 1, "original_text": 1}
+        ))
+    except Exception as e:
+        logger.warning(f"BM25 index skipped at startup: {e}")
+        _bm25_index = None
+        _corpus_ids = []
+        return
 
     if not docs:
         logger.warning("[BM25] No completed articles found.")
@@ -41,7 +47,6 @@ def rebuild_index() -> None:
         _corpus_ids = []
         return
 
-    # Tokenize bằng pipeline chuẩn (clean, lemmatize, remove stopwords)
     from .text_preprocessing import process_text_to_tokens
     _corpus_ids = [str(d["_id"]) for d in docs]
     corpus_tokens = []

@@ -190,3 +190,5 @@ volumes:
   postgres_data:
   chroma_data:
   static_volume:
+
+  
