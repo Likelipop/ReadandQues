@@ -9,7 +9,8 @@ from urllib.parse import urljoin, urlparse
 
 from django.conf import settings
 from lxml import html as lxml_html
-from trafilatura import bare_extraction, fetch_response
+from trafilatura import bare_extraction, fetch_response, extract
+import trafilatura
 from trafilatura.settings import use_config
 
 import re
