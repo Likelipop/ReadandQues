@@ -224,6 +224,9 @@ def submit_exam_attempt(request, pk):
         return JsonResponse({"status": "error", "message": str(e)}, status=400)
 
 
+from django.views.decorators.clickjacking import xframe_options_sameorigin
+
+@xframe_options_sameorigin
 def raw_html_view(request, pk: str):
     """
     Returns the raw HTML of the article to be rendered inside an iframe.
