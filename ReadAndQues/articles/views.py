@@ -232,9 +232,9 @@ def raw_html_view(request, pk: str):
     Returns the raw HTML of the article to be rendered inside an iframe.
     If no html_content is present, returns a basic HTML document with the original text.
     """
-    from database.Mongo.crud import get_article_document
+    from database.Mongo.crud import get_article_document_by_id
 
-    article_data = get_article_document(pk)
+    article_data = get_article_document_by_id(pk)
     if not article_data:
         return HttpResponse("Article not found", status=404)
 
