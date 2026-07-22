@@ -146,6 +146,6 @@ CELERY_BEAT_SCHEDULE = {
     },
 }
 
-MONGO_URI = os.getenv('MONGO_URI', 'mongodb+srv://djangoDev:mot2ba4nam@articlecluster.pkdy5c0.mongodb.net/?appName=articleCluster')
+MONGO_URI = os.getenv('MONGO_URI', 'mongodb://admin:changeme@mongo:27017/articlesDB?authSource=admin')
 
 MONGO_DB_NAME = os.getenv('MONGO_DB_NAME', 'articlesDB')

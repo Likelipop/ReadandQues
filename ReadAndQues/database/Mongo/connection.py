@@ -5,9 +5,7 @@ from pymongo.server_api import ServerApi
 # Determine Mongo URI from settings / environment. Fall back to a local docker-compose mapping.
 mongo_uri = getattr(settings, "MONGO_URI", None)
 if not mongo_uri or mongo_uri.startswith("******"):
-    # If you run Mongo locally via docker-compose with port mapping (27017 -> host), use localhost.
-    # If Django runs inside Docker in same compose network, replace 'localhost' with 'mongo'.
-    mongo_uri = "mongodb://admin:changeme@localhost:27017/articles?authSource=admin"
+    mongo_uri = os.getenv("MONGO_URI", "mongodb://admin:changeme@localhost:27017/articlesDB?authSource=admin")
 
 def get_mongo_client() -> MongoClient:
     client = MongoClient(

@@ -33,7 +33,10 @@ def import_article_view(request):
 
         if not is_success:
             if request.headers.get("x-requested-with") == "XMLHttpRequest":
-                return JsonResponse({"status": "error", "message": error_msg}, status=400)
+                return JsonResponse({"status": "error", 
+                                     "message": error_msg}, 
+                                    status=400)
+            
             messages.error(request, error_msg)
             return render(request, "articles/import.html")
 
