@@ -85,6 +85,9 @@ class ArticleMongoModel(BaseModel):
     # Toàn bộ câu hỏi (MCQ Yes/No/NG trước, FIB Summary Completion sau)
     quizzes: List[QuizItem] = Field(default_factory=list)
 
+    # Lưu trữ các bài kiểm tra được generate (align với cấu trúc được lưu từ Celery)
+    exams: List[Dict[str, Any]] = Field(default_factory=list)
+
     # Phân loại và hình ảnh
     theme: Optional[str] = Field(default=None, description="Chủ đề bài báo (VD: Technology, Science)")
     genre: Optional[str] = Field(default=None, description="Thể loại văn bản (VD: scientific, news)")
@@ -102,3 +105,15 @@ class ArticleMongoModel(BaseModel):
         "populate_by_name": True,
         "arbitrary_types_allowed": True
     }
+
+
+class AttemptMongoModel(BaseModel):
+    user_id: int
+    article_id: str
+    score: int
+    total_questions: int
+    answers: Dict[str, Any]
+    highlighted_markdown: str = ""
+    elapsed_time: int = 0
+    submitted_at: datetime
+

@@ -266,7 +266,11 @@ def crawl_article_content(url:str)->dict[str,Any]:
                 "HTTP_ERROR",
                 f"Trang báo trả về HTTP status {status}.",
             )
-        final_url = response.url or requested_url
+        if response.url:
+            from urllib.parse import urljoin
+            final_url = urljoin(requested_url, response.url)
+        else:
+            final_url = requested_url
 
         #Kiểm tra lại sau khi redirect xem có chuẩn k
         _validate_public_http_url(final_url)

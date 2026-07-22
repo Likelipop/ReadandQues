@@ -17,7 +17,7 @@ def extract_markers_text(markdown_text: str) -> str:
     markers = re.findall(r"==(.*?)==", markdown_text)
     if markers:
         return " ".join(markers)
-    return markdown_text
+    return ""
 
 
 def search_bm25(

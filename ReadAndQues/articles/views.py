@@ -97,4 +97,100 @@ def article_detail(request, pk):
         article.id = str(doc.get("_id"))
         article.url = url
 
-    return render(request, "articles/detail.html", {"article": article})
+    from database.Chroma.operations import get_related_articles_via_chroma
+    from database.Mongo.crud import get_completed_articles
+    related_articles = get_related_articles_via_chroma(article, exclude_id=str(pk))
+    if not related_articles:
+        all_completed = get_completed_articles(limit=10)
+        related_articles = [a for a in all_completed if str(a.get("id")) != str(pk) and str(a.get("_id")) != str(pk)][:5]
+
+    return render(request, "articles/detail.html", {
+        "article": article,
+        "related_articles": related_articles
+    })
+
+
+def all_tests_view(request):
+    from django.core.paginator import Paginator
+    from database.Mongo.crud import get_completed_articles
+
+    selected_theme = request.GET.get("theme", "All")
+    selected_genre = request.GET.get("genre", "All")
+
+    articles = get_completed_articles(
+        theme=selected_theme if selected_theme != "All" else None,
+        genre=selected_genre if selected_genre != "All" else None,
+    )
+
+    themes = ["All", "Economy", "Society", "Education", "Technology", "Science", "Environment", "Culture", "Health", "General"]
+    genres = ["All", "scientific", "narrative", "persuasive", "poetry", "general"]
+
+    paginator = Paginator(articles, 12)
+    page_number = request.GET.get("page")
+    page_obj = paginator.get_page(page_number)
+
+    context = {
+        "page_obj": page_obj,
+        "themes": themes,
+        "genres": genres,
+        "selected_theme": selected_theme,
+        "selected_genre": selected_genre,
+    }
+    return render(request, "articles/all_tests.html", context)
+
+
+from datetime import datetime
+from django.views.decorators.csrf import csrf_exempt
+
+@csrf_exempt
+def submit_exam_attempt(request, pk):
+    if request.method != "POST":
+        return HttpResponseNotAllowed(["POST"])
+
+    try:
+        import json
+        data = json.loads(request.body)
+        score = data.get("score", 0)
+        total_questions = data.get("total_questions", 0)
+        answers = data.get("answers", {})
+        highlighted_markdown = data.get("highlighted_markdown", "")
+        elapsed_time = data.get("elapsed_time", 0)
+
+        user_id = request.user.id if request.user.is_authenticated else 0
+
+        attempt_data = {
+            "user_id": user_id,
+            "article_id": pk,
+            "score": score,
+            "total_questions": total_questions,
+            "answers": answers,
+            "highlighted_markdown": highlighted_markdown,
+            "elapsed_time": elapsed_time,
+            "submitted_at": datetime.utcnow()
+        }
+
+        # validate with pydantic
+        from .models import AttemptMongoModel
+        model = AttemptMongoModel(**attempt_data)
+
+        from database.Mongo.crud import save_exam_attempt
+        inserted_id = save_exam_attempt(model.model_dump(by_alias=True, exclude={"id"}))
+        if inserted_id:
+            from .services.marker_search import get_related_articles_from_markers
+            related = get_related_articles_from_markers(
+                highlighted_markdown=highlighted_markdown,
+                article_id=str(pk),
+                limit=5,
+            )
+            return JsonResponse({
+                "status": "success", 
+                "id": inserted_id,
+                "related_articles": related
+            })
+        else:
+            return JsonResponse({"status": "error", "message": "Failed to save attempt to DB"}, status=500)
+
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return JsonResponse({"status": "error", "message": str(e)}, status=400)

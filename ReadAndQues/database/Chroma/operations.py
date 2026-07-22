@@ -33,17 +33,17 @@ def get_related_articles_via_chroma(article, exclude_id: str, limit: int = 5) ->
     Queries ChromaDB for semantically similar articles based on the summary.
     Returns a list of related MongoDB article documents.
     """
-    if not articles_collection or not hasattr(article, 'analysis') or not article.analysis:
-        return []
-
-    # Safely extract summary
     summary = ""
-    if hasattr(article.analysis, "core"):
-        summary = article.analysis.core.summary
-    elif isinstance(article.analysis, dict):
-        summary = article.analysis.get("core", {}).get("summary", "")
+    if hasattr(article, 'analysis') and article.analysis:
+        if hasattr(article.analysis, "core"):
+            summary = getattr(article.analysis.core, "summary", "")
+        elif isinstance(article.analysis, dict):
+            summary = article.analysis.get("core", {}).get("summary", "")
 
     if not summary:
+        summary = getattr(article, 'title', "")
+
+    if not articles_collection or not summary:
         return []
 
     try:

@@ -53,38 +53,13 @@
         const loadingMessage = document.getElementById('loading-message');
         const generateButton = document.getElementById('generate-btn');
 
-        function pollStatus(articleId) {
-            fetch(`/articles/status/${articleId}/`)
-                .then(response => response.json())
-                .then(data => {
-                    if (data.status === 'completed') {
-                        window.location.href = `/articles/${articleId}/`;
-                        return;
-                    }
-
-                    if (data.status === 'failed' || data.status === 'error') {
-                        loadingMessage.textContent = data.message || 'Đã xảy ra lỗi trong quá trình tạo đề. Vui lòng thử lại.';
-                        const retryLink = document.createElement('a');
-                        retryLink.href = '{% url "import_article" %}';
-                        retryLink.className = 'inline-block mt-4 text-blue-600 hover:underline';
-                        retryLink.textContent = 'Quay lại trang nhập URL';
-                        loadingPanel.appendChild(retryLink);
-                        return;
-                    }
-
-                    setTimeout(() => pollStatus(articleId), 2500);
-                })
-                .catch(() => {
-                    loadingMessage.textContent = 'Không thể kết nối với máy chủ. Vui lòng kiểm tra mạng và thử lại.';
-                });
-        }
-
         form.addEventListener('submit', function(event) {
             event.preventDefault();
             generateButton.disabled = true;
             generateButton.classList.replace('bg-blue-600', 'bg-blue-400');
-            generateButton.textContent = 'Đang tạo...';
+            generateButton.textContent = 'Đang cào dữ liệu...';
             loadingPanel.classList.remove('hidden');
+            loadingMessage.textContent = 'Đang tải bài báo. Vui lòng chờ 1-2 giây...';
 
             const formData = new FormData(form);
             fetch(form.action, {
@@ -99,7 +74,9 @@
                     if (data.status !== 'started') {
                         throw new Error(data.message || 'Không thể bắt đầu quá trình tạo.');
                     }
-                    pollStatus(data.id);
+                    // Chuyển hướng người dùng NGAY LẬP TỨC sang trang detail để họ có thể đọc bài báo
+                    // trong lúc chờ AI xử lý tạo câu hỏi ở background.
+                    window.location.href = `/articles/${data.id}/`;
                 })
                 .catch((error) => {
                     loadingMessage.textContent = error.message || 'Đã xảy ra lỗi. Vui lòng thử lại.';

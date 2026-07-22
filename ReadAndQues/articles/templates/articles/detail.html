@@ -433,45 +433,15 @@
         // ── Submit handler ──
         const submitBtn = document.getElementById('submit-btn');
         if (submitBtn) {
-            submitBtn.addEventListener('click', function() {
-                // 1. Check completeness
-                let allAnswered = true;
+            
+            function evaluateVisually() {
                 const items = document.querySelectorAll('.quiz-item');
-                items.forEach(item => {
-                    const qType = item.getAttribute('data-quiz-type');
-                    if (qType === 'fill_in_blank') {
-                        const blanks = item.querySelectorAll('.fib-blank');
-                        blanks.forEach(b => { if (!b.value.trim()) allAnswered = false; });
-                    } else {
-                        const inputs = item.querySelectorAll('input[type="radio"]');
-                        const answered = Array.from(inputs).some(r => r.checked);
-                        if (!answered) allAnswered = false;
-                    }
-                });
-
-                if (!allAnswered) {
-                    const confirmSubmit = confirm('Bạn chưa điền đủ các câu trả lời. Bạn có chắc chắn muốn nộp bài?');
-                    if (!confirmSubmit) return;
-                }
-
-                submitBtn.disabled = true;
-                submitBtn.textContent = 'Đã nộp bài';
-                submitBtn.classList.replace('bg-green-600', 'bg-slate-400');
-                submitBtn.classList.replace('hover:bg-green-700', 'hover:bg-slate-500');
-
-                // Stop the timer
-                if (window.examTimerInterval) {
-                    clearInterval(window.examTimerInterval);
-                }
-
-                // 2. Evaluate answers
                 let correctCount = 0;
                 items.forEach(item => {
                     const correctAnswer = item.getAttribute('data-answer').trim().toLowerCase();
                     const quizType = item.getAttribute('data-quiz-type');
 
                     if (quizType === 'fill_in_blank') {
-                        // FIB: compare each blank answer (pipe-separated)
                         const answers = correctAnswer.split('|').map(a => a.trim());
                         const blanks = item.querySelectorAll('.fib-blank');
                         let allCorrect = true;
@@ -496,7 +466,6 @@
                         }
                         item.classList.remove('border-gray-200');
                     } else {
-                        // Radio-based (YNNG / MCQ)
                         const inputs = item.querySelectorAll('input[type="radio"]');
                         let userAnswer = null;
                         const selected = Array.from(inputs).find(r => r.checked);
@@ -515,16 +484,90 @@
                     const expl = item.querySelector('.explanation');
                     if (expl) expl.classList.remove('hidden');
                 });
-                // Clear cache on submit
-                {% if article.status == 'completed' %}
-                    localStorage.removeItem(storageKey);
-                {% endif %}
                 
+                document.getElementById('score-display').textContent = correctCount;
+                submitBtn.disabled = true;
+                submitBtn.textContent = 'Đã nộp bài';
+                submitBtn.classList.replace('bg-green-600', 'bg-slate-400');
+                submitBtn.classList.replace('hover:bg-green-700', 'hover:bg-slate-500');
+                
+                if (window.examTimerInterval) {
+                    clearInterval(window.examTimerInterval);
+                }
+                
+                return { correctCount, totalQuestions: items.length };
+            }
 
+            function renderBM25Related(related_articles) {
+                if (related_articles && related_articles.length > 0) {
+                    const bm25Section = document.getElementById('bm25-related-section');
+                    const bm25Grid = document.getElementById('bm25-grid');
+                    if (bm25Section && bm25Grid) {
+                        bm25Grid.innerHTML = '';
+                        related_articles.forEach(r_art => {
+                            const a = document.createElement('a');
+                            a.href = `/articles/${r_art.id}/`;
+                            a.className = 'group bg-white rounded-xl border border-slate-100 shadow-sm overflow-hidden flex flex-col hover:shadow-md transition duration-200';
+                            
+                            const imgUrl = r_art.image_url ? r_art.image_url : 'https://images.unsplash.com/photo-1456513080510-7bf3a84b82f8?auto=format&fit=crop&q=80&w=400';
+                            const opacityClass = r_art.image_url ? 'opacity-100' : 'opacity-10';
+                            
+                            a.innerHTML = `
+                                <div class="h-24 w-full relative overflow-hidden flex items-center justify-center">
+                                    <div class="absolute inset-0 ${opacityClass} bg-cover bg-center" style="background-image: url('${imgUrl}');"></div>
+                                    <div class="absolute inset-0 bg-gradient-to-t from-slate-900/40 to-transparent"></div>
+                                    <span class="absolute bottom-2 right-2 text-white text-[10px] font-bold bg-black/40 backdrop-blur-sm px-2 py-0.5 rounded-full">
+                                        ${r_art.source_name || "Unknown"}
+                                    </span>
+                                </div>
+                                <div class="p-3">
+                                    <h4 class="font-bold text-slate-800 line-clamp-2 text-sm group-hover:text-blue-600 transition min-h-[2.5rem]">
+                                        ${r_art.title || "Chưa có tiêu đề"}
+                                    </h4>
+                                </div>
+                            `;
+                            bm25Grid.appendChild(a);
+                        });
+                        bm25Section.classList.remove('hidden');
+                    }
+                }
+            }
+
+            // Restore from state if previously submitted
+            if (typeof examState !== 'undefined' && examState.submitted) {
+                evaluateVisually();
+                const chromaSection = document.getElementById('related-articles-section');
+                if (chromaSection) chromaSection.classList.remove('hidden');
+                renderBM25Related(examState.related_articles);
+            }
+
+            submitBtn.addEventListener('click', function() {
+                if (typeof examState !== 'undefined' && examState.submitted) return;
+
+                // 1. Check completeness
+                let allAnswered = true;
+                const items = document.querySelectorAll('.quiz-item');
+                items.forEach(item => {
+                    const qType = item.getAttribute('data-quiz-type');
+                    if (qType === 'fill_in_blank') {
+                        const blanks = item.querySelectorAll('.fib-blank');
+                        blanks.forEach(b => { if (!b.value.trim()) allAnswered = false; });
+                    } else {
+                        const inputs = item.querySelectorAll('input[type="radio"]');
+                        const answered = Array.from(inputs).some(r => r.checked);
+                        if (!answered) allAnswered = false;
+                    }
+                });
+
+                if (!allAnswered) {
+                    const confirmSubmit = confirm('Bạn chưa điền đủ các câu trả lời. Bạn có chắc chắn muốn nộp bài?');
+                    if (!confirmSubmit) return;
+                }
+
+                const { correctCount, totalQuestions } = evaluateVisually();
 
                 // Send to backend
                 const highlightedMarkdown = getHighlightedMarkdown();
-                const totalQuestions = items.length;
                 let finalAnswers = {};
                 if (typeof examState !== 'undefined') {
                     finalAnswers = examState.answers;
@@ -576,45 +619,22 @@
                 }).then(r => r.json()).then(data => {
                     console.log("Exam submitted:", data);
                     
-                    // 1. Show ChromaDB related articles (always show on submit if available)
+                    {% if article.status == 'completed' %}
+                        if (typeof examState !== 'undefined') {
+                            examState.submitted = true;
+                            examState.related_articles = data.related_articles || [];
+                            saveState();
+                        }
+                    {% endif %}
+                    
+                    // 1. Show ChromaDB related articles
                     const chromaSection = document.getElementById('related-articles-section');
                     if (chromaSection) {
                         chromaSection.classList.remove('hidden');
                     }
 
-                    // 2. Show BM25 related articles (only if user highlighted and returned > 0)
-                    if (data.related_articles && data.related_articles.length > 0) {
-                        const bm25Section = document.getElementById('bm25-related-section');
-                        const bm25Grid = document.getElementById('bm25-grid');
-                        if (bm25Section && bm25Grid) {
-                            bm25Grid.innerHTML = '';
-                            data.related_articles.forEach(r_art => {
-                                const a = document.createElement('a');
-                                a.href = `/articles/${r_art.id}/`;
-                                a.className = 'group bg-white rounded-xl border border-slate-100 shadow-sm overflow-hidden flex flex-col hover:shadow-md transition duration-200';
-                                
-                                const imgUrl = r_art.image_url ? r_art.image_url : 'https://images.unsplash.com/photo-1456513080510-7bf3a84b82f8?auto=format&fit=crop&q=80&w=400';
-                                const opacityClass = r_art.image_url ? 'opacity-100' : 'opacity-10';
-                                
-                                a.innerHTML = `
-                                    <div class="h-24 w-full relative overflow-hidden flex items-center justify-center">
-                                        <div class="absolute inset-0 ${opacityClass} bg-cover bg-center" style="background-image: url('${imgUrl}');"></div>
-                                        <div class="absolute inset-0 bg-gradient-to-t from-slate-900/40 to-transparent"></div>
-                                        <span class="absolute bottom-2 right-2 text-white text-[10px] font-bold bg-black/40 backdrop-blur-sm px-2 py-0.5 rounded-full">
-                                            ${r_art.source_name || "Unknown"}
-                                        </span>
-                                    </div>
-                                    <div class="p-3">
-                                        <h4 class="font-bold text-slate-800 line-clamp-2 text-sm group-hover:text-blue-600 transition min-h-[2.5rem]">
-                                            ${r_art.title || "Chưa có tiêu đề"}
-                                        </h4>
-                                    </div>
-                                `;
-                                bm25Grid.appendChild(a);
-                            });
-                            bm25Section.classList.remove('hidden');
-                        }
-                    }
+                    // 2. Show BM25 related articles
+                    renderBM25Related(data.related_articles);
 
                     // 3. Smooth scroll to the first visible section
                     const scrollToSection = document.getElementById('related-articles-section') || document.getElementById('bm25-related-section');
@@ -624,8 +644,6 @@
                         }, 500);
                     }
                 }).catch(err => console.error("Error submitting exam:", err));
-
-                document.getElementById('score-display').textContent = correctCount;
             });
         }
     </script>
