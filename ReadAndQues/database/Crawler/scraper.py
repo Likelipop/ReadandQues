@@ -15,7 +15,9 @@ from .formatter import to_markdown
 logger = logging.getLogger(__name__)
 
 TRAFILATURA_CONFIG = use_config()
-TRAFILATURA_CONFIG.read(str(settings.TRAFILATURA_CONFIG_FILE))
+config_file = getattr(settings, "TRAFILATURA_CONFIG_FILE", None)
+if config_file:
+    TRAFILATURA_CONFIG.read(str(config_file))
 
 class CrawlError(Exception):
     def __init__(self,code:str,public_message: str):

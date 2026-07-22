@@ -136,7 +136,7 @@ class CategoryAndThemeTests(TestCase):
             source_name = domain.replace('www.', '').strip() if domain else "Unknown"
             self.assertEqual(source_name, expected)
     def test_semantic_analysis_theme_schema(self):
-        from AI_core.schemas import SemanticAnalysis, TextGenre, ThemeCategory, CoreAnalysis
+        from worker_service.ai_core.schemas import SemanticAnalysis, TextGenre, ThemeCategory, CoreAnalysis
 
         analysis = SemanticAnalysis(
             genre=TextGenre.scientific,

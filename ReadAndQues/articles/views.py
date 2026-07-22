@@ -1,79 +1,46 @@
-import threading
-from datetime import datetime
+"""
+articles/views.py — Web Controller / Views Layer.
+
+Contains view functions for handling HTTP requests, delegating business logic
+to the services layer, and rendering templates or returning JSON responses.
+No heavy LLM or long-running threading logic is performed directly inside views.
+"""
 
 from django.shortcuts import render, redirect
 from django.contrib import messages
 from django.http import JsonResponse, HttpResponseNotAllowed
+from pydantic import ValidationError
 
 from .models import ArticleMongoModel
-from .services import process_and_analyze_article
-from .utils.db import insert_article_document, get_article_document_by_id, update_article_document
-
-
-def _run_article_generation(url: str, pk: str) -> None:
-    try:
-        payload = process_and_analyze_article(url)
-        if not payload:
-            update_article_document(pk, {
-                "status": "failed",
-                "error_message": "Không thể trích xuất nội dung từ bài báo này.",
-            })
-            return
-
-        update_article_document(pk, payload)
-    except Exception as e:
-        update_article_document(pk, {
-            "status": "failed",
-            "error_message": str(e),
-        })
+from .services import import_and_trigger_pipeline
+from database.Mongo.crud import get_article_document_by_id
 
 
 def import_article_view(request):
     """
-    On POST: do a quick crawl synchronously to get title + original_text so user can read immediately.
-    Insert a pending document (status="pending") containing url, title, original_text.
-    Start full async LangGraph processing in background which will update the document to include chunks/exams and status="completed".
-
-    Behavior:
-    - If request is AJAX (X-Requested-With), return JSON (useful for API clients)
-    - Otherwise redirect to the article_detail page immediately so user can start reading.
+    On POST:
+      - Validates input URL.
+      - Calls import_and_trigger_pipeline service to ingest article and queue AI exam generation via Celery.
+      - Redirects user immediately to the reading/detail view (or returns JSON for AJAX clients).
+    On GET:
+      - Renders import form template.
     """
     if request.method == "POST":
         url = request.POST.get("url", "").strip()
-        if not url:
-            if request.headers.get("x-requested-with") == "XMLHttpRequest":
-                return JsonResponse({"status": "error", "message": "Vui lòng nhập một URL bài báo hợp lệ!"}, status=400)
+        user_id = request.user.id if request.user.is_authenticated else 0
 
-            messages.error(request, "Vui lòng nhập một URL bài báo hợp lệ!")
+        is_success, error_msg, inserted_id = import_and_trigger_pipeline(url, user_id)
+
+        if not is_success:
+            if request.headers.get("x-requested-with") == "XMLHttpRequest":
+                return JsonResponse({"status": "error", "message": error_msg}, status=400)
+            messages.error(request, error_msg)
             return render(request, "articles/import.html")
 
-        # Quick synchronous crawl to give user immediate reading content
-        from .utils.crawler import crawl_article_content
-        crawl_res = crawl_article_content(url)
-
-        title = crawl_res.get("title") if crawl_res.get("success") else ""
-        original_text = crawl_res.get("content") if crawl_res.get("success") else ""
-
-        pending_document = {
-            "url": url,
-            "title": title,
-            "original_text": original_text,
-            "status": "pending",
-            "created_at": datetime.utcnow(),
-        }
-
-        inserted_id = insert_article_document(pending_document)
-
-        # Start longer-running full processing in background (LangGraph etc.)
-        thread = threading.Thread(target=_run_article_generation, args=(url, inserted_id), daemon=True)
-        thread.start()
-
-        # If AJAX, return immediate JSON with id; otherwise redirect straight to reading view
         if request.headers.get("x-requested-with") == "XMLHttpRequest":
             return JsonResponse({"status": "started", "id": inserted_id})
 
-        # Redirect user immediately to the reading view so they can start reading while AI works
-        return redirect("article_detail", pk=inserted_id)
+        return redirect("articles:article_detail", pk=inserted_id)
 
     return render(request, "articles/import.html")
 
@@ -82,6 +49,7 @@ import_article = import_article_view
 
 
 def article_status(request, pk):
+    """API endpoint to poll the background processing status of an article."""
     if request.method != "GET":
         return HttpResponseNotAllowed(["GET"])
 
@@ -97,45 +65,33 @@ def article_status(request, pk):
     }
 
     if status == "completed":
-        # return exams (may be large) so clients can load without a full page refresh if desired
         payload["exams"] = doc.get("exams", [])
 
     return JsonResponse(payload)
 
 
-from pydantic import ValidationError
-
-
 def article_detail(request, pk):
+    """Displays the article detail page (reading view & generated exams)."""
     doc = get_article_document_by_id(pk)
     if not doc:
         messages.error(request, "Không tìm thấy bài báo yêu cầu!")
         return redirect("articles:import_article")
 
-    # expose _id as string for templates
     doc["_id"] = str(doc["_id"])
 
     try:
         article = ArticleMongoModel.model_validate(doc)
     except ValidationError:
-        # Document is incomplete (processing in progress) — create a minimal object usable by templates
         title = doc.get("title", "")
         original_text = doc.get("original_text", "")
         status = doc.get("status", "pending")
         url = doc.get("url", "")
         article = type("SimpleArticle", (), {})()
-        # Ensure template keys exist with safe defaults
         article.title = title
         article.original_text = original_text
         article.exams = doc.get("exams") or [{"quizzes": []}]
         article.status = status
         article.id = str(doc.get("_id"))
         article.url = url
-
-    # If the processing hasn't completed yet, show the loading area in the right pane (template will show reading on left)
-    if getattr(article, "status", "pending") != "completed":
-        # Render same reading/detail template but it will show content on left and either loading placeholder or nothing on right.
-        # Using the same detail template simplifies UX: users read immediately; JS in page can poll for status/questions.
-        return render(request, "articles/detail.html", {"article": article})
 
     return render(request, "articles/detail.html", {"article": article})

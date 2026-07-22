@@ -85,6 +85,12 @@ class ArticleMongoModel(BaseModel):
     # Toàn bộ câu hỏi (MCQ Yes/No/NG trước, FIB Summary Completion sau)
     quizzes: List[QuizItem] = Field(default_factory=list)
 
+    # Phân loại và hình ảnh
+    theme: Optional[str] = Field(default=None, description="Chủ đề bài báo (VD: Technology, Science)")
+    genre: Optional[str] = Field(default=None, description="Thể loại văn bản (VD: scientific, news)")
+    image_url: Optional[str] = Field(default=None, description="URL ảnh chính bài báo")
+    image_urls: List[str] = Field(default_factory=list, description="Danh sách URL ảnh trong bài")
+
     # Metadata quản lý trạng thái luồng xử lý
     status: str = Field(
         default="pending",
