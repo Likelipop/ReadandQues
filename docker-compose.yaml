@@ -72,6 +72,8 @@ services:
     restart: unless-stopped
     env_file:
       - .env
+    environment:
+      PYTHONPATH: /app:/app/ReadAndQues
     depends_on:
       postgres:
         condition: service_healthy
@@ -87,9 +89,10 @@ services:
              gunicorn --bind 0.0.0.0:8000 --workers 3 --chdir /app/ReadAndQues ReadAndQues.wsgi:application"
     healthcheck:
       test: ["CMD-SHELL", "python3 -c \"import urllib.request; urllib.request.urlopen('http://localhost:8000/')\" || exit 1"]
-      interval: 15s
+      interval: 10s
       timeout: 5s
       retries: 5
+      start_period: 30s
     volumes:
       - .:/app
       - static_volume:/app/staticfiles
@@ -104,6 +107,8 @@ services:
     restart: unless-stopped
     env_file:
       - .env
+    environment:
+      PYTHONPATH: /app:/app/ReadAndQues
     depends_on:
       redis:
         condition: service_healthy
@@ -113,9 +118,9 @@ services:
         condition: service_healthy
       chromadb:
         condition: service_healthy
-    command: sh -c "cd /app/ReadAndQues && celery -A worker_service.celery_app worker -l info -Q ai_queue"
+    command: sh -c "celery -A worker_service.celery_app worker -l info -Q ai_queue"
     healthcheck:
-      test: ["CMD-SHELL", "cd /app/ReadAndQues && celery -A worker_service.celery_app inspect ping || exit 1"]
+      test: ["CMD-SHELL", "celery -A worker_service.celery_app inspect ping || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -130,6 +135,8 @@ services:
     restart: unless-stopped
     env_file:
       - .env
+    environment:
+      PYTHONPATH: /app:/app/ReadAndQues
     depends_on:
       redis:
         condition: service_healthy
@@ -139,7 +146,7 @@ services:
         condition: service_healthy
       chromadb:
         condition: service_healthy
-    command: sh -c "cd /app/ReadAndQues && celery -A worker_service.celery_app beat -l info"
+    command: sh -c "celery -A worker_service.celery_app beat -l info"
     volumes:
       - .:/app
 
