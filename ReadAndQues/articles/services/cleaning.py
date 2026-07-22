@@ -26,6 +26,7 @@ def clean_and_validate_article(
     cleaned_doc = {
         "title": title,
         "original_text": content,
+        "html_content": crawl_result.get("html_content"),
         "source_name": source_name,
         "word_count": crawl_result.get("word_count") or len(content.split()),
         "canonical_url": crawl_result.get("canonical_url"),

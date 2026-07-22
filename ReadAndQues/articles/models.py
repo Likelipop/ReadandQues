@@ -72,6 +72,9 @@ class ArticleMongoModel(BaseModel):
     url: str = Field(..., description="Original article URL")
     title: str = Field(..., description="Article title")
     original_text: str = Field(..., description="Raw crawled content")
+    html_content: Optional[str] = Field(
+        default=None, description="Raw HTML for rendering in UI"
+    )
     clean_text: Optional[str] = Field(
         default=None, description="Cleaned text (after Smart Cleaner)"
     )

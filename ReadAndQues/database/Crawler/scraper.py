@@ -12,6 +12,7 @@ from lxml import html as lxml_html
 from trafilatura import bare_extraction, fetch_response
 from trafilatura.settings import use_config
 
+import re
 from .formatter import to_markdown
 
 logger = logging.getLogger(__name__)
@@ -191,6 +192,13 @@ def _extract_article(
         )
 
     content = to_markdown(raw_text)
+    
+    # Extract raw HTML structure for UI rendering
+    raw_html = trafilatura.extract(html_content, output_format="html", config=TRAFILATURA_CONFIG) or ""
+    # Strip basic <html><body> wrappers to avoid nested html tags in frontend
+    clean_html = re.sub(r"^<html>\s*<body>", "", raw_html, flags=re.IGNORECASE)
+    clean_html = re.sub(r"</body>\s*</html>$", "", clean_html, flags=re.IGNORECASE).strip()
+
     word_count = len(content.split())
 
     if word_count < settings.ARTICLE_MIN_WORDS:
@@ -218,6 +226,7 @@ def _extract_article(
         "canonical_url": extracted.get("url") or final_url,
         "title": title,
         "content": content,
+        "html_content": clean_html,
         "source_name": str(source_name).strip(),
         "author": extracted.get("author"),
         "published_at": _parse_published_at(extracted.get("date")),

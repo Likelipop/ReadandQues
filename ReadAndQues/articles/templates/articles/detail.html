@@ -108,8 +108,12 @@
             </div>
             {% endif %}
             <div id="raw-article-text" class="hidden">{{ article.original_text }}</div>
-            <div id="article-rendered-text" class="prose max-w-none text-gray-800 leading-relaxed text-lg">
-                {{ article.original_text|linebreaks }}
+            <div id="article-rendered-text" class="prose max-w-none text-gray-800 leading-relaxed text-lg prose-headings:text-slate-800 prose-headings:font-bold prose-img:rounded-xl prose-img:shadow-sm prose-a:text-blue-600 hover:prose-a:text-blue-800 prose-li:my-1 prose-ul:my-4 prose-ol:my-4">
+                {% if article.html_content %}
+                    {{ article.html_content|safe }}
+                {% else %}
+                    {{ article.original_text|linebreaks }}
+                {% endif %}
             </div>
         </section>
 
