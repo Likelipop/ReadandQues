@@ -193,7 +193,7 @@
                     </div>
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         {% for r_art in related_articles %}
-                        <a href="{% url 'article_detail' r_art.id %}" class="group bg-white rounded-xl border border-slate-100 shadow-sm overflow-hidden flex flex-col hover:shadow-md transition duration-200">
+                        <a href="{% url 'articles:article_detail' r_art.id %}" class="group bg-white rounded-xl border border-slate-100 shadow-sm overflow-hidden flex flex-col hover:shadow-md transition duration-200">
                             <!-- Thumbnail banner image -->
                             <div class="h-24 w-full relative overflow-hidden flex items-center justify-center">
                                 {% if r_art.image_url %}

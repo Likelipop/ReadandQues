@@ -89,7 +89,7 @@
 
                 <!-- Footer Button (redirect to detail if logged in, else redirect to login) -->
                 <div class="p-5 pt-0">
-                    <a href="{% if user.is_authenticated %}{% url 'article_detail' art.id %}{% else %}{% url 'login' %}{% endif %}" 
+                    <a href="{% if user.is_authenticated %}{% url 'articles:article_detail' art.id %}{% else %}{% url 'login' %}{% endif %}" 
                        class="w-full py-2.5 px-4 bg-slate-50 hover:bg-blue-600 group-hover:bg-blue-600 text-slate-700 group-hover:text-white font-bold rounded-xl text-xs transition duration-150 flex items-center justify-center gap-1.5 border border-slate-100 group-hover:border-blue-600">
                         📖 Practice Quiz
                     </a>

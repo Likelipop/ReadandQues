@@ -23,7 +23,7 @@
                 Nâng cao điểm số IELTS Reading bằng cách luyện tập với các bài báo thực tế từ khắp nơi trên thế giới. AI của chúng tôi sẽ phân tích văn bản và thiết lập câu hỏi theo đúng chuẩn đề thi thật.
             </p>
             <div class="flex flex-wrap gap-4 pt-2">
-                <a href="{% url 'import_article' %}" class="px-5 py-3 text-xs font-bold text-white bg-blue-600 hover:bg-blue-500 rounded-xl shadow-lg shadow-blue-500/10 transition duration-150 flex items-center gap-1.5">
+                <a href="{% url 'articles:import_article' %}" class="px-5 py-3 text-xs font-bold text-white bg-blue-600 hover:bg-blue-500 rounded-xl shadow-lg shadow-blue-500/10 transition duration-150 flex items-center gap-1.5">
                     <span>✨</span> Import New Article
                 </a>
                 <a href="{% url 'home' %}" class="px-5 py-3 text-xs font-bold text-slate-300 hover:text-white bg-white/5 hover:bg-white/10 rounded-xl transition duration-150 border border-white/10">
@@ -98,7 +98,7 @@
 
                     <!-- Button Footer -->
                     <div class="p-5 pt-0">
-                        <a href="{% if user.is_authenticated %}{% url 'article_detail' art.id %}{% else %}{% url 'login' %}{% endif %}" 
+                        <a href="{% if user.is_authenticated %}{% url 'articles:article_detail' art.id %}{% else %}{% url 'login' %}{% endif %}" 
                            class="w-full py-2.5 px-4 bg-slate-50 hover:bg-blue-600 group-hover:bg-blue-600 text-slate-700 group-hover:text-white font-bold rounded-xl text-xs transition duration-150 flex items-center justify-center gap-1.5 border border-slate-100 group-hover:border-blue-600">
                             📖 Practice Quiz
                         </a>
@@ -157,7 +157,7 @@
                                         {% endif %}
                                     </td>
                                     <td class="py-4 px-6 text-right">
-                                        <a href="{% url 'article_detail' art.id %}" class="inline-flex items-center justify-center px-4 py-2 text-xs font-bold text-slate-700 hover:text-blue-600 bg-slate-100 hover:bg-blue-50 rounded-lg transition">
+                                        <a href="{% url 'articles:article_detail' art.id %}" class="inline-flex items-center justify-center px-4 py-2 text-xs font-bold text-slate-700 hover:text-blue-600 bg-slate-100 hover:bg-blue-50 rounded-lg transition">
                                             {% if art.status == 'completed' %}Làm bài tập{% else %}Xem chi tiết{% endif %} →
                                         </a>
                                     </td>
@@ -172,7 +172,7 @@
                     <div class="text-5xl mb-4">📚</div>
                     <h3 class="text-xl font-bold text-slate-800 mb-2">Thư viện trống</h3>
                     <p class="text-slate-400 text-sm mb-6">Bạn chưa nhập bài báo tiếng Anh nào. Dán link bài báo để AI sinh quiz bài tập độc quyền cho bạn nhé!</p>
-                    <a href="{% url 'import_article' %}" class="inline-flex items-center gap-2 px-5 py-3 text-sm font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-xl shadow-lg shadow-blue-100 transition">
+                    <a href="{% url 'articles:import_article' %}" class="inline-flex items-center gap-2 px-5 py-3 text-sm font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-xl shadow-lg shadow-blue-100 transition">
                         ✨ Nhập bài báo đầu tiên
                     </a>
                 </div>
