@@ -10,8 +10,8 @@ from urllib.parse import urljoin, urlparse
 from django.conf import settings
 from lxml import html as lxml_html
 from trafilatura import bare_extraction, fetch_response, extract
-import trafilatura
 from trafilatura.settings import use_config
+from bs4 import BeautifulSoup
 
 import re
 from .formatter import to_markdown
@@ -194,11 +194,35 @@ def _extract_article(
 
     content = to_markdown(raw_text)
     
-    # Extract raw HTML structure for UI rendering
-    raw_html = trafilatura.extract(html_content, output_format="html", config=TRAFILATURA_CONFIG) or ""
-    # Strip basic <html><body> wrappers to avoid nested html tags in frontend
-    clean_html = re.sub(r"^<html>\s*<body>", "", raw_html, flags=re.IGNORECASE)
-    clean_html = re.sub(r"</body>\s*</html>$", "", clean_html, flags=re.IGNORECASE).strip()
+    # Extract raw HTML structure for UI rendering and Sanitize
+    try:
+        if isinstance(html_content, bytes):
+            soup = BeautifulSoup(html_content.decode("utf-8", errors="replace"), "html.parser")
+        else:
+            soup = BeautifulSoup(html_content, "html.parser")
+            
+        # Remove bad tags
+        for tag in soup.find_all(["script", "noscript", "iframe"]):
+            tag.decompose()
+            
+        # Add base tag
+        if soup.head:
+            if not soup.head.find("base"):
+                base_tag = soup.new_tag("base", href=final_url)
+                soup.head.insert(0, base_tag)
+        else:
+            head_tag = soup.new_tag("head")
+            base_tag = soup.new_tag("base", href=final_url)
+            head_tag.append(base_tag)
+            if soup.html:
+                soup.html.insert(0, head_tag)
+            else:
+                soup.insert(0, head_tag)
+                
+        clean_html = str(soup)
+    except Exception as e:
+        logger.error(f"Error parsing HTML with BeautifulSoup: {e}")
+        clean_html = ""
 
     word_count = len(content.split())
 

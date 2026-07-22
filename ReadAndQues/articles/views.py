@@ -8,7 +8,7 @@ No heavy LLM or long-running threading logic is performed directly inside views.
 
 from database.Mongo.crud import get_article_document_by_id
 from django.contrib import messages
-from django.http import HttpResponseNotAllowed, JsonResponse
+from django.http import HttpResponseNotAllowed, JsonResponse, HttpResponse
 from django.shortcuts import redirect, render
 from pydantic import ValidationError
 
@@ -222,3 +222,23 @@ def submit_exam_attempt(request, pk):
 
         traceback.print_exc()
         return JsonResponse({"status": "error", "message": str(e)}, status=400)
+
+
+def raw_html_view(request, pk: str):
+    """
+    Returns the raw HTML of the article to be rendered inside an iframe.
+    If no html_content is present, returns a basic HTML document with the original text.
+    """
+    from database.Mongo.crud import get_article_document
+
+    article_data = get_article_document(pk)
+    if not article_data:
+        return HttpResponse("Article not found", status=404)
+
+    html_content = article_data.get("html_content")
+    if not html_content:
+        # Fallback for old articles without html_content
+        text = article_data.get("original_text", "")
+        html_content = f"<html><body style='font-family:sans-serif; padding: 20px;'><pre style='white-space: pre-wrap; font-family: inherit;'>{text}</pre></body></html>"
+
+    return HttpResponse(html_content, content_type="text/html; charset=utf-8")
