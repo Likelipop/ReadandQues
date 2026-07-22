@@ -2,6 +2,7 @@
 articles/services/pipeline_orchestrator.py — Pipeline Orchestrator.
 
 Combines ingestion, cleaning, database insertion, and async AI exam generation.
+Delegates URL validation and extraction to the Crawler service as the Single Source of Truth.
 """
 
 import logging
@@ -18,14 +19,11 @@ logger = logging.getLogger(__name__)
 
 def import_and_trigger_pipeline(url: str, user_id: int) -> Tuple[bool, str, Optional[str]]:
     """
-    Runs the ingestion and cleaning steps synchronously.
-    If successful, inserts a pending document in MongoDB and kicks off the AI exam pipeline asynchronously.
+    Runs the ingestion and cleaning steps.
+    If successful, inserts a pending document in MongoDB and kicks off the AI exam pipeline asynchronously via Celery.
     Returns (success, error_message, inserted_id).
     """
-    if not url:
-        return False, "Vui lòng nhập một URL bài báo hợp lệ!", None
-
-    # 1. Ingestion stage
+    # 1. Ingestion stage (Crawler validates URL format, SSRF, HTTP status & extracts content)
     crawl_result = ingest_article_content(url)
     if not crawl_result.get("success"):
         return False, crawl_result.get("error", "Không thể trích xuất nội dung từ bài báo này."), None
@@ -55,7 +53,7 @@ def import_and_trigger_pipeline(url: str, user_id: int) -> Tuple[bool, str, Opti
     }
     inserted_id = insert_article_document(pending_document)
 
-    # 4. Queue AI exam generation in Celery instead of starting an in-process thread.
+    # 4. Queue AI exam generation in Celery
     generate_exam_task.delay(
         inserted_id,
         cleaned_doc.get("original_text", ""),
