@@ -124,6 +124,11 @@ USE_TZ = True
 STATIC_URL = 'static/'
 STATIC_ROOT = BASE_DIR / 'staticfiles'
 
+# Crawler & Article word count limits
+ARTICLE_MIN_WORDS = int(os.getenv("ARTICLE_MIN_WORDS", 500))
+ARTICLE_MAX_WORDS = int(os.getenv("ARTICLE_MAX_WORDS", 4000))
+ARTICLE_MAX_IMAGES = int(os.getenv("ARTICLE_MAX_IMAGES", 10))
+
 # Celery broker and result backend configuration
 CELERY_BROKER_URL = os.getenv('CELERY_BROKER_URL', 'redis://127.0.0.1:6379/0')
 CELERY_RESULT_BACKEND = os.getenv('CELERY_RESULT_BACKEND', 'redis://127.0.0.1:6379/0')

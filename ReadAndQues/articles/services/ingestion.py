@@ -12,11 +12,7 @@ logger = logging.getLogger(__name__)
 def ingest_article_content(url: str) -> Dict[str, Any]:
     """
     Crawls raw article content from a given URL using the local Crawler scraper.
+    URL validation (format, scheme, SSRF protection, HTTP status, and word count)
+    is delegated directly to `crawl_article_content` in scraper.py.
     """
-    if not url:
-        return {
-            "success": False,
-            "error": "URL không hợp lệ."
-        }
-    
     return crawl_article_content(url)
