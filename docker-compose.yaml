@@ -59,10 +59,10 @@ services:
     volumes:
       - chroma_data:/chroma/chroma
     healthcheck:
-      test: ["CMD-SHELL", "curl -fsS http://localhost:8000/api/v1/heartbeat || exit 1"]
+      test: ["CMD-SHELL", "bash -c 'cat < /dev/null > /dev/tcp/localhost/8000' || exit 1"]
       interval: 10s
       timeout: 5s
-      retries: 10
+      retries: 5
 
   web:
     build:
