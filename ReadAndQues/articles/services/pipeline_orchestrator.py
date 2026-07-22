@@ -4,15 +4,14 @@ articles/services/pipeline_orchestrator.py — Pipeline Orchestrator.
 Combines ingestion, cleaning, database insertion, and async AI exam generation.
 """
 
-import threading
 import logging
 from datetime import datetime, timezone
 from typing import Tuple, Optional
 
 from database.Mongo.crud import insert_article_document
+from worker_service.tasks import generate_exam_task
 from .ingestion import ingest_article_content
 from .cleaning import clean_and_validate_article
-from .exam_generation import generate_exam_for_article_async
 
 logger = logging.getLogger(__name__)
 
@@ -56,12 +55,12 @@ def import_and_trigger_pipeline(url: str, user_id: int) -> Tuple[bool, str, Opti
     }
     inserted_id = insert_article_document(pending_document)
 
-    # 4. Async AI exam generation
-    thread = threading.Thread(
-        target=generate_exam_for_article_async,
-        args=(inserted_id, cleaned_doc.get("original_text", ""), cleaned_doc.get("title", ""), url),
-        daemon=True,
+    # 4. Queue AI exam generation in Celery instead of starting an in-process thread.
+    generate_exam_task.delay(
+        inserted_id,
+        cleaned_doc.get("original_text", ""),
+        cleaned_doc.get("title", ""),
+        url,
     )
-    thread.start()
 
     return True, "", inserted_id

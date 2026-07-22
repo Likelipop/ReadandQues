@@ -1,8 +1,8 @@
-from .config import get_llm, ExamConfig
-from .graph import app
+from worker_service.ai_core.config import ExamConfig, get_llm
+from worker_service.ai_core.graph import app
 
 __all__ = [
-    "get_llm",
-    "ExamConfig",
-    "app",
+    'get_llm',
+    'ExamConfig',
+    'app',
 ]
