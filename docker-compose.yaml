@@ -74,6 +74,7 @@ services:
       - .env
     environment:
       PYTHONPATH: /app:/app/ReadAndQues
+      DJANGO_SETTINGS_MODULE: ReadAndQues.settings_prod
     depends_on:
       postgres:
         condition: service_healthy
@@ -86,7 +87,7 @@ services:
     command: >
       sh -c "python3 ReadAndQues/manage.py migrate &&
              python3 ReadAndQues/manage.py collectstatic --noinput &&
-             gunicorn --bind 0.0.0.0:8000 --workers 3 --chdir /app/ReadAndQues ReadAndQues.wsgi:application"
+             gunicorn --config /app/gunicorn.conf.py --chdir /app/ReadAndQues ReadAndQues.wsgi:application"
     healthcheck:
       test: ["CMD-SHELL", "python3 -c \"import urllib.request; urllib.request.urlopen('http://localhost:8000/')\" || exit 1"]
       interval: 10s
@@ -109,6 +110,9 @@ services:
       - .env
     environment:
       PYTHONPATH: /app:/app/ReadAndQues
+      DJANGO_SETTINGS_MODULE: ReadAndQues.settings_prod
+      CELERY_BROKER_URL: redis://redis:6379/0
+      CELERY_RESULT_BACKEND: redis://redis:6379/0
     depends_on:
       redis:
         condition: service_healthy
@@ -137,6 +141,9 @@ services:
       - .env
     environment:
       PYTHONPATH: /app:/app/ReadAndQues
+      DJANGO_SETTINGS_MODULE: ReadAndQues.settings_prod
+      CELERY_BROKER_URL: redis://redis:6379/0
+      CELERY_RESULT_BACKEND: redis://redis:6379/0
     depends_on:
       redis:
         condition: service_healthy
@@ -155,7 +162,7 @@ services:
     container_name: nginx
     restart: unless-stopped
     ports:
-      - "80:80"
+      - "8080:80"
     depends_on:
       web:
         condition: service_healthy
