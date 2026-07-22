@@ -5,8 +5,9 @@ Shared NLP text preprocessing logic (cleaning, tokenization, lemmatization).
 Used by both the database (for building the BM25 index) and AI_core (for searching).
 """
 
-import re
 import logging
+import re
+
 import spacy
 
 logger = logging.getLogger(__name__)
@@ -15,7 +16,9 @@ logger = logging.getLogger(__name__)
 try:
     _nlp = spacy.load("en_core_web_sm", disable=["parser", "ner"])
 except OSError:
-    logger.error("[TextPreprocessing] spaCy model 'en_core_web_sm' not found. Run: python -m spacy download en_core_web_sm")
+    logger.error(
+        "[TextPreprocessing] spaCy model 'en_core_web_sm' not found. Run: python -m spacy download en_core_web_sm"
+    )
     _nlp = None
 
 
@@ -23,8 +26,8 @@ def clean_text(text: str) -> str:
     """Remove HTML entities, punctuation, numbers, extra spaces."""
     if not text:
         return ""
-    text = re.sub(r"&[a-z]+;", " ", text)           # HTML entities
-    text = re.sub(r"[^a-zA-Z\s]", " ", text)         # giữ lại chữ cái
+    text = re.sub(r"&[a-z]+;", " ", text)  # HTML entities
+    text = re.sub(r"[^a-zA-Z\s]", " ", text)  # giữ lại chữ cái
     text = re.sub(r"\s+", " ", text).strip()
     return text.lower()
 

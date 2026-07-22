@@ -10,7 +10,12 @@ from celery import shared_task
 logger = logging.getLogger(__name__)
 
 
-@shared_task(name='worker_service.crawl_paper_task', bind=True, max_retries=3, default_retry_delay=20)
+@shared_task(
+    name="worker_service.crawl_paper_task",
+    bind=True,
+    max_retries=3,
+    default_retry_delay=20,
+)
 def crawl_paper_task(self, url: str) -> Dict[str, Any]:
     """
     Crawls raw article/paper content from a given URL in the background worker.
@@ -20,7 +25,11 @@ def crawl_paper_task(self, url: str) -> Dict[str, Any]:
     logger.info("🕷️ Starting background Celery paper crawl for URL: %s", url)
     try:
         result = crawl_article_content(url)
-        logger.info("✅ Finished Celery paper crawl for URL: %s (success=%s)", url, result.get("success"))
+        logger.info(
+            "✅ Finished Celery paper crawl for URL: %s (success=%s)",
+            url,
+            result.get("success"),
+        )
         return result
     except Exception as exc:
         logger.exception("⚠️ Failed to crawl paper for URL: %s", url)

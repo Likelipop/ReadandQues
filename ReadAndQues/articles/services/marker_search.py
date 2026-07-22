@@ -6,6 +6,7 @@ Service layer: nhận markers, trả về danh sách article documents đầy đ
 """
 
 import logging
+
 from database.BM25.operations import find_related_by_markers
 from database.Mongo.crud import get_articles_by_ids
 
@@ -26,7 +27,9 @@ def get_related_articles_from_markers(
     Returns:
         List[dict] — article documents (title, url, theme, genre, image_url...)
     """
-    bm25_results = find_related_by_markers(highlighted_markdown, exclude_id=article_id, n=limit)
+    bm25_results = find_related_by_markers(
+        highlighted_markdown, exclude_id=article_id, n=limit
+    )
 
     if not bm25_results:
         logger.info(f"[MarkerSearch] No BM25 results for article {article_id}")

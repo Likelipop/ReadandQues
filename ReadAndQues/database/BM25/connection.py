@@ -4,9 +4,11 @@ database/BM25/connection.py
 Quản lý BM25 index như một process-level singleton.
 Index được build từ original_text của tất cả article completed trong Mongo.
 """
+
 import logging
-from rank_bm25 import BM25Okapi
+
 from database.Mongo.connection import article_collection
+from rank_bm25 import BM25Okapi
 
 logger = logging.getLogger(__name__)
 
@@ -31,10 +33,11 @@ def rebuild_index() -> None:
 
     logger.info("[BM25] Rebuilding index...")
     try:
-        docs = list(article_collection.find(
-            {"status": "completed"},
-            {"_id": 1, "original_text": 1}
-        ))
+        docs = list(
+            article_collection.find(
+                {"status": "completed"}, {"_id": 1, "original_text": 1}
+            )
+        )
     except Exception as e:
         logger.warning(f"BM25 index skipped at startup: {e}")
         _bm25_index = None
@@ -48,6 +51,7 @@ def rebuild_index() -> None:
         return
 
     from .text_preprocessing import process_text_to_tokens
+
     _corpus_ids = [str(d["_id"]) for d in docs]
     corpus_tokens = []
     for d in docs:

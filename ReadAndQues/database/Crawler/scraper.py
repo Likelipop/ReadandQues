@@ -1,4 +1,5 @@
 from __future__ import annotations
+
 import ipaddress
 import logging
 import socket
@@ -12,6 +13,7 @@ from trafilatura import bare_extraction, fetch_response
 from trafilatura.settings import use_config
 
 from .formatter import to_markdown
+
 logger = logging.getLogger(__name__)
 
 TRAFILATURA_CONFIG = use_config()
@@ -19,49 +21,40 @@ config_file = getattr(settings, "TRAFILATURA_CONFIG_FILE", None)
 if config_file:
     TRAFILATURA_CONFIG.read(str(config_file))
 
+
 class CrawlError(Exception):
-    def __init__(self,code:str,public_message: str):
+    def __init__(self, code: str, public_message: str):
         super().__init__(public_message)
         self.code = code
         self.public_message = public_message
 
-def _error(code:str,message:str) ->dict[str,Any]:
-    return {
-        "success": False,
-        "error":message,
-        "error_code":code
-    }
 
-def _validate_public_http_url(url:str) ->None:
+def _error(code: str, message: str) -> dict[str, Any]:
+    return {"success": False, "error": message, "error_code": code}
+
+
+def _validate_public_http_url(url: str) -> None:
     parsed = urlparse(url)
 
-    if parsed.scheme not in {"http","https"}:
+    if parsed.scheme not in {"http", "https"}:
         raise CrawlError(
-            "INVALID_URL",
-            "URL phải bắt đầu bằng http:// hoặc là https:// nha!"
+            "INVALID_URL", "URL phải bắt đầu bằng http:// hoặc là https:// nha!"
         )
     if not parsed.hostname:
-        raise CrawlError(
-            "INVALID_URL",
-            "URL không có tên miền hợp lệ"
-        )
+        raise CrawlError("INVALID_URL", "URL không có tên miền hợp lệ")
     if parsed.username or parsed.password:
-        raise CrawlError(
-            "INVALID_URL",
-            "URL chứa thông tin đăng nhập!"
-        )
+        raise CrawlError("INVALID_URL", "URL chứa thông tin đăng nhập!")
     try:
         address_info = socket.getaddrinfo(
             parsed.hostname,
-            parsed.port or(443 if parsed.scheme == "https" else 80),
-            type=socket.SOCK_STREAM
+            parsed.port or (443 if parsed.scheme == "https" else 80),
+            type=socket.SOCK_STREAM,
         )
     except socket.gaierror as exc:
         raise CrawlError(
-            "INVALID_URL",
-            "Tên miền không hợp lệ hoặc không tồn tại"
+            "INVALID_URL", "Tên miền không hợp lệ hoặc không tồn tại"
         ) from exc
-    
+
     for item in address_info:
         ip = ipaddress.ip_address(item[4][0])
         if any(
@@ -79,13 +72,14 @@ def _validate_public_http_url(url:str) ->None:
                 "URL trỏ tới địa chỉ mạng không được phép.",
             )
 
+
 def _parse_published_at(value: Any) -> datetime | None:
     if not value:
         return None
-    if isinstance(value,datetime):
+    if isinstance(value, datetime):
         parsed = value
     else:
-        text = str(value).strip().replace("Z","+00:00")
+        text = str(value).strip().replace("Z", "+00:00")
         try:
             parsed = datetime.fromisoformat(text)
         except ValueError:
@@ -95,19 +89,21 @@ def _parse_published_at(value: Any) -> datetime | None:
         parsed = parsed.replace(tzinfo=timezone.utc)
     return parsed.astimezone(timezone.utc)
 
-def _first_src_from_srcset(srcset:str) -> str | None:
-    first_candidate = srcset.split(',',1)[0].strip()
+
+def _first_src_from_srcset(srcset: str) -> str | None:
+    first_candidate = srcset.split(",", 1)[0].strip()
     if not first_candidate:
         return None
     return first_candidate.split()[0]
 
-#Dùng để loại bỏ những link ảnh lạ và không hợp lệ
-def _normalize_image_url(raw_url:str | None, base_url:str)-> str|None:
+
+# Dùng để loại bỏ những link ảnh lạ và không hợp lệ
+def _normalize_image_url(raw_url: str | None, base_url: str) -> str | None:
     if not raw_url:
         return None
-    normalized = urljoin(base_url,raw_url.strip())
+    normalized = urljoin(base_url, raw_url.strip())
     parsed = urlparse(normalized)
-    if parsed.scheme not in {"http","https"} or not parsed.netloc:
+    if parsed.scheme not in {"http", "https"} or not parsed.netloc:
         return None
     lowered = normalized.lower()
     blocked_markers = (".svg", "sprite", "tracking", "pixel", "avatar")
@@ -116,16 +112,16 @@ def _normalize_image_url(raw_url:str | None, base_url:str)-> str|None:
 
     return normalized
 
-#Lấy các hình ảnh ưu tiên lấy hình từ og và twitter
+
+# Lấy các hình ảnh ưu tiên lấy hình từ og và twitter
+
 
 def _extract_images(
-        html_content:bytes|str,
-        base_url:str,
-        limit:int
+    html_content: bytes | str, base_url: str, limit: int
 ) -> tuple[str | None, list[str]]:
     try:
-        tree = lxml_html.fromstring(html_content,base_url = base_url)
-    except (ValueError,TypeError):
+        tree = lxml_html.fromstring(html_content, base_url=base_url)
+    except (ValueError, TypeError):
         return None, []
     candidates = []
     metadata_xpaths = (
@@ -136,7 +132,7 @@ def _extract_images(
     )
     for xpath in metadata_xpaths:
         candidates.extend(tree.xpath(xpath))
-    #Lấy cả những ảnh trong nội dung văn bản
+    # Lấy cả những ảnh trong nội dung văn bản
     for image in tree.xpath("//article//img | //main//img | //img"):
         raw_url = (
             image.get("src")
@@ -156,13 +152,14 @@ def _extract_images(
     top_image = image_urls[0] if image_urls else None
     return top_image, image_urls
 
+
 def _extract_article(
-        html_content: bytes | str,
-        requested_url: str,
-        final_url: str,
-        http_status: int,
-        content_type: str
-) -> dict[str,Any]:
+    html_content: bytes | str,
+    requested_url: str,
+    final_url: str,
+    http_status: int,
+    content_type: str,
+) -> dict[str, Any]:
     document = bare_extraction(
         html_content,
         url=final_url,
@@ -212,14 +209,10 @@ def _extract_article(
     parsed_final_url = urlparse(final_url)
     fallback_source = (parsed_final_url.hostname or "Unknown").removeprefix("www.")
     source_name = (
-        extracted.get("sitename")
-        or extracted.get("hostname")
-        or fallback_source
+        extracted.get("sitename") or extracted.get("hostname") or fallback_source
     )
-    image_url,image_urls = _extract_images(
-        html_content,
-        base_url = final_url,
-        limit = settings.ARTICLE_MAX_IMAGES
+    image_url, image_urls = _extract_images(
+        html_content, base_url=final_url, limit=settings.ARTICLE_MAX_IMAGES
     )
     return {
         "success": True,
@@ -245,21 +238,19 @@ def _extract_article(
         },
     }
 
-def crawl_article_content(url:str)->dict[str,Any]:
-    requested_url=url.strip()
+
+def crawl_article_content(url: str) -> dict[str, Any]:
+    requested_url = url.strip()
     try:
         _validate_public_http_url(requested_url)
         response = fetch_response(
             requested_url,
             decode=True,
-            with_headers=True, #Dùng để lấy header (http,...)
-            config=TRAFILATURA_CONFIG
-        ) #request.data sẽ là text html
+            with_headers=True,  # Dùng để lấy header (http,...)
+            config=TRAFILATURA_CONFIG,
+        )  # request.data sẽ là text html
         if response is None:
-            raise CrawlError(
-                "DOWNLOAD_FAILED",
-                "Không thể tải bài báo này."
-            )
+            raise CrawlError("DOWNLOAD_FAILED", "Không thể tải bài báo này.")
         status = int(response.status or 0)
         if status < 200 or status >= 300:
             raise CrawlError(
@@ -268,18 +259,17 @@ def crawl_article_content(url:str)->dict[str,Any]:
             )
         if response.url:
             from urllib.parse import urljoin
+
             final_url = urljoin(requested_url, response.url)
         else:
             final_url = requested_url
 
-        #Kiểm tra lại sau khi redirect xem có chuẩn k
+        # Kiểm tra lại sau khi redirect xem có chuẩn k
         _validate_public_http_url(final_url)
 
         headers = response.headers or {}
         content_type = str(
-            headers.get("content-type")
-            or headers.get("Content-Type")
-            or ""
+            headers.get("content-type") or headers.get("Content-Type") or ""
         )
 
         if content_type and not any(

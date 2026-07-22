@@ -2,8 +2,9 @@
 database/BM25/operations.py — Raw BM25 search & marker search operations.
 """
 
-import re
 import logging
+import re
+
 from .connection import get_index
 from .text_preprocessing import process_text_to_tokens
 

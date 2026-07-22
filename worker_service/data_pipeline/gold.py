@@ -9,26 +9,26 @@ Usage:
     python -m worker_service.data_pipeline.gold
 """
 
+import logging
 import sys
 import uuid
-import logging
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Optional
 
 from pydantic import BaseModel
 
-from worker_service.database.Mongo.crud import (
-    get_unprocessed_silver_docs,
-    get_silver_by_id,
-    insert_gold_doc,
-    update_gold_doc,
-    insert_pipeline_log,
-)
 from worker_service.database.Chroma.operations import add_article_vector
+from worker_service.database.Mongo.crud import (get_silver_by_id,
+                                                get_unprocessed_silver_docs,
+                                                insert_gold_doc,
+                                                insert_pipeline_log,
+                                                update_gold_doc)
 
 logger = logging.getLogger(__name__)
-logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s"
+)
 
 # Ensure worker_service is importable
 _PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
@@ -146,18 +146,19 @@ def process_gold():
 
         try:
             gold_id = insert_gold_doc(gold_doc)
-            logger.info(f"  {'✅' if status_msg == 'completed' else '❌'} "
-                        f"Gold [{status_msg}]: {gold_id}")
-            
+            logger.info(
+                f"  {'✅' if status_msg == 'completed' else '❌'} "
+                f"Gold [{status_msg}]: {gold_id}"
+            )
+
             # If successful and we have AI analysis, embed it in ChromaDB
             if status_msg == "completed" and ai_result:
-                summary = ai_result.get("analysis", {}).get("core", {}).get("summary", "")
+                summary = (
+                    ai_result.get("analysis", {}).get("core", {}).get("summary", "")
+                )
                 if summary:
                     add_article_vector(
-                        gold_id=gold_id,
-                        summary=summary,
-                        title=title,
-                        url=url
+                        gold_id=gold_id, summary=summary, title=title, url=url
                     )
         except Exception as e:
             stats["failed"] += 1
@@ -171,7 +172,9 @@ def process_gold():
             url=url,
         )
 
-    logger.info(f"\n📈 Gold complete: {stats['completed']} completed, {stats['failed']} failed")
+    logger.info(
+        f"\n📈 Gold complete: {stats['completed']} completed, {stats['failed']} failed"
+    )
 
     insert_pipeline_log(
         stage="gold_batch",
@@ -185,15 +188,20 @@ def process_one_gold_async(silver_id: str, gold_id: str):
     Run AI pipeline for a single article in a background thread.
     Updates the existing gold_articles document (which starts as pending).
     """
-    logger.info(f"🔄 Starting Gold async thread for silver_id: {silver_id}, gold_id: {gold_id}")
-    
+    logger.info(
+        f"🔄 Starting Gold async thread for silver_id: {silver_id}, gold_id: {gold_id}"
+    )
+
     # Get original_text from silver
     silver_doc = get_silver_by_id(silver_id)
     if not silver_doc:
         logger.error(f"❌ Gold async failed: Silver doc {silver_id} not found.")
         update_gold_doc(
             gold_id=gold_id,
-            update_data={"status": "failed", "error_message": "Silver document not found."}
+            update_data={
+                "status": "failed",
+                "error_message": "Silver document not found.",
+            },
         )
         return
 
@@ -207,14 +215,16 @@ def process_one_gold_async(silver_id: str, gold_id: str):
         update_data = {
             "status": "failed",
             "error_message": "AI pipeline failed to generate exam",
-            "exams": []
+            "exams": [],
         }
         status_msg = "failed"
 
     try:
         update_gold_doc(gold_id=gold_id, update_data=update_data)
-        logger.info(f"{'✅' if status_msg == 'completed' else '❌'} Gold async [{status_msg}] for gold_id: {gold_id}")
-        
+        logger.info(
+            f"{'✅' if status_msg == 'completed' else '❌'} Gold async [{status_msg}] for gold_id: {gold_id}"
+        )
+
         # If successful and we have AI analysis, embed it in ChromaDB
         if status_msg == "completed" and ai_result:
             summary = ai_result.get("analysis", {}).get("core", {}).get("summary", "")
@@ -223,7 +233,7 @@ def process_one_gold_async(silver_id: str, gold_id: str):
                     gold_id=gold_id,
                     summary=summary,
                     title=silver_doc.get("title", ""),
-                    url=silver_doc.get("url", "")
+                    url=silver_doc.get("url", ""),
                 )
     except Exception as e:
         logger.error(f"⚠️ Gold async update failed for gold_id: {gold_id}: {e}")

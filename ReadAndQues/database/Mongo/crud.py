@@ -1,9 +1,12 @@
 from bson import ObjectId
+
 from .connection import article_collection, attempts_collection
+
 
 def insert_article_document(data: dict) -> str:
     result = article_collection.insert_one(data)
     return str(result.inserted_id)
+
 
 def update_article_document(pk: str, updates: dict) -> bool:
     try:
@@ -12,11 +15,13 @@ def update_article_document(pk: str, updates: dict) -> bool:
     except Exception:
         return False
 
+
 def get_article_document_by_id(pk: str) -> dict | None:
     try:
         return article_collection.find_one({"_id": ObjectId(pk)})
     except Exception:
         return None
+
 
 def get_articles_by_user(user_id: int) -> list:
     try:
@@ -28,6 +33,7 @@ def get_articles_by_user(user_id: int) -> list:
         return articles
     except Exception:
         return []
+
 
 def get_completed_articles(limit=None, theme=None, genre=None) -> list:
     try:
@@ -48,6 +54,7 @@ def get_completed_articles(limit=None, theme=None, genre=None) -> list:
     except Exception:
         return []
 
+
 def save_exam_attempt(data: dict) -> str:
     try:
         result = attempts_collection.insert_one(data)
@@ -55,15 +62,25 @@ def save_exam_attempt(data: dict) -> str:
     except Exception:
         return ""
 
+
 def get_articles_by_ids(ids: list[str]) -> list[dict]:
     """Lấy nhiều articles theo list IDs, giữ nguyên thứ tự."""
     try:
         object_ids = [ObjectId(i) for i in ids]
-        docs = list(article_collection.find(
-            {"_id": {"$in": object_ids}},
-            {"title": 1, "url": 1, "theme": 1, "genre": 1, "image_url": 1, "source_name": 1}
-        ))
-        
+        docs = list(
+            article_collection.find(
+                {"_id": {"$in": object_ids}},
+                {
+                    "title": 1,
+                    "url": 1,
+                    "theme": 1,
+                    "genre": 1,
+                    "image_url": 1,
+                    "source_name": 1,
+                },
+            )
+        )
+
         # Restore order by score
         id_to_doc = {str(d["_id"]): d for d in docs}
         ordered = []

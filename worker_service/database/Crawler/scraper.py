@@ -19,7 +19,9 @@ def _extract_images(article: NewspaperArticle) -> tuple[str | None, list[str]]:
     all_images = []
     top_image = article.top_image.strip() if article.top_image else None
 
-    if top_image and not (top_image.startswith("http://") or top_image.startswith("https://")):
+    if top_image and not (
+        top_image.startswith("http://") or top_image.startswith("https://")
+    ):
         top_image = None
 
     raw_images = list(article.images) if article.images else []
@@ -27,7 +29,9 @@ def _extract_images(article: NewspaperArticle) -> tuple[str | None, list[str]]:
         img_url = img.strip()
         if img_url.startswith("http://") or img_url.startswith("https://"):
             lower_url = img_url.lower()
-            if not any(ext in lower_url for ext in ['.svg', 'pixel', 'avatar', 'sprite']):
+            if not any(
+                ext in lower_url for ext in [".svg", "pixel", "avatar", "sprite"]
+            ):
                 if img_url not in all_images:
                     all_images.append(img_url)
 
@@ -50,8 +54,8 @@ def crawl_article_content(url: str) -> dict:
     """
     try:
         parsed = urlparse(url)
-        domain = parsed.netloc or parsed.path.split('/')[0]
-        source_name = domain.replace('www.', '').strip() if domain else "Unknown"
+        domain = parsed.netloc or parsed.path.split("/")[0]
+        source_name = domain.replace("www.", "").strip() if domain else "Unknown"
 
         article = NewspaperArticle(url, keep_article_html=False)
         article.download()

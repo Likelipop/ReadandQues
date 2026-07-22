@@ -12,18 +12,19 @@ Usage:
 import logging
 from datetime import datetime, timezone
 
-from .pipeline_config import SILVER_MIN_WORD_COUNT, SILVER_MAX_WORD_COUNT
 from worker_service.database.Crawler.formatter import to_markdown
-from worker_service.database.Mongo.crud import (
-    get_unprocessed_bronze_docs,
-    get_bronze_by_id,
-    get_silver_by_bronze_id,
-    save_silver_doc,
-    insert_pipeline_log,
-)
+from worker_service.database.Mongo.crud import (get_bronze_by_id,
+                                                get_silver_by_bronze_id,
+                                                get_unprocessed_bronze_docs,
+                                                insert_pipeline_log,
+                                                save_silver_doc)
+
+from .pipeline_config import SILVER_MAX_WORD_COUNT, SILVER_MIN_WORD_COUNT
 
 logger = logging.getLogger(__name__)
-logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s"
+)
 
 
 def validate_document(doc: dict) -> tuple[bool, list[str]]:
@@ -44,9 +45,13 @@ def validate_document(doc: dict) -> tuple[bool, list[str]]:
     else:
         word_count = len(raw_text.split())
         if word_count < SILVER_MIN_WORD_COUNT:
-            issues.append(f"Text too short: {word_count} words (min: {SILVER_MIN_WORD_COUNT})")
+            issues.append(
+                f"Text too short: {word_count} words (min: {SILVER_MIN_WORD_COUNT})"
+            )
         if word_count > SILVER_MAX_WORD_COUNT:
-            issues.append(f"Text suspiciously long: {word_count} words (max: {SILVER_MAX_WORD_COUNT})")
+            issues.append(
+                f"Text suspiciously long: {word_count} words (max: {SILVER_MAX_WORD_COUNT})"
+            )
 
     # URL check
     url = (doc.get("url") or "").strip()
@@ -55,7 +60,9 @@ def validate_document(doc: dict) -> tuple[bool, list[str]]:
 
     # Image URL validation
     image_url = doc.get("image_url")
-    if image_url and not (image_url.startswith("http://") or image_url.startswith("https://")):
+    if image_url and not (
+        image_url.startswith("http://") or image_url.startswith("https://")
+    ):
         issues.append(f"Invalid image_url: '{image_url}'")
 
     is_valid = len(issues) == 0
@@ -70,12 +77,14 @@ def clean_document(doc: dict) -> dict:
 
     # Clean image_urls — filter out invalid ones
     image_urls = []
-    for img in (doc.get("image_urls") or []):
+    for img in doc.get("image_urls") or []:
         if img and (img.startswith("http://") or img.startswith("https://")):
             image_urls.append(img.strip())
 
     image_url = doc.get("image_url")
-    if image_url and not (image_url.startswith("http://") or image_url.startswith("https://")):
+    if image_url and not (
+        image_url.startswith("http://") or image_url.startswith("https://")
+    ):
         image_url = image_urls[0] if image_urls else None
 
     return {
@@ -146,7 +155,9 @@ def process_silver():
                 url=url,
             )
 
-    logger.info(f"\n📈 Silver complete: {stats['cleaned']} cleaned, {stats['rejected']} rejected")
+    logger.info(
+        f"\n📈 Silver complete: {stats['cleaned']} cleaned, {stats['rejected']} rejected"
+    )
 
     insert_pipeline_log(
         stage="silver_batch",
@@ -170,10 +181,10 @@ def process_one_silver(bronze_id: str) -> dict:
     existing_silver = get_silver_by_bronze_id(doc["_str_id"])
     if existing_silver:
         return {
-            "success": True, 
+            "success": True,
             "silver_id": str(existing_silver["_id"]),
             "silver_doc": existing_silver,
-            "already_exists": True
+            "already_exists": True,
         }
 
     is_valid, issues = validate_document(doc)
@@ -196,7 +207,7 @@ def process_one_silver(bronze_id: str) -> dict:
             "success": True,
             "silver_id": silver_id,
             "silver_doc": silver_doc,
-            "already_exists": False
+            "already_exists": False,
         }
     except Exception as e:
         return {"success": False, "error": str(e)}

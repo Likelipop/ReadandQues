@@ -1,17 +1,18 @@
 #!/usr/bin/env python
 """Django's command-line utility for administrative tasks."""
+
 import os
 import sys
-
-
 from pathlib import Path
+
 _PROJECT_ROOT = Path(__file__).resolve().parent.parent
 if str(_PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(_PROJECT_ROOT))
 
+
 def main():
     """Run administrative tasks."""
-    os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'ReadAndQues.settings')
+    os.environ.setdefault("DJANGO_SETTINGS_MODULE", "ReadAndQues.settings")
     try:
         from django.core.management import execute_from_command_line
     except ImportError as exc:
@@ -23,5 +24,5 @@ def main():
     execute_from_command_line(sys.argv)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

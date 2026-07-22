@@ -12,10 +12,10 @@ from typing import Any, Dict, List
 
 from .config import ExamConfig
 
-
 # ============================================================
 # NODE 1 — ANALYZER PROMPT
 # ============================================================
+
 
 def build_analysis_prompt(text: str) -> str:
     return f"""You are a world-class literary scholar and reading specialist.
@@ -64,6 +64,7 @@ CRITICAL RULES:
 # NODE 2 — QUESTION PLANNER PROMPT
 # ============================================================
 
+
 def _format_analysis_context(analysis: Dict[str, Any]) -> str:
     """Serialize the most exam-relevant parts of SemanticAnalysis for prompt injection."""
     core = analysis.get("core", {})
@@ -74,9 +75,14 @@ def _format_analysis_context(analysis: Dict[str, Any]) -> str:
         f"Tone: {core.get('tone', '')}",
     ]
     if core.get("ambiguities"):
-        lines.append("Ambiguities (use for Not Given traps):\n  - " + "\n  - ".join(core["ambiguities"]))
+        lines.append(
+            "Ambiguities (use for Not Given traps):\n  - "
+            + "\n  - ".join(core["ambiguities"])
+        )
     if core.get("likely_misunderstood"):
-        lines.append("Likely Misunderstood:\n  - " + "\n  - ".join(core["likely_misunderstood"]))
+        lines.append(
+            "Likely Misunderstood:\n  - " + "\n  - ".join(core["likely_misunderstood"])
+        )
     if core.get("key_terms"):
         lines.append("Key Terms: " + json.dumps(core["key_terms"], ensure_ascii=False))
 
@@ -84,7 +90,10 @@ def _format_analysis_context(analysis: Dict[str, Any]) -> str:
     for genre_key in ("narrative", "poetry", "scientific", "persuasive"):
         genre_data = analysis.get(genre_key)
         if genre_data:
-            lines.append(f"\n[{genre_key.upper()} ANALYSIS]\n" + json.dumps(genre_data, ensure_ascii=False, indent=2))
+            lines.append(
+                f"\n[{genre_key.upper()} ANALYSIS]\n"
+                + json.dumps(genre_data, ensure_ascii=False, indent=2)
+            )
             break
     return "\n".join(lines)
 
@@ -102,16 +111,16 @@ def build_question_prompt(
     # But FIB is always exactly 1 task worth 5 sub-answers → counts as 1 quiz item
     if total <= 7:
         ynng_count = total - 3
-        fib_count  = 1      # 1 summary completion task (worth 5 blanks)
-        mcq_count  = 2
+        fib_count = 1  # 1 summary completion task (worth 5 blanks)
+        mcq_count = 2
     elif total <= 10:
         ynng_count = total - 4
-        fib_count  = 1
-        mcq_count  = 3
+        fib_count = 1
+        mcq_count = 3
     else:  # 14+
         ynng_count = total - 5
-        fib_count  = 1
-        mcq_count  = 4
+        fib_count = 1
+        mcq_count = 4
 
     return f"""You are a world-class IELTS Exam Architect.
 
@@ -188,6 +197,7 @@ GLOBAL RULES (all types):
 # ============================================================
 # NODE 3 — VERIFIER PROMPT
 # ============================================================
+
 
 def build_verifier_prompt(text: str, quizzes: List[Dict[str, Any]]) -> str:
     quizzes_json = json.dumps(quizzes, ensure_ascii=False, indent=2)

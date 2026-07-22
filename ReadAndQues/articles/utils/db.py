@@ -1,7 +1,7 @@
 from bson import ObjectId
+from django.conf import settings
 from pymongo import MongoClient
 from pymongo.server_api import ServerApi
-from django.conf import settings
 
 
 def get_mongo_db():

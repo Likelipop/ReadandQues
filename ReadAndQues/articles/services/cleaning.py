@@ -3,12 +3,14 @@ articles/services/cleaning.py — Article text formatting and document cleaning 
 """
 
 import logging
-from typing import Dict, Any, Tuple
+from typing import Any, Dict, Tuple
 
 logger = logging.getLogger(__name__)
 
 
-def clean_and_validate_article(crawl_result: Dict[str, Any]) -> Tuple[bool, str, Dict[str, Any]]:
+def clean_and_validate_article(
+    crawl_result: Dict[str, Any],
+) -> Tuple[bool, str, Dict[str, Any]]:
     """
     Formats and extracts cleaned document data from crawl_result.
     Validation for min/max word count, title, and content non-emptiness is handled

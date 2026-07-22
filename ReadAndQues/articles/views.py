@@ -6,14 +6,14 @@ to the services layer, and rendering templates or returning JSON responses.
 No heavy LLM or long-running threading logic is performed directly inside views.
 """
 
-from django.shortcuts import render, redirect
+from database.Mongo.crud import get_article_document_by_id
 from django.contrib import messages
-from django.http import JsonResponse, HttpResponseNotAllowed
+from django.http import HttpResponseNotAllowed, JsonResponse
+from django.shortcuts import redirect, render
 from pydantic import ValidationError
 
 from .models import ArticleMongoModel
 from .services import import_and_trigger_pipeline
-from database.Mongo.crud import get_article_document_by_id
 
 
 def import_article_view(request):
@@ -33,10 +33,10 @@ def import_article_view(request):
 
         if not is_success:
             if request.headers.get("x-requested-with") == "XMLHttpRequest":
-                return JsonResponse({"status": "error", 
-                                     "message": error_msg}, 
-                                    status=400)
-            
+                return JsonResponse(
+                    {"status": "error", "message": error_msg}, status=400
+                )
+
             messages.error(request, error_msg)
             return render(request, "articles/import.html")
 
@@ -58,7 +58,9 @@ def article_status(request, pk):
 
     doc = get_article_document_by_id(pk)
     if not doc:
-        return JsonResponse({"status": "error", "message": "Không tìm thấy bài báo."}, status=404)
+        return JsonResponse(
+            {"status": "error", "message": "Không tìm thấy bài báo."}, status=404
+        )
 
     status = doc.get("status", "pending")
     payload = {
@@ -99,20 +101,26 @@ def article_detail(request, pk):
 
     from database.Chroma.operations import get_related_articles_via_chroma
     from database.Mongo.crud import get_completed_articles
+
     related_articles = get_related_articles_via_chroma(article, exclude_id=str(pk))
     if not related_articles:
         all_completed = get_completed_articles(limit=10)
-        related_articles = [a for a in all_completed if str(a.get("id")) != str(pk) and str(a.get("_id")) != str(pk)][:5]
+        related_articles = [
+            a
+            for a in all_completed
+            if str(a.get("id")) != str(pk) and str(a.get("_id")) != str(pk)
+        ][:5]
 
-    return render(request, "articles/detail.html", {
-        "article": article,
-        "related_articles": related_articles
-    })
+    return render(
+        request,
+        "articles/detail.html",
+        {"article": article, "related_articles": related_articles},
+    )
 
 
 def all_tests_view(request):
-    from django.core.paginator import Paginator
     from database.Mongo.crud import get_completed_articles
+    from django.core.paginator import Paginator
 
     selected_theme = request.GET.get("theme", "All")
     selected_genre = request.GET.get("genre", "All")
@@ -122,7 +130,18 @@ def all_tests_view(request):
         genre=selected_genre if selected_genre != "All" else None,
     )
 
-    themes = ["All", "Economy", "Society", "Education", "Technology", "Science", "Environment", "Culture", "Health", "General"]
+    themes = [
+        "All",
+        "Economy",
+        "Society",
+        "Education",
+        "Technology",
+        "Science",
+        "Environment",
+        "Culture",
+        "Health",
+        "General",
+    ]
     genres = ["All", "scientific", "narrative", "persuasive", "poetry", "general"]
 
     paginator = Paginator(articles, 12)
@@ -140,7 +159,9 @@ def all_tests_view(request):
 
 
 from datetime import datetime
+
 from django.views.decorators.csrf import csrf_exempt
+
 
 @csrf_exempt
 def submit_exam_attempt(request, pk):
@@ -149,6 +170,7 @@ def submit_exam_attempt(request, pk):
 
     try:
         import json
+
         data = json.loads(request.body)
         score = data.get("score", 0)
         total_questions = data.get("total_questions", 0)
@@ -166,31 +188,37 @@ def submit_exam_attempt(request, pk):
             "answers": answers,
             "highlighted_markdown": highlighted_markdown,
             "elapsed_time": elapsed_time,
-            "submitted_at": datetime.utcnow()
+            "submitted_at": datetime.utcnow(),
         }
 
         # validate with pydantic
         from .models import AttemptMongoModel
+
         model = AttemptMongoModel(**attempt_data)
 
         from database.Mongo.crud import save_exam_attempt
+
         inserted_id = save_exam_attempt(model.model_dump(by_alias=True, exclude={"id"}))
         if inserted_id:
-            from .services.marker_search import get_related_articles_from_markers
+            from .services.marker_search import \
+                get_related_articles_from_markers
+
             related = get_related_articles_from_markers(
                 highlighted_markdown=highlighted_markdown,
                 article_id=str(pk),
                 limit=5,
             )
-            return JsonResponse({
-                "status": "success", 
-                "id": inserted_id,
-                "related_articles": related
-            })
+            return JsonResponse(
+                {"status": "success", "id": inserted_id, "related_articles": related}
+            )
         else:
-            return JsonResponse({"status": "error", "message": "Failed to save attempt to DB"}, status=500)
+            return JsonResponse(
+                {"status": "error", "message": "Failed to save attempt to DB"},
+                status=500,
+            )
 
     except Exception as e:
         import traceback
+
         traceback.print_exc()
         return JsonResponse({"status": "error", "message": str(e)}, status=400)

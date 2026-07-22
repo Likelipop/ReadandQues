@@ -6,23 +6,23 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('accounts', '0003_userprofile_avg_incorrect_questions_and_more'),
+        ("accounts", "0003_userprofile_avg_incorrect_questions_and_more"),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='userprofile',
-            name='last_login_date',
+            model_name="userprofile",
+            name="last_login_date",
             field=models.DateField(blank=True, null=True),
         ),
         migrations.AddField(
-            model_name='userprofile',
-            name='login_days_count',
+            model_name="userprofile",
+            name="login_days_count",
             field=models.PositiveIntegerField(default=0),
         ),
         migrations.AddField(
-            model_name='userprofile',
-            name='stars',
+            model_name="userprofile",
+            name="stars",
             field=models.PositiveIntegerField(default=10),
         ),
     ]

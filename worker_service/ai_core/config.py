@@ -23,9 +23,7 @@ _ENDPOINT = os.getenv(
 _MODEL = os.getenv("AZURE_DEPLOYMENT_NAME", "gpt-5-mini")
 
 if not _API_KEY:
-    raise ValueError(
-        "Missing AZURE_OPENAI_API_KEY in .env or environment variables."
-    )
+    raise ValueError("Missing AZURE_OPENAI_API_KEY in .env or environment variables.")
 
 
 class ExamConfig(BaseModel):

@@ -1,9 +1,11 @@
 import datetime
-from django.test import TestCase, Client, override_settings
-from django.contrib.auth.models import User
-from django.utils import timezone
-from django.urls import reverse
+
 from django.contrib.auth import get_user_model
+from django.contrib.auth.models import User
+from django.test import Client, TestCase, override_settings
+from django.urls import reverse
+from django.utils import timezone
+
 from .models import EmailVerification
 
 
@@ -19,16 +21,17 @@ class AccountsAuthTests(TestCase):
     def test_dual_login(self):
         """Verify that users can log in using either their username or email."""
         # Create an active test user
-        user = User.objects.create_user(username="testuser", email="test@example.com", password="password123")
+        user = User.objects.create_user(
+            username="testuser", email="test@example.com", password="password123"
+        )
         user.is_active = True
         user.save()
 
         # 1. Login with username
         self.bypass_rate_limit()
-        response = self.client.post(reverse("login"), {
-            "username": "testuser",
-            "password": "password123"
-        })
+        response = self.client.post(
+            reverse("login"), {"username": "testuser", "password": "password123"}
+        )
         self.assertEqual(response.status_code, 302)
         self.assertRedirects(response, reverse("home"))
 
@@ -37,21 +40,24 @@ class AccountsAuthTests(TestCase):
 
         # 2. Login with email
         self.bypass_rate_limit()
-        response = self.client.post(reverse("login"), {
-            "username": "test@example.com",
-            "password": "password123"
-        })
+        response = self.client.post(
+            reverse("login"),
+            {"username": "test@example.com", "password": "password123"},
+        )
         self.assertEqual(response.status_code, 302)
         self.assertRedirects(response, reverse("home"))
 
     def test_registration_flow_and_activation(self):
         """Verify that registration creates an inactive user and correct code activates the user."""
-        response = self.client.post(reverse("register"), {
-            "username": "newuser",
-            "email": "new@example.com",
-            "password": "password123",
-            "confirm_password": "password123"
-        })
+        response = self.client.post(
+            reverse("register"),
+            {
+                "username": "newuser",
+                "email": "new@example.com",
+                "password": "password123",
+                "confirm_password": "password123",
+            },
+        )
         # Should redirect to verify email page
         self.assertEqual(response.status_code, 302)
         self.assertRedirects(response, reverse("verify_email"))
@@ -67,9 +73,9 @@ class AccountsAuthTests(TestCase):
 
         # Submit the correct verification code
         self.bypass_rate_limit()
-        response = self.client.post(reverse("verify_email"), {
-            "code": verification.code
-        })
+        response = self.client.post(
+            reverse("verify_email"), {"code": verification.code}
+        )
         self.assertEqual(response.status_code, 302)
         self.assertRedirects(response, reverse("home"))
 
@@ -84,14 +90,18 @@ class AccountsAuthTests(TestCase):
     def test_verification_errors(self):
         """Verify handling of incorrect and expired verification codes."""
         # Create inactive user and verification record
-        user = User.objects.create_user(username="inactiveuser", email="inactive@example.com", password="password123")
+        user = User.objects.create_user(
+            username="inactiveuser",
+            email="inactive@example.com",
+            password="password123",
+        )
         user.is_active = False
         user.save()
 
         verification = EmailVerification.objects.create(
             user=user,
             code="123456",
-            expires_at=timezone.now() + datetime.timedelta(minutes=5)
+            expires_at=timezone.now() + datetime.timedelta(minutes=5),
         )
 
         # Set session to simulate completed registration form
@@ -101,9 +111,7 @@ class AccountsAuthTests(TestCase):
 
         # 1. Post incorrect code
         self.bypass_rate_limit()
-        response = self.client.post(reverse("verify_email"), {
-            "code": "654321"
-        })
+        response = self.client.post(reverse("verify_email"), {"code": "654321"})
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Mã xác thực không chính xác.")
         user.refresh_from_db()
@@ -114,9 +122,7 @@ class AccountsAuthTests(TestCase):
         verification.save()
 
         self.bypass_rate_limit()
-        response = self.client.post(reverse("verify_email"), {
-            "code": "123456"
-        })
+        response = self.client.post(reverse("verify_email"), {"code": "123456"})
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Mã xác thực đã hết hạn.")
         user.refresh_from_db()
@@ -124,14 +130,16 @@ class AccountsAuthTests(TestCase):
 
     def test_resend_cooldown_rate_limit(self):
         """Verify that resending verification code is rate limited to 60 seconds."""
-        user = User.objects.create_user(username="resenduser", email="resend@example.com", password="password123")
+        user = User.objects.create_user(
+            username="resenduser", email="resend@example.com", password="password123"
+        )
         user.is_active = False
         user.save()
 
         verification = EmailVerification.objects.create(
             user=user,
             code="111111",
-            expires_at=timezone.now() + datetime.timedelta(minutes=5)
+            expires_at=timezone.now() + datetime.timedelta(minutes=5),
         )
 
         session = self.client.session
@@ -160,28 +168,34 @@ class AccountsAuthTests(TestCase):
         """Verify that registering with a duplicate username or email that is inactive overwrites it."""
         # Register user first time
         self.bypass_rate_limit()
-        self.client.post(reverse("register"), {
-            "username": "overlapuser",
-            "email": "overlap@example.com",
-            "password": "password123",
-            "confirm_password": "password123"
-        })
+        self.client.post(
+            reverse("register"),
+            {
+                "username": "overlapuser",
+                "email": "overlap@example.com",
+                "password": "password123",
+                "confirm_password": "password123",
+            },
+        )
 
         # Register same username and email a second time with a different password
         self.bypass_rate_limit()
-        response = self.client.post(reverse("register"), {
-            "username": "overlapuser",
-            "email": "overlap@example.com",
-            "password": "newpassword456",
-            "confirm_password": "newpassword456"
-        })
+        response = self.client.post(
+            reverse("register"),
+            {
+                "username": "overlapuser",
+                "email": "overlap@example.com",
+                "password": "newpassword456",
+                "confirm_password": "newpassword456",
+            },
+        )
         self.assertEqual(response.status_code, 302)
         self.assertRedirects(response, reverse("verify_email"))
 
         # Verify only one user exists in the database
         users = User.objects.filter(username="overlapuser")
         self.assertEqual(users.count(), 1)
-        
+
         user = users.first()
         self.assertFalse(user.is_active)
         self.assertEqual(user.email, "overlap@example.com")
@@ -193,7 +207,9 @@ class AccountsAuthTests(TestCase):
 class ProfileAndStarsTests(TestCase):
     def setUp(self):
         self.client = Client()
-        self.user = User.objects.create_user(username="testuser", email="test@example.com", password="password123")
+        self.user = User.objects.create_user(
+            username="testuser", email="test@example.com", password="password123"
+        )
         self.user.is_active = True
         self.user.save()
         self.client.force_login(self.user)
@@ -201,17 +217,22 @@ class ProfileAndStarsTests(TestCase):
     @override_settings(DEBUG=True)
     def test_default_stars_allocation_dev(self):
         """Verify that default star allocation is 100 in dev (settings.DEBUG is True)."""
-        dev_user = User.objects.create_user(username="devuser", email="dev@example.com", password="password123")
+        dev_user = User.objects.create_user(
+            username="devuser", email="dev@example.com", password="password123"
+        )
         self.assertEqual(dev_user.profile.stars, 100)
 
     def test_default_stars_allocation_prod(self):
         """Verify that default star allocation is 10 in prod (settings.DEBUG is False)."""
         from django.conf import settings
+
         # Temporarily mock settings.DEBUG to False
         original_debug = settings.DEBUG
         settings.DEBUG = False
         try:
-            prod_user = User.objects.create_user(username="produser", email="prod@example.com", password="password123")
+            prod_user = User.objects.create_user(
+                username="produser", email="prod@example.com", password="password123"
+            )
             self.assertEqual(prod_user.profile.stars, 10)
         finally:
             settings.DEBUG = original_debug
@@ -220,14 +241,15 @@ class ProfileAndStarsTests(TestCase):
         """Verify that login_days_count increments only once per day."""
         profile = self.user.profile
         self.assertEqual(profile.login_days_count, 0)
-        
+
         # Trigger login signal
         from django.contrib.auth.signals import user_logged_in
+
         user_logged_in.send(sender=User, request=None, user=self.user)
-        
+
         profile.refresh_from_db()
         self.assertEqual(profile.login_days_count, 1)
-        
+
         # Same day login -> should not increment
         user_logged_in.send(sender=User, request=None, user=self.user)
         profile.refresh_from_db()
@@ -235,26 +257,32 @@ class ProfileAndStarsTests(TestCase):
 
     def test_change_password_success(self):
         """Verify that a user can successfully change their password."""
-        response = self.client.post(reverse("profile"), {
-            "old_password": "password123",
-            "new_password1": "newsecurepassword123",
-            "new_password2": "newsecurepassword123",
-        })
+        response = self.client.post(
+            reverse("profile"),
+            {
+                "old_password": "password123",
+                "new_password1": "newsecurepassword123",
+                "new_password2": "newsecurepassword123",
+            },
+        )
         self.assertEqual(response.status_code, 302)
         self.assertRedirects(response, reverse("profile"))
-        
+
         # Check password updated
         self.user.refresh_from_db()
         self.assertTrue(self.user.check_password("newsecurepassword123"))
 
     def test_change_password_mismatch(self):
         """Verify password change fails when new passwords do not match."""
-        response = self.client.post(reverse("profile"), {
-            "old_password": "password123",
-            "new_password1": "newsecurepassword123",
-            "new_password2": "newsecurepassword456",
-        })
-        self.assertEqual(response.status_code, 200) # Form errors displayed
+        response = self.client.post(
+            reverse("profile"),
+            {
+                "old_password": "password123",
+                "new_password1": "newsecurepassword123",
+                "new_password2": "newsecurepassword456",
+            },
+        )
+        self.assertEqual(response.status_code, 200)  # Form errors displayed
         self.assertContains(response, "Vui lòng sửa các lỗi bên dưới")
 
         # Verify old password still works
@@ -268,9 +296,9 @@ class ProfileAndStarsTests(TestCase):
         profile.save()
 
         # Regular post attempt
-        response = self.client.post(reverse("import_article"), {
-            "url": "https://vietnamnews.vn/economy/123456"
-        })
+        response = self.client.post(
+            reverse("import_article"), {"url": "https://vietnamnews.vn/economy/123456"}
+        )
         # Should render import page with errors
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Bạn đã hết Star!")
@@ -279,8 +307,7 @@ class ProfileAndStarsTests(TestCase):
         response = self.client.post(
             reverse("import_article"),
             {"url": "https://vietnamnews.vn/economy/123456"},
-            HTTP_X_REQUESTED_WITH="XMLHttpRequest"
+            HTTP_X_REQUESTED_WITH="XMLHttpRequest",
         )
         self.assertEqual(response.status_code, 403)
         self.assertEqual(response.json().get("message"), "NO_STARS")
-

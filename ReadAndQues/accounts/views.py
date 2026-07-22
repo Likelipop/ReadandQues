@@ -1,36 +1,38 @@
-import time
-import re
-import random
 import datetime
-from django.shortcuts import render, redirect
+import random
+import re
+import time
+
+from database.Mongo.crud import get_articles_by_user, get_completed_articles
+from django.conf import settings
 from django.contrib import messages
-from django.contrib.auth import authenticate, login, logout, update_session_auth_hash
+from django.contrib.auth import (authenticate, login, logout,
+                                 update_session_auth_hash)
+from django.contrib.auth.decorators import login_required
 from django.contrib.auth.forms import PasswordChangeForm
 from django.contrib.auth.models import User
-from django.contrib.auth.decorators import login_required
 from django.core.mail import send_mail
+from django.shortcuts import redirect, render
 from django.utils import timezone
-from django.conf import settings
-from database.Mongo.crud import get_articles_by_user, get_completed_articles
+
 from .models import EmailVerification
 
 
 def home_view(request):
     trending_articles = get_completed_articles(limit=6)
     user_articles = []
-    
+
     if request.user.is_authenticated:
         user_articles = get_articles_by_user(request.user.id)
         profile = request.user.profile
         profile.total_articles_imported = len(user_articles)
         profile.save()
-        
+
     context = {
         "trending_articles": trending_articles,
         "user_articles": user_articles,
     }
     return render(request, "accounts/home.html", context)
-
 
 
 def register_view(request):
@@ -45,7 +47,9 @@ def register_view(request):
         last_submit = request.session.get("last_submit_at")
         now = time.time()
         if last_submit and now - last_submit < 3:
-            errors["general"] = "Yêu cầu xử lý quá nhanh. Vui lòng thử lại sau giây lát."
+            errors["general"] = (
+                "Yêu cầu xử lý quá nhanh. Vui lòng thử lại sau giây lát."
+            )
         else:
             request.session["last_submit_at"] = now
 
@@ -69,7 +73,9 @@ def register_view(request):
             if not username:
                 errors["username"] = "Tên đăng nhập không được để trống."
             elif not re.match(r"^[a-zA-Z0-9_]+$", username):
-                errors["username"] = "Tên đăng nhập chỉ chứa chữ cái, chữ số và dấu gạch dưới."
+                errors["username"] = (
+                    "Tên đăng nhập chỉ chứa chữ cái, chữ số và dấu gạch dưới."
+                )
             elif len(username) < 4:
                 errors["username"] = "Tên đăng nhập phải dài ít nhất 4 ký tự."
             elif User.objects.filter(username=username, is_active=True).exists():
@@ -102,7 +108,9 @@ def register_view(request):
             User.objects.filter(email=email, is_active=False).delete()
 
             # Create inactive user
-            user = User.objects.create_user(username=username, email=email, password=password)
+            user = User.objects.create_user(
+                username=username, email=email, password=password
+            )
             user.is_active = False
             user.save()
 
@@ -112,8 +120,7 @@ def register_view(request):
 
             # Save verification record
             EmailVerification.objects.update_or_create(
-                user=user,
-                defaults={"code": code, "expires_at": expires_at}
+                user=user, defaults={"code": code, "expires_at": expires_at}
             )
 
             # Send code via email with safe fallback
@@ -123,7 +130,7 @@ def register_view(request):
                     f"Mã xác thực của bạn là: {code}. Mã có hiệu lực trong 5 phút.",
                     settings.DEFAULT_FROM_EMAIL,
                     [email],
-                    fail_silently=False
+                    fail_silently=False,
                 )
             except Exception as e:
                 # Fallback print to terminal console
@@ -131,13 +138,20 @@ def register_view(request):
                 print(f"Mã xác thực đăng ký tài khoản")
                 print(f"To: {email}")
                 print(f"Mã xác thực của bạn là: {code}. Mã có hiệu lực trong 5 phút.\n")
-                messages.warning(request, "Hệ thống gặp sự cố khi gửi email xác thực. Vui lòng kiểm tra terminal console để lấy mã OTP.")
+                messages.warning(
+                    request,
+                    "Hệ thống gặp sự cố khi gửi email xác thực. Vui lòng kiểm tra terminal console để lấy mã OTP.",
+                )
 
             request.session["verification_user_id"] = user.id
-            messages.success(request, "Mã xác thực đã được gửi tới email của bạn. Vui lòng xác thực.")
+            messages.success(
+                request, "Mã xác thực đã được gửi tới email của bạn. Vui lòng xác thực."
+            )
             return redirect("verify_email")
 
-    return render(request, "accounts/register.html", {"errors": errors, "sticky": sticky})
+    return render(
+        request, "accounts/register.html", {"errors": errors, "sticky": sticky}
+    )
 
 
 def verify_email_view(request):
@@ -164,7 +178,9 @@ def verify_email_view(request):
         last_submit = request.session.get("last_submit_at")
         now = time.time()
         if last_submit and now - last_submit < 3:
-            errors["general"] = "Yêu cầu xử lý quá nhanh. Vui lòng thử lại sau giây lát."
+            errors["general"] = (
+                "Yêu cầu xử lý quá nhanh. Vui lòng thử lại sau giây lát."
+            )
         else:
             request.session["last_submit_at"] = now
 
@@ -186,24 +202,32 @@ def verify_email_view(request):
             try:
                 verification = user.verification
                 if verification.is_expired():
-                    errors["general"] = "Mã xác thực đã hết hạn. Vui lòng gửi lại mã mới."
+                    errors["general"] = (
+                        "Mã xác thực đã hết hạn. Vui lòng gửi lại mã mới."
+                    )
                 elif verification.code != code:
                     errors["code"] = "Mã xác thực không chính xác."
             except EmailVerification.DoesNotExist:
-                errors["general"] = "Không tìm thấy yêu cầu xác thực. Vui lòng gửi lại mã mới."
+                errors["general"] = (
+                    "Không tìm thấy yêu cầu xác thực. Vui lòng gửi lại mã mới."
+                )
 
         if not errors:
             user.is_active = True
             user.save()
             user.verification.delete()
-            
+
             # Login the user
             login(request, user, backend="accounts.backends.UsernameOrEmailBackend")
             del request.session["verification_user_id"]
             messages.success(request, "Xác thực tài khoản thành công! Chào mừng bạn.")
             return redirect("home")
 
-    return render(request, "accounts/verify.html", {"errors": errors, "sticky": sticky, "user_email": user.email})
+    return render(
+        request,
+        "accounts/verify.html",
+        {"errors": errors, "sticky": sticky, "user_email": user.email},
+    )
 
 
 def resend_verification_view(request):
@@ -227,7 +251,9 @@ def resend_verification_view(request):
         time_diff = timezone.now() - verification.created_at
         if time_diff.total_seconds() < 60:
             wait_seconds = int(60 - time_diff.total_seconds())
-            messages.error(request, f"Vui lòng đợi {wait_seconds} giây trước khi gửi lại mã.")
+            messages.error(
+                request, f"Vui lòng đợi {wait_seconds} giây trước khi gửi lại mã."
+            )
             return redirect("verify_email")
     except EmailVerification.DoesNotExist:
         verification = None
@@ -249,7 +275,7 @@ def resend_verification_view(request):
             f"Mã xác thực mới của bạn là: {code}. Mã có hiệu lực trong 5 phút.",
             settings.DEFAULT_FROM_EMAIL,
             [user.email],
-            fail_silently=False
+            fail_silently=False,
         )
     except Exception as e:
         # Fallback print to terminal console
@@ -257,7 +283,10 @@ def resend_verification_view(request):
         print(f"Mã xác thực đăng ký tài khoản (Gửi lại)")
         print(f"To: {user.email}")
         print(f"Mã xác thực mới của bạn là: {code}. Mã có hiệu lực trong 5 phút.\n")
-        messages.warning(request, "Hệ thống gặp sự cố khi gửi email xác thực. Vui lòng kiểm tra terminal console để lấy mã OTP.")
+        messages.warning(
+            request,
+            "Hệ thống gặp sự cố khi gửi email xác thực. Vui lòng kiểm tra terminal console để lấy mã OTP.",
+        )
 
     messages.success(request, "Mã xác thực mới đã được gửi tới email của bạn.")
     return redirect("verify_email")
@@ -337,4 +366,3 @@ def profile_view(request):
         "password_form": password_form,
     }
     return render(request, "accounts/profile.html", context)
-

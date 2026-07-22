@@ -2,6 +2,7 @@
 articles/utils/formatter.py — Text formatting utilities.
 """
 
+
 def to_markdown(text: str) -> str:
     """
     Format raw article text into Markdown format:
@@ -13,7 +14,7 @@ def to_markdown(text: str) -> str:
     if not text:
         return ""
 
-    raw_lines = text.split('\n')
+    raw_lines = text.split("\n")
     formatted_paragraphs = []
     in_bullet_mode = False
 
@@ -25,21 +26,21 @@ def to_markdown(text: str) -> str:
         if in_bullet_mode:
             words = cleaned.split()
             word_count = len(words)
-            sentences = [s for s in cleaned.split('.') if s.strip()]
+            sentences = [s for s in cleaned.split(".") if s.strip()]
             sentence_count = len(sentences)
 
             if word_count < 13 and sentence_count <= 2:
-                if not cleaned.startswith(('-', '*', '+', '•')):
+                if not cleaned.startswith(("-", "*", "+", "•")):
                     cleaned = f"- {cleaned}"
                 formatted_paragraphs.append(cleaned)
-                if cleaned.endswith(':'):
+                if cleaned.endswith(":"):
                     in_bullet_mode = True
                 continue
             else:
                 in_bullet_mode = False
 
         formatted_paragraphs.append(cleaned)
-        if cleaned.endswith(':'):
+        if cleaned.endswith(":"):
             in_bullet_mode = True
 
     if not formatted_paragraphs:
@@ -52,9 +53,11 @@ def to_markdown(text: str) -> str:
             result_lines.append(line)
         else:
             prev_line = formatted_paragraphs[i - 1]
-            if line.startswith('- ') and (prev_line.startswith('- ') or prev_line.endswith(':')):
-                result_lines.append('\n' + line)
+            if line.startswith("- ") and (
+                prev_line.startswith("- ") or prev_line.endswith(":")
+            ):
+                result_lines.append("\n" + line)
             else:
-                result_lines.append('\n\n' + line)
+                result_lines.append("\n\n" + line)
 
-    return ''.join(result_lines)
+    return "".join(result_lines)
