@@ -11,14 +11,42 @@ logger = logging.getLogger(__name__)
 
 
 @shared_task(name='worker_service.generate_exam_task', bind=True, max_retries=3, default_retry_delay=30)
-def generate_exam_task(self, article_id: str, original_text: str, title: str, url: str) -> dict[str, Any]:
+def generate_exam_task(self, article_id: str, url: str) -> dict[str, Any]:
     """Run the heavy AI exam generation in a dedicated background worker."""
     from database.Chroma.operations import add_article_vector
     from database.Mongo.crud import update_article_document
     from worker_service.data_pipeline.gold import run_ai_pipeline
+    from database.Crawler.scraper import crawl_article_content
+    from articles.services.cleaning import clean_and_validate_article
 
-    logger.info('🔄 Starting Celery exam task for article_id=%s', article_id)
+    logger.info('🔄 Starting Celery crawl+exam task for article_id=%s', article_id)
 
+    # 1. Crawl
+    crawl_result = crawl_article_content(url)
+    if not crawl_result.get("success"):
+        update_article_document(article_id, {
+            'status': 'failed',
+            'error_message': crawl_result.get("error", "Lỗi khi cào dữ liệu.")
+        })
+        return {'status': 'failed', 'article_id': article_id}
+    
+    # 2. Clean
+    is_valid, error_msg, cleaned_doc = clean_and_validate_article(crawl_result)
+    if not is_valid:
+        update_article_document(article_id, {
+            'status': 'failed',
+            'error_message': error_msg
+        })
+        return {'status': 'failed', 'article_id': article_id}
+        
+    # 3. Update DB to 'processing' and save content
+    cleaned_doc['status'] = 'processing'
+    update_article_document(article_id, cleaned_doc)
+    
+    original_text = cleaned_doc.get("original_text", "")
+    title = cleaned_doc.get("title", "")
+
+    # 4. AI Pipeline
     ai_result = run_ai_pipeline(original_text)
     if ai_result:
         update_data = ai_result

@@ -179,8 +179,13 @@
                 {% else %}
                     <div id="processing-right" class="bg-white p-8 rounded-lg shadow-sm border border-gray-200 text-center">
                         <div class="h-12 w-12 mx-auto rounded-full border-4 border-blue-600 border-t-transparent animate-spin mb-4"></div>
-                        <p class="text-gray-700 font-semibold">Generating questions... You can keep reading the passage on the left.</p>
-                        <p class="text-sm text-gray-500 mt-2">When generation completes, the questions will appear here automatically.</p>
+                        {% if article.status == 'crawling' %}
+                            <p class="text-gray-700 font-semibold">Fetching article content...</p>
+                            <p class="text-sm text-gray-500 mt-2">Please wait while we download and clean the article text.</p>
+                        {% else %}
+                            <p class="text-gray-700 font-semibold">Generating questions... You can keep reading the passage on the left.</p>
+                            <p class="text-sm text-gray-500 mt-2">When generation completes, the questions will appear here automatically.</p>
+                        {% endif %}
                     </div>
                 {% endif %}
 
@@ -418,7 +423,9 @@
                             window.location.reload();
                         } else if (data.status === 'failed' || data.status === 'error') {
                             const proc = document.getElementById('processing-right');
-                            if (proc) proc.innerHTML = '<p class="text-red-600 font-semibold">Failed to generate questions. Please try again later.</p>';
+                            if (proc) proc.innerHTML = `<p class="text-red-600 font-semibold">${data.message || 'Failed to process. Please try again later.'}</p>`;
+                        } else if (data.status === 'processing' && '{{ article.status }}' === 'crawling') {
+                            window.location.reload();
                         } else {
                             setTimeout(poll, 2500);
                         }
