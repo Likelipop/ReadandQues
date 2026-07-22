@@ -1,81 +1,93 @@
 import threading
 from datetime import datetime
 
+from django.shortcuts import render, redirect
 from django.contrib import messages
-from django.contrib.auth.decorators import login_required
-from django.http import HttpResponseNotAllowed, JsonResponse
-from django.shortcuts import redirect, render
-from pydantic import ValidationError
+from django.http import JsonResponse, HttpResponseNotAllowed
 
 from .models import ArticleMongoModel
-
-from database.Mongo.crud import (
-    get_article_document_by_id,
-    get_articles_by_user,
-    insert_article_document,
-    update_article_document,
-    get_completed_articles,
-    save_exam_attempt,
-)
-
-def _is_ajax(request) -> bool:
-    return request.headers.get("x-requested-with") == "XMLHttpRequest"
+from .services import process_and_analyze_article
+from .utils.db import insert_article_document, get_article_document_by_id, update_article_document
 
 
-@login_required(login_url="login")
+def _run_article_generation(url: str, pk: str) -> None:
+    try:
+        payload = process_and_analyze_article(url)
+        if not payload:
+            update_article_document(pk, {
+                "status": "failed",
+                "error_message": "Không thể trích xuất nội dung từ bài báo này.",
+            })
+            return
+
+        update_article_document(pk, payload)
+    except Exception as e:
+        update_article_document(pk, {
+            "status": "failed",
+            "error_message": str(e),
+        })
+
+
 def import_article_view(request):
-    if request.method != "POST":
-        return render(request, "articles/import.html", {"stars": request.user.profile.stars})
+    """
+    On POST: do a quick crawl synchronously to get title + original_text so user can read immediately.
+    Insert a pending document (status="pending") containing url, title, original_text.
+    Start full async LangGraph processing in background which will update the document to include chunks/exams and status="completed".
 
-    # 1. Deduct Star
-    from .services import deduct_user_star, refund_user_star, import_and_trigger_pipeline
+    Behavior:
+    - If request is AJAX (X-Requested-With), return JSON (useful for API clients)
+    - Otherwise redirect to the article_detail page immediately so user can start reading.
+    """
+    if request.method == "POST":
+        url = request.POST.get("url", "").strip()
+        if not url:
+            if request.headers.get("x-requested-with") == "XMLHttpRequest":
+                return JsonResponse({"status": "error", "message": "Vui lòng nhập một URL bài báo hợp lệ!"}, status=400)
 
-    success, err_msg = deduct_user_star(request.user)
-    if not success:
-        if _is_ajax(request):
-            return JsonResponse({"status": "error", "message": err_msg}, status=403 if err_msg == "NO_STARS" else 500)
-        messages.error(request, "Bạn đã hết Star! Vui lòng liên hệ để yêu cầu thêm star." if err_msg == "NO_STARS" else err_msg)
-        return render(request, "articles/import.html", {"stars": request.user.profile.stars if request.user.profile else 0})
+            messages.error(request, "Vui lòng nhập một URL bài báo hợp lệ!")
+            return render(request, "articles/import.html")
 
-    url = request.POST.get("url", "").strip()
+        # Quick synchronous crawl to give user immediate reading content
+        from .utils.crawler import crawl_article_content
+        crawl_res = crawl_article_content(url)
 
-    # 2. Trigger Pipeline
-    success, err_msg, inserted_id = import_and_trigger_pipeline(url, request.user.id)
+        title = crawl_res.get("title") if crawl_res.get("success") else ""
+        original_text = crawl_res.get("content") if crawl_res.get("success") else ""
 
-    if not success:
-        refund_user_star(request.user)
-        if _is_ajax(request):
-            return JsonResponse({"status": "error", "message": err_msg}, status=400)
-        messages.error(request, err_msg)
-        return render(request, "articles/import.html", {"stars": request.user.profile.stars})
+        pending_document = {
+            "url": url,
+            "title": title,
+            "original_text": original_text,
+            "status": "pending",
+            "created_at": datetime.utcnow(),
+        }
 
-    if _is_ajax(request):
-        return JsonResponse({"status": "started", "id": inserted_id})
+        inserted_id = insert_article_document(pending_document)
 
-    return redirect("article_detail", pk=inserted_id)
+        # Start longer-running full processing in background (LangGraph etc.)
+        thread = threading.Thread(target=_run_article_generation, args=(url, inserted_id), daemon=True)
+        thread.start()
+
+        # If AJAX, return immediate JSON with id; otherwise redirect straight to reading view
+        if request.headers.get("x-requested-with") == "XMLHttpRequest":
+            return JsonResponse({"status": "started", "id": inserted_id})
+
+        # Redirect user immediately to the reading view so they can start reading while AI works
+        return redirect("article_detail", pk=inserted_id)
+
+    return render(request, "articles/import.html")
 
 
 import_article = import_article_view
 
 
-
-@login_required(login_url="login")
 def article_status(request, pk):
     if request.method != "GET":
         return HttpResponseNotAllowed(["GET"])
 
     doc = get_article_document_by_id(pk)
     if not doc:
-        return JsonResponse(
-            {"status": "error", "message": "Không tìm thấy bài báo."},
-            status=404,
-        )
-
-    if doc.get("user_id") != request.user.id:
-        return JsonResponse(
-            {"status": "error", "message": "Bạn không có quyền truy cập bài báo này."},
-            status=403,
-        )
+        return JsonResponse({"status": "error", "message": "Không tìm thấy bài báo."}, status=404)
 
     status = doc.get("status", "pending")
     payload = {
@@ -83,131 +95,47 @@ def article_status(request, pk):
         "message": doc.get("error_message", ""),
         "title": doc.get("title", ""),
     }
+
     if status == "completed":
+        # return exams (may be large) so clients can load without a full page refresh if desired
         payload["exams"] = doc.get("exams", [])
 
     return JsonResponse(payload)
 
 
-@login_required(login_url="login")
+from pydantic import ValidationError
+
+
 def article_detail(request, pk):
     doc = get_article_document_by_id(pk)
     if not doc:
         messages.error(request, "Không tìm thấy bài báo yêu cầu!")
-        return redirect("home")
+        return redirect("articles:import_article")
 
-    # Relax restriction: users can view/practice completed articles created by others (All Tests / Trending)
-    # But pending or failed imports are restricted to their owner.
-    if doc.get("status") != "completed" and doc.get("user_id") != request.user.id:
-        messages.error(request, "Bạn không có quyền xem bài báo này!")
-        return redirect("home")
-
+    # expose _id as string for templates
     doc["_id"] = str(doc["_id"])
 
     try:
         article = ArticleMongoModel.model_validate(doc)
     except ValidationError:
-        article = type("PendingArticle", (), {
-            "title":         doc.get("title", ""),
-            "original_text": doc.get("original_text", ""),
-            "exams":         doc.get("exams") or [{"quizzes": []}],
-            "status":        doc.get("status", "pending"),
-            "id":            str(doc.get("_id")),
-            "url":           doc.get("url", ""),
-            "analysis":      doc.get("analysis"),
-            "image_url":     doc.get("image_url", ""),
-            "image_urls":    doc.get("image_urls") or [],
-            "source_name":   doc.get("source_name", "Unknown"),
+        # Document is incomplete (processing in progress) — create a minimal object usable by templates
+        title = doc.get("title", "")
+        original_text = doc.get("original_text", "")
+        status = doc.get("status", "pending")
+        url = doc.get("url", "")
+        article = type("SimpleArticle", (), {})()
+        # Ensure template keys exist with safe defaults
+        article.title = title
+        article.original_text = original_text
+        article.exams = doc.get("exams") or [{"quizzes": []}]
+        article.status = status
+        article.id = str(doc.get("_id"))
+        article.url = url
 
-        })()
+    # If the processing hasn't completed yet, show the loading area in the right pane (template will show reading on left)
+    if getattr(article, "status", "pending") != "completed":
+        # Render same reading/detail template but it will show content on left and either loading placeholder or nothing on right.
+        # Using the same detail template simplifies UX: users read immediately; JS in page can poll for status/questions.
+        return render(request, "articles/detail.html", {"article": article})
 
-    from database.Chroma.operations import get_related_articles_via_chroma
-    related_articles = get_related_articles_via_chroma(article, exclude_id=str(pk))
-    if not related_articles:
-        all_completed = get_completed_articles(limit=10)
-        related_articles = [a for a in all_completed if str(a.get("id")) != str(pk) and str(a.get("_id")) != str(pk)][:5]
-
-    return render(request, "articles/detail.html", {
-        "article": article,
-        "related_articles": related_articles
-    })
-
-
-
-def all_tests_view(request):
-    from django.core.paginator import Paginator
-
-    selected_theme = request.GET.get("theme", "All")
-    selected_genre = request.GET.get("genre", "All")
-
-    articles = get_completed_articles(
-        theme=selected_theme if selected_theme != "All" else None,
-        genre=selected_genre if selected_genre != "All" else None,
-    )
-
-    themes = ["All", "Economy", "Society", "Education", "Technology", "Science", "Environment", "Culture", "Health", "General"]
-    genres = ["All", "scientific", "narrative", "persuasive", "poetry", "general"]
-
-    paginator = Paginator(articles, 12)
-    page_number = request.GET.get("page")
-    page_obj = paginator.get_page(page_number)
-
-    context = {
-        "page_obj": page_obj,
-        "themes": themes,
-        "genres": genres,
-        "selected_theme": selected_theme,
-        "selected_genre": selected_genre,
-    }
-    return render(request, "articles/all_tests.html", context)
-
-
-@login_required(login_url="login")
-def submit_exam_attempt(request, pk):
-    if request.method != "POST":
-        return HttpResponseNotAllowed(["POST"])
-
-    try:
-        import json
-        data = json.loads(request.body)
-        score = data.get("score", 0)
-        total_questions = data.get("total_questions", 0)
-        answers = data.get("answers", {})
-        highlighted_markdown = data.get("highlighted_markdown", "")
-        elapsed_time = data.get("elapsed_time", 0)
-
-        attempt_data = {
-            "user_id": request.user.id,
-            "article_id": pk,
-            "score": score,
-            "total_questions": total_questions,
-            "answers": answers,
-            "highlighted_markdown": highlighted_markdown,
-            "elapsed_time": elapsed_time,
-            "submitted_at": datetime.utcnow()
-        }
-
-        # validate with pydantic
-        from .models import AttemptMongoModel
-        model = AttemptMongoModel(**attempt_data)
-
-        inserted_id = save_exam_attempt(model.model_dump(by_alias=True, exclude={"id"}))
-        if inserted_id:
-            from .services.marker_search import get_related_articles_from_markers
-            related = get_related_articles_from_markers(
-                highlighted_markdown=highlighted_markdown,
-                article_id=str(pk),
-                limit=5,
-            )
-            return JsonResponse({
-                "status": "success", 
-                "id": inserted_id,
-                "related_articles": related
-            })
-        else:
-            return JsonResponse({"status": "error", "message": "Failed to save attempt to DB"}, status=500)
-
-    except Exception as e:
-        import traceback
-        traceback.print_exc()
-        return JsonResponse({"status": "error", "message": str(e)}, status=400)
+    return render(request, "articles/detail.html", {"article": article})
