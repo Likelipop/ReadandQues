@@ -23,9 +23,9 @@
                 Nâng cao điểm số IELTS Reading bằng cách luyện tập với các bài báo thực tế từ khắp nơi trên thế giới. AI của chúng tôi sẽ phân tích văn bản và thiết lập câu hỏi theo đúng chuẩn đề thi thật.
             </p>
             <div class="flex flex-wrap gap-4 pt-2">
-                <a href="{% url 'articles:import_article' %}" class="px-5 py-3 text-xs font-bold text-white bg-blue-600 hover:bg-blue-500 rounded-xl shadow-lg shadow-blue-500/10 transition duration-150 flex items-center gap-1.5">
-                    <span>✨</span> Import New Article
-                </a>
+                <button onclick="document.getElementById('global-url-input').focus()" class="px-5 py-3 text-xs font-bold text-white bg-blue-600 hover:bg-blue-500 rounded-xl shadow-lg shadow-blue-500/10 transition duration-150 flex items-center gap-1.5">
+                    <span>✨</span> Paste URL above to start
+                </button>
                 <a href="{% url 'articles:all_tests' %}" class="px-5 py-3 text-xs font-bold text-slate-300 hover:text-white bg-white/5 hover:bg-white/10 rounded-xl transition duration-150 border border-white/10">
                     📖 Browse All Tests
                 </a>

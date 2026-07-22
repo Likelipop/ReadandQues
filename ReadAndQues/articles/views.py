@@ -23,7 +23,7 @@ def import_article_view(request):
       - Calls import_and_trigger_pipeline service to ingest article and queue AI exam generation via Celery.
       - Redirects user immediately to the reading/detail view (or returns JSON for AJAX clients).
     On GET:
-      - Renders import form template.
+      - Redirects to home since there is no separate import page anymore.
     """
     if request.method == "POST":
         url = request.POST.get("url", "").strip()
@@ -38,14 +38,14 @@ def import_article_view(request):
                 )
 
             messages.error(request, error_msg)
-            return render(request, "articles/import.html")
+            return redirect("home")
 
         if request.headers.get("x-requested-with") == "XMLHttpRequest":
             return JsonResponse({"status": "started", "id": inserted_id})
 
         return redirect("articles:article_detail", pk=inserted_id)
 
-    return render(request, "articles/import.html")
+    return redirect("home")
 
 
 import_article = import_article_view
