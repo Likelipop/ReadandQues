@@ -14,6 +14,6 @@ os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'ReadAndQues.settings')
 
 app = Celery('worker_service')
 app.config_from_object('django.conf:settings', namespace='CELERY')
-app.autodiscover_tasks(packages=['worker_service'])
+app.autodiscover_tasks(packages=['worker_service.tasks', 'worker_service'])
 
 from . import tasks  # noqa: F401

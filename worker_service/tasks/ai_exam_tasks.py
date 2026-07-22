@@ -1,3 +1,7 @@
+"""
+worker_service/tasks/ai_exam_tasks.py — AI Exam & Vector Indexing Tasks.
+"""
+
 import logging
 from typing import Any
 
@@ -47,15 +51,3 @@ def generate_exam_task(self, article_id: str, original_text: str, title: str, ur
     except Exception:
         logger.exception('⚠️ Celery exam task failed for article_id=%s', article_id)
         raise
-
-
-@shared_task(name='worker_service.daily_pipeline_task')
-def daily_pipeline_task() -> dict[str, str]:
-    """Run the daily extraction and AI enrichment pipeline on the worker service."""
-    from worker_service.data_pipeline.gold import process_gold
-    from worker_service.data_pipeline.silver import process_silver
-
-    logger.info('🕘 Daily pipeline task started')
-    process_silver()
-    process_gold()
-    return {'status': 'completed', 'message': 'Daily pipeline processed successfully'}
