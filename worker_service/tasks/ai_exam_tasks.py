@@ -14,7 +14,9 @@ logger = logging.getLogger(__name__)
     name="worker_service.generate_exam_task",
     bind=True,
     max_retries=3,
-    default_retry_delay=30,
+    default_retry_delay=60,
+    time_limit=300,
+    soft_time_limit=270,
 )
 def generate_exam_task(self, article_id: str, url: str) -> dict[str, Any]:
     """Run the heavy AI exam generation in a dedicated background worker."""
@@ -60,12 +62,18 @@ def generate_exam_task(self, article_id: str, url: str) -> dict[str, Any]:
         update_data = ai_result
         status_msg = "completed"
     else:
-        update_data = {
-            "status": "failed",
-            "error_message": "AI pipeline failed to generate exam",
-            "exams": [],
-        }
-        status_msg = "failed"
+        # If ai_result is None, LangGraph failed (e.g. connection error)
+        # We should retry instead of failing immediately.
+        try:
+            logger.warning(f"AI pipeline failed for {article_id}. Retrying task...")
+            raise self.retry(exc=Exception("AI pipeline failed to generate exam"))
+        except self.MaxRetriesExceededError:
+            update_data = {
+                "status": "failed",
+                "error_message": "AI pipeline failed to generate exam after retries",
+                "exams": [],
+            }
+            status_msg = "failed"
 
     try:
         update_article_document(article_id, update_data)

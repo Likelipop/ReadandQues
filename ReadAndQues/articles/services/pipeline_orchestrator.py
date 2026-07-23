@@ -27,6 +27,17 @@ def import_and_trigger_pipeline(
     If successful, inserts a pending document in MongoDB and kicks off the AI exam pipeline asynchronously via Celery.
     Returns (success, error_message, inserted_id).
     """
+    from database.Mongo.crud import get_article_document_by_url
+
+    # 0. Deduplication check
+    existing_doc = get_article_document_by_url(url)
+    if existing_doc:
+        status = existing_doc.get("status", "")
+        # If the article is already being crawled, processed, or is completed, return the existing ID directly.
+        if status in ("crawling", "processing", "completed"):
+            logger.info(f"Deduplication: Article {url} already exists with status {status}. Reusing _id: {existing_doc.get('_id')}")
+            return True, "", str(existing_doc.get("_id"))
+        # If it failed, we can let it create a new task to try again (or we could update the old one). For now, we proceed to create a new entry.
 
     # 1. Insert initial pending document into MongoDB
     pending_document = {

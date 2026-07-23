@@ -95,3 +95,16 @@ def get_articles_by_ids(ids: list[str]) -> list[dict]:
         return ordered
     except Exception:
         return []
+
+def get_article_document_by_url(url: str):
+    """Retrieve the most recent article document by URL from MongoDB."""
+    db = get_mongo_db()
+    if db is None:
+        return None
+    try:
+        # Sort by created_at descending to get the newest one if multiple exist
+        doc = db.articles.find_one({"url": url}, sort=[("created_at", -1)])
+        return doc
+    except Exception as e:
+        logger.error(f"Error finding article by url {url}: {e}")
+        return None
