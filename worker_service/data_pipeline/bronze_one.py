@@ -6,7 +6,7 @@ Crawls the article and inserts raw data into bronze_articles.
 
 Usage:
     python -m worker_service.data_pipeline.bronze_one --url "https://example.com/article"
-    
+
 Programmatic:
     from worker_service.data_pipeline.bronze_one import ingest_one
     bronze_id = ingest_one("https://example.com/article", user_id=1)
@@ -18,14 +18,14 @@ from datetime import datetime, timezone
 from typing import Optional
 
 from worker_service.database.Crawler.scraper import crawl_article_content
-from worker_service.database.Mongo.crud import (
-    get_bronze_by_url,
-    insert_bronze_doc,
-    insert_pipeline_log,
-)
+from worker_service.database.Mongo.crud import (get_bronze_by_url,
+                                                insert_bronze_doc,
+                                                insert_pipeline_log)
 
 logger = logging.getLogger(__name__)
-logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s"
+)
 
 
 def ingest_one(url: str, user_id: Optional[int] = None) -> dict:

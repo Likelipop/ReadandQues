@@ -3,7 +3,7 @@
 
 <head>
     <meta charset="UTF-8">
-    <title>IELTS Exam Workspace</title>
+    <title>Reading Exam Workspace</title>
     <script src="https://unpkg.com/htmx.org@1.9.10"></script>
     <style>
         .container {
@@ -60,10 +60,10 @@
             <div hx-get="/articles/check-status/{{ article_id }}/" hx-trigger="every 3s" hx-target="#exam-section"
                 hx-swap="outerHTML">
 
-                <h3>🤖 AI đang phân tích bài viết và dựng đề thi...</h3>
+                <h3>🤖 AI is analyzing the article and generating the test...</h3>
                 <div class="spinner"></div>
-                <p style="color: gray; font-size: 14px;">Quá trình này thường mất từ 10-15 giây. Bạn có thể tranh thủ
-                    đọc trước bài báo bên cánh trái.</p>
+                <p style="color: gray; font-size: 14px;">This process usually takes 10-15 seconds. You can take this time to
+                    pre-read the article on the left.</p>
             </div>
         </div>
     </div>

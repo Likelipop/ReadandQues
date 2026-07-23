@@ -5,10 +5,12 @@ Provides vector search and embedding indexing operations.
 """
 
 import logging
-from typing import List, Dict, Optional
+from typing import Dict, List, Optional
+
 from bson import ObjectId
-from .connection import articles_collection
 from database.Mongo.connection import article_collection
+
+from .connection import articles_collection
 
 logger = logging.getLogger(__name__)
 
@@ -24,21 +26,29 @@ def add_article_vector(gold_id: str, summary: str, title: str, url: str) -> bool
         articles_collection.add(
             documents=[summary],
             metadatas=[{"title": title, "url": url}],
-            ids=[str(gold_id)]
+            ids=[str(gold_id)],
         )
         logger.info(f"Successfully added vector embedding for gold_id: {gold_id}")
         return True
     except Exception as e:
-        logger.error(f"Failed to add article vector to ChromaDB for gold_id {gold_id}: {e}")
+        logger.error(
+            f"Failed to add article vector to ChromaDB for gold_id {gold_id}: {e}"
+        )
         return False
 
 
-def get_related_articles_via_chroma(article, exclude_id: str, limit: int = 5) -> List[Dict]:
+def get_related_articles_via_chroma(
+    article, exclude_id: str, limit: int = 5
+) -> List[Dict]:
     """
     Queries ChromaDB for semantically similar articles based on the summary.
     Returns a list of related MongoDB article documents.
     """
-    if not articles_collection or not hasattr(article, 'analysis') or not article.analysis:
+    if (
+        not articles_collection
+        or not hasattr(article, "analysis")
+        or not article.analysis
+    ):
         return []
 
     # Safely extract summary
@@ -52,31 +62,30 @@ def get_related_articles_via_chroma(article, exclude_id: str, limit: int = 5) ->
         return []
 
     try:
-        results = articles_collection.query(
-            query_texts=[summary],
-            n_results=limit + 1
-        )
-        
-        if not results or not results['ids']:
+        results = articles_collection.query(query_texts=[summary], n_results=limit + 1)
+
+        if not results or not results["ids"]:
             return []
-            
-        related_ids = [str(r_id) for r_id in results['ids'][0] if str(r_id) != str(exclude_id)][:limit]
-        
+
+        related_ids = [
+            str(r_id) for r_id in results["ids"][0] if str(r_id) != str(exclude_id)
+        ][:limit]
+
         if not related_ids:
             return []
 
         object_ids = [ObjectId(rid) for rid in related_ids]
-        
+
         cursor = article_collection.find({"_id": {"$in": object_ids}})
         related_docs = {str(d["_id"]): d for d in cursor}
-        
+
         related_articles = []
         for rid in related_ids:
             if rid in related_docs:
                 r_doc = related_docs[rid]
                 r_doc["id"] = str(r_doc["_id"])
                 related_articles.append(r_doc)
-                
+
         return related_articles
     except Exception as e:
         logger.error(f"Error fetching related articles from ChromaDB: {e}")

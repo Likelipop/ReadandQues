@@ -1,41 +1,34 @@
 """
-articles/services/cleaning.py — Article text validation and formatting logic.
+articles/services/cleaning.py — Article text formatting and document cleaning logic.
 """
 
 import logging
-from typing import Dict, Any, Tuple
+from typing import Any, Dict, Tuple
 
 logger = logging.getLogger(__name__)
 
-SILVER_MIN_WORD_COUNT = 500
-SILVER_MAX_WORD_COUNT = 4000
 
-
-def clean_and_validate_article(crawl_result: Dict[str, Any]) -> Tuple[bool, str, Dict[str, Any]]:
+def clean_and_validate_article(
+    crawl_result: Dict[str, Any],
+) -> Tuple[bool, str, Dict[str, Any]]:
     """
-    Validates article text length (500 - 4000 words) and returns cleaned document data.
+    Formats and extracts cleaned document data from crawl_result.
+    Validation for min/max word count, title, and content non-emptiness is handled
+    during article extraction in scraper.py.
     """
     if not crawl_result.get("success"):
-        return False, crawl_result.get("error", "Lỗi khi cào nội dung bài báo."), {}
+        return False, crawl_result.get("error", "Error scraping article content."), {}
 
     content = crawl_result.get("content", "").strip()
     title = crawl_result.get("title", "").strip()
     source_name = crawl_result.get("source_name", "Unknown")
 
-    if not content or not title:
-        return False, "Bài báo thiếu tiêu đề hoặc nội dung.", {}
-
-    word_count = len(content.split())
-    if word_count < SILVER_MIN_WORD_COUNT:
-        return False, f"Nội dung bài báo quá ngắn ({word_count} từ, tối thiểu {SILVER_MIN_WORD_COUNT} từ).", {}
-    if word_count > SILVER_MAX_WORD_COUNT:
-        return False, f"Nội dung bài báo quá dài ({word_count} từ, tối đa {SILVER_MAX_WORD_COUNT} từ).", {}
-
     cleaned_doc = {
         "title": title,
         "original_text": content,
+        "html_content": crawl_result.get("html_content"),
         "source_name": source_name,
-        "word_count": word_count,
+        "word_count": crawl_result.get("word_count") or len(content.split()),
         "canonical_url": crawl_result.get("canonical_url"),
         "author": crawl_result.get("author"),
         "published_at": crawl_result.get("published_at"),

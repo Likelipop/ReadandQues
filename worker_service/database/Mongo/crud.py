@@ -6,30 +6,25 @@ Abstracts MongoDB interactions for Bronze, Silver, Gold, and Logs collections.
 
 import logging
 from datetime import datetime, timezone
-from typing import Optional, List, Set, Dict, Any
+from typing import Any, Dict, List, Optional, Set
+
 from bson import ObjectId
 from pymongo import ASCENDING, DESCENDING
 
-from .connection import (
-    db,
-    bronze_col,
-    silver_col,
-    gold_col,
-    logs_col,
-    attempts_col,
-)
-from worker_service.data_pipeline.pipeline_config import (
-    BRONZE_COLLECTION,
-    SILVER_COLLECTION,
-    GOLD_COLLECTION,
-    LOGS_COLLECTION,
-    ATTEMPTS_COLLECTION,
-)
+from worker_service.data_pipeline.pipeline_config import (ATTEMPTS_COLLECTION,
+                                                          BRONZE_COLLECTION,
+                                                          GOLD_COLLECTION,
+                                                          LOGS_COLLECTION,
+                                                          SILVER_COLLECTION)
+
+from .connection import (attempts_col, bronze_col, db, gold_col, logs_col,
+                         silver_col)
 
 logger = logging.getLogger(__name__)
 
 
 # ── Bronze Operations ─────────────────────────────────────────────────────────
+
 
 def find_existing_bronze_urls(urls: List[str]) -> Set[str]:
     """Return set of URLs already present in bronze_articles collection."""
@@ -80,6 +75,7 @@ def get_unprocessed_bronze_docs() -> List[Dict[str, Any]]:
 
 # ── Silver Operations ─────────────────────────────────────────────────────────
 
+
 def save_silver_doc(doc: Dict[str, Any]) -> str:
     """Insert a clean document into silver_articles and return string ID."""
     result = silver_col.insert_one(doc)
@@ -119,6 +115,7 @@ def get_unprocessed_silver_docs() -> List[Dict[str, Any]]:
 
 # ── Gold Operations ───────────────────────────────────────────────────────────
 
+
 def insert_gold_doc(doc: Dict[str, Any]) -> str:
     """Insert an enriched document into gold_articles and return string ID."""
     result = gold_col.insert_one(doc)
@@ -136,10 +133,7 @@ def get_gold_by_id(gold_id: str) -> Optional[Dict[str, Any]]:
 def update_gold_doc(gold_id: str, update_data: Dict[str, Any]) -> bool:
     """Update fields of an existing gold document."""
     try:
-        result = gold_col.update_one(
-            {"_id": ObjectId(gold_id)},
-            {"$set": update_data}
-        )
+        result = gold_col.update_one({"_id": ObjectId(gold_id)}, {"$set": update_data})
         return result.modified_count > 0 or result.matched_count > 0
     except Exception as e:
         logger.error(f"Error updating gold document {gold_id}: {e}")
@@ -147,6 +141,7 @@ def update_gold_doc(gold_id: str, update_data: Dict[str, Any]) -> bool:
 
 
 # ── Logs & Attempts Operations ────────────────────────────────────────────────
+
 
 def insert_pipeline_log(
     stage: str,
@@ -170,6 +165,7 @@ def insert_pipeline_log(
 
 # ── Database Initialization & Indexing ────────────────────────────────────────
 
+
 def init_mongo_indexes():
     """Initialize collections and create appropriate indexes for efficiency."""
     existing = db.list_collection_names()
@@ -178,14 +174,18 @@ def init_mongo_indexes():
         db.create_collection(BRONZE_COLLECTION)
         print(f"  ✅ Created collection: {BRONZE_COLLECTION}")
 
-    bronze_col.create_index([("url", ASCENDING)], unique=True, name="idx_bronze_url_unique")
+    bronze_col.create_index(
+        [("url", ASCENDING)], unique=True, name="idx_bronze_url_unique"
+    )
     bronze_col.create_index([("crawled_at", DESCENDING)], name="idx_bronze_crawled_at")
 
     if SILVER_COLLECTION not in existing:
         db.create_collection(SILVER_COLLECTION)
         print(f"  ✅ Created collection: {SILVER_COLLECTION}")
 
-    silver_col.create_index([("bronze_id", ASCENDING)], unique=True, name="idx_silver_bronze_id")
+    silver_col.create_index(
+        [("bronze_id", ASCENDING)], unique=True, name="idx_silver_bronze_id"
+    )
     silver_col.create_index([("cleaned_at", DESCENDING)], name="idx_silver_cleaned_at")
     silver_col.create_index([("url", ASCENDING)], name="idx_silver_url")
 
@@ -193,7 +193,9 @@ def init_mongo_indexes():
         db.create_collection(GOLD_COLLECTION)
         print(f"  ✅ Created collection: {GOLD_COLLECTION}")
 
-    gold_col.create_index([("silver_id", ASCENDING)], unique=True, sparse=True, name="idx_gold_silver_id")
+    gold_col.create_index(
+        [("silver_id", ASCENDING)], unique=True, sparse=True, name="idx_gold_silver_id"
+    )
     gold_col.create_index([("status", ASCENDING)], name="idx_gold_status")
     gold_col.create_index([("user_id", ASCENDING)], name="idx_gold_user_id")
     gold_col.create_index([("created_at", DESCENDING)], name="idx_gold_created_at")
@@ -206,12 +208,18 @@ def init_mongo_indexes():
         print(f"  ✅ Created collection: {LOGS_COLLECTION}")
 
     logs_col.create_index([("timestamp", DESCENDING)], name="idx_logs_timestamp")
-    logs_col.create_index([("stage", ASCENDING), ("status", ASCENDING)], name="idx_logs_stage_status")
+    logs_col.create_index(
+        [("stage", ASCENDING), ("status", ASCENDING)], name="idx_logs_stage_status"
+    )
 
     if ATTEMPTS_COLLECTION not in existing:
         db.create_collection(ATTEMPTS_COLLECTION)
         print(f"  ✅ Created collection: {ATTEMPTS_COLLECTION}")
 
-    attempts_col.create_index([("user_id", ASCENDING), ("submitted_at", DESCENDING)], name="idx_attempts_user")
-    attempts_col.create_index([("gold_article_id", ASCENDING)], name="idx_attempts_article")
+    attempts_col.create_index(
+        [("user_id", ASCENDING), ("submitted_at", DESCENDING)], name="idx_attempts_user"
+    )
+    attempts_col.create_index(
+        [("gold_article_id", ASCENDING)], name="idx_attempts_article"
+    )
     print("  📇 All MongoDB indexes initialized successfully.")

@@ -1,129 +1,126 @@
-"""
-articles/models.py — MongoDB document schema layer.
-
-All pure-Pydantic domain models (QuizItem, SemanticAnalysis, TokenUsageLog …)
-are imported from ai_core.schemas — the Single Source of Truth.
-This file only defines the MongoDB *document* wrappers that Django views use.
-"""
-
 from datetime import datetime
-from typing import List, Optional,Dict,Any
+from typing import Any, Dict, List, Optional
 
-from django.db import models  # noqa: F401  (required for Django app registry)
+from django.db import models
 from pydantic import BaseModel, Field
 
-# ── Import canonical domain models from AI_core ───────
-from AI_core.schemas import QuizItem, SemanticAnalysis, TokenUsageLog  # noqa: F401
-
-
-__all__ = [
-    "QuizItem",
-    "SemanticAnalysis",
-    "TokenUsageLog",
-    "Exam",
-    "ArticleMongoModel",
-    "AttemptMongoModel",
-]
-
 
 # ==========================================
-# EXAM  (embedded 1-to-N inside ArticleMongoModel)
+# 1. QUIZ ITEM — Align with ai_core/schemas.py
 # ==========================================
+class QuizItem(BaseModel):
+    """
+    Standard schema for a single quiz item saved to MongoDB.
+    Supports two types:
+      - yes_no_not_given : Yes/No/Not Given
+      - fill_in_blank    : Summary Completion (5 blanks, answers separated by ' | ')
+    """
 
-class Exam(BaseModel):
-    exam_id: str = Field(
-        ...,
-        description="Globally unique exam identifier, format: EXAM_<12-char-uuid-hex>"
+    quiz_type: str = Field(
+        ..., description="Question type: 'yes_no_not_given' or 'fill_in_blank'"
     )
-    title: str = Field(default="IELTS Academic Reading Test")
-    total_questions: int = Field(...)
+    question: str = Field(
+        ...,
+        description=(
+            "For yes_no_not_given: the statement to evaluate. "
+            "For fill_in_blank: the summary paragraph containing [1]..[5]."
+        ),
+    )
+    options: Optional[List[str]] = Field(
+        default=None,
+        description="For yes_no_not_given: ['Yes', 'No', 'Not Given']. For fill_in_blank: null.",
+    )
+    correct_answer: str = Field(
+        ...,
+        description=(
+            "For yes_no_not_given: 'Yes', 'No', or 'Not Given'. "
+            "For fill_in_blank: 5 answers separated by ' | ' (e.g. 'word1 | word2 | word3 | word4 | word5')."
+        ),
+    )
+    explanation: Optional[str] = Field(
+        default="", description="Detailed explanation of why the answer is correct."
+    )
+    supporting_text: Optional[str] = Field(
+        default="",
+        description="Verbatim sentence(s) from the article supporting the answer.",
+    )
+    reading_skill: Optional[str] = Field(
+        default=None,
+        description=(
+            "Reading skill tested. One of: 'inference', 'main_idea', "
+            "'author_purpose', 'detail', 'vocabulary_in_context'."
+        ),
+    )
+
+
+# ==========================================
+# 2. MAIN SCHEMA FOR MONGODB
+# ==========================================
+class ArticleMongoModel(BaseModel):
+    """
+    Main document stored in MongoDB 'articles' collection.
+
+    Design considerations:
+      - `analysis` is excluded to save storage since it's internal to the Mega Prompt.
+      - `exam_config` is included to store exam configurations (e.g., number of questions).
+      - `quizzes` contains all questions (MCQ + FIB) — aligned with ai_core/schemas.ExamOutput.
+    """
+
+    # PyMongo returns _id as ObjectId, mapping to str
+    id: Optional[str] = Field(default=None, alias="_id")
+
+    url: str = Field(..., description="Original article URL")
+    title: str = Field(..., description="Article title")
+    original_text: str = Field(..., description="Raw crawled content")
+    html_content: Optional[str] = Field(
+        default=None, description="Raw HTML for rendering in UI"
+    )
+    clean_text: Optional[str] = Field(
+        default=None, description="Cleaned text (after Smart Cleaner)"
+    )
+    source_name: Optional[str] = Field(
+        default="Unknown", description="Source name, e.g., BBC, CNN"
+    )
+
+    # Exam configuration used during generation (for auditing/re-generating)
+    exam_config: Optional[Dict[str, Any]] = Field(
+        default=None, description='Generation config, e.g., {"total_questions": 10}'
+    )
+
+    # All questions (MCQ Yes/No/NG followed by FIB Summary Completion)
     quizzes: List[QuizItem] = Field(default_factory=list)
 
-    # Token usage per LangGraph node — production observability
-    token_usage: List[TokenUsageLog] = Field(
-        default_factory=list,
-        description="Input/output token count logged per node for cost tracking"
+    # Generated exams (aligned with structure from Celery)
+    exams: List[Dict[str, Any]] = Field(default_factory=list)
+
+    # Classification and images
+    theme: Optional[str] = Field(
+        default=None, description="Article theme (e.g., Technology, Science)"
+    )
+    genre: Optional[str] = Field(
+        default=None, description="Text genre (e.g., scientific, news)"
+    )
+    image_url: Optional[str] = Field(default=None, description="Main article image URL")
+    image_urls: List[str] = Field(
+        default_factory=list, description="List of all image URLs in the article"
     )
 
-    created_at: datetime = Field(default_factory=datetime.utcnow)
-
-
-# ==========================================
-# ARTICLE MONGO DOCUMENT  (top-level collection)
-# ==========================================
-
-class ArticleMongoModel(BaseModel):
-    id: Optional[str] = Field(default=None, alias="_id")
-
-    # ── Raw content ─────────────────────────────────────────────────────────
-    url:           str = Field(...)
-    title:         str = Field(...)
-    original_text: str = Field(...)
-    source_name:   Optional[str] = Field(default="Unknown")
-    image_url:     Optional[str] = Field(default=None, description="Main thumbnail/cover image hotlink")
-    image_urls:    List[str] = Field(default_factory=list, description="List of hotlink image URLs extracted from article")
-    canonical_url: Optional[str] = Field(
-        default=None,
-        description="Canonical/final URL after redirects",
-    )
-    author: Optional[str] = Field(default=None)
-    published_at: Optional[datetime] = Field(default=None)
-    language: str = Field(default="en")
-    word_count: int = Field(default=0, ge=0)
-    crawl_metadata: Dict[str, Any] = Field(default_factory=dict)
-    theme:         Optional[str] = Field(default="General", description="Primary theme category (Economy, Society, Education, etc.)")
-    genre:         Optional[str] = Field(default="general", description="Text genre (scientific, narrative, persuasive, etc.)")
-
-    # ── AI-generated data ────────────────────────────────────────────────────
-    # SemanticAnalysis produced by Node 1 (analyzer).
-    # Optional so that documents in "pending" / "failed" status are still valid.
-    analysis: Optional[SemanticAnalysis] = Field(
-        default=None,
-        description="Genre-aware semantic analysis from the analyzer node"
-    )
-
-    exams: List[Exam] = Field(default_factory=list)
-
-    # ── Processing state ─────────────────────────────────────────────────────
-    error_message: Optional[str] = Field(
-        default=None,
-        description="Set when status == 'failed'"
-    )
+    # Pipeline metadata
     status: str = Field(
         default="pending",
-        description="pending | completed | failed"
-    )
-
-    # ── Ownership ────────────────────────────────────────────────────────────
-    user_id: Optional[int] = Field(
-        default=None,
-        description="Django User.id who imported this article"
+        description="Status: pending | crawling | processing | completed | failed",
     )
     created_at: datetime = Field(default_factory=datetime.utcnow)
 
-    model_config = {
-        "populate_by_name": True,
-        "arbitrary_types_allowed": True,
-        "use_enum_values": True,
-    }
+    model_config = {"populate_by_name": True, "arbitrary_types_allowed": True}
 
-
-# ==========================================
-# ATTEMPT MONGO DOCUMENT
-# ==========================================
 
 class AttemptMongoModel(BaseModel):
-    id: Optional[str] = Field(default=None, alias="_id")
-    user_id: int = Field(...)
-    article_id: str = Field(...)
-    score: int = Field(...)
-    total_questions: int = Field(...)
-    answers: dict = Field(default_factory=dict, description="Dictionary of quiz ID to user's answer")
-    highlighted_markdown: str = Field(..., description="The article text with ==highlights== markup")
-    elapsed_time: int = Field(..., description="Time taken in seconds")
-    submitted_at: datetime = Field(default_factory=datetime.utcnow)
-
-    model_config = {
-        "populate_by_name": True,
-        "arbitrary_types_allowed": True,
-    }
+    user_id: int
+    article_id: str
+    score: int
+    total_questions: int
+    answers: Dict[str, Any]
+    highlighted_markdown: str = ""
+    elapsed_time: int = 0
+    submitted_at: datetime

@@ -15,16 +15,17 @@ from datetime import datetime, timezone
 
 import feedparser
 
-from .pipeline_config import RSS_FEEDS_FILE, MAX_INGESTED_NUMBER, BATCH_SIZE
 from worker_service.database.Crawler.scraper import crawl_article_content
-from worker_service.database.Mongo.crud import (
-    find_existing_bronze_urls,
-    insert_bronze_doc,
-    insert_pipeline_log,
-)
+from worker_service.database.Mongo.crud import (find_existing_bronze_urls,
+                                                insert_bronze_doc,
+                                                insert_pipeline_log)
+
+from .pipeline_config import BATCH_SIZE, MAX_INGESTED_NUMBER, RSS_FEEDS_FILE
 
 logger = logging.getLogger(__name__)
-logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s"
+)
 
 
 def load_rss_feeds() -> list[str]:
@@ -50,11 +51,13 @@ def extract_links_from_rss(feed_url: str) -> list[dict]:
             link = entry.get("link", "").strip()
             title = entry.get("title", "").strip()
             if link:
-                entries.append({
-                    "url": link,
-                    "title": title,
-                    "rss_feed": feed_url,
-                })
+                entries.append(
+                    {
+                        "url": link,
+                        "title": title,
+                        "rss_feed": feed_url,
+                    }
+                )
     except Exception as e:
         logger.error(f"Error parsing RSS feed {feed_url}: {e}")
     return entries
@@ -83,7 +86,9 @@ def ingest_batch(entries: list[dict], dry_run: bool = False) -> dict:
 
         crawl_res = crawl_article_content(url)
         if not crawl_res.get("success"):
-            logger.warning(f"  ❌ Failed to crawl: {url} — {crawl_res.get('error', '')}")
+            logger.warning(
+                f"  ❌ Failed to crawl: {url} — {crawl_res.get('error', '')}"
+            )
             stats["failed"] += 1
             insert_pipeline_log(
                 stage="bronze",
@@ -148,8 +153,10 @@ def main(dry_run: bool = False):
 
     stats = ingest_batch(batch, dry_run=dry_run)
 
-    logger.info(f"\n📈 Batch complete: {stats['success']} success, "
-                f"{stats['failed']} failed, {stats['skipped']} skipped")
+    logger.info(
+        f"\n📈 Batch complete: {stats['success']} success, "
+        f"{stats['failed']} failed, {stats['skipped']} skipped"
+    )
 
     # Log batch run
     if not dry_run:
@@ -162,6 +169,8 @@ def main(dry_run: bool = False):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Bronze batch RSS ingestion")
-    parser.add_argument("--dry-run", action="store_true", help="Parse RSS but don't crawl or insert")
+    parser.add_argument(
+        "--dry-run", action="store_true", help="Parse RSS but don't crawl or insert"
+    )
     args = parser.parse_args()
     main(dry_run=args.dry_run)

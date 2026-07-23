@@ -6,33 +6,33 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('accounts', '0002_emailverification'),
+        ("accounts", "0002_emailverification"),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='userprofile',
-            name='avg_incorrect_questions',
+            model_name="userprofile",
+            name="avg_incorrect_questions",
             field=models.FloatField(default=0.0),
         ),
         migrations.AddField(
-            model_name='userprofile',
-            name='avg_time_spent',
+            model_name="userprofile",
+            name="avg_time_spent",
             field=models.FloatField(default=0.0),
         ),
         migrations.AddField(
-            model_name='userprofile',
-            name='last_test_date',
+            model_name="userprofile",
+            name="last_test_date",
             field=models.DateField(blank=True, null=True),
         ),
         migrations.AddField(
-            model_name='userprofile',
-            name='streak',
+            model_name="userprofile",
+            name="streak",
             field=models.PositiveIntegerField(default=0),
         ),
         migrations.AddField(
-            model_name='userprofile',
-            name='total_tests_completed',
+            model_name="userprofile",
+            name="total_tests_completed",
             field=models.PositiveIntegerField(default=0),
         ),
     ]

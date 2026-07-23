@@ -68,3 +68,10 @@ websockets==15.0.1
 xxhash==3.8.1
 zstandard==0.25.0
 psycopg2-binary==2.9.12
+celery==5.5.0
+redis==5.3.1
+trafilatura>=2.0.0
+rank-bm25>=0.2.2
+spacy>=3.8.0
+chromadb>=1.5.0
+gunicorn>=23.0.0

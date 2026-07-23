@@ -4,8 +4,9 @@ articles/services/user_stars.py — User Star management logic.
 
 import logging
 from typing import Tuple
-from django.db import transaction
+
 from accounts.models import UserProfile
+from django.db import transaction
 
 logger = logging.getLogger(__name__)
 
@@ -20,13 +21,13 @@ def deduct_user_star(user) -> Tuple[bool, str]:
             profile = UserProfile.objects.select_for_update().get(user=user)
             if profile.stars <= 0:
                 return False, "NO_STARS"
-            
+
             profile.stars -= 1
             profile.save()
             return True, ""
     except Exception as e:
         logger.error(f"Error deducting star for user {user.id}: {e}")
-        return False, "Lỗi hệ thống khi cập nhật số lượng Star."
+        return False, "System error while updating stars."
 
 
 def refund_user_star(user):

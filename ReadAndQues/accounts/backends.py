@@ -9,13 +9,21 @@ class UsernameOrEmailBackend(ModelBackend):
             username = kwargs.get(User.USERNAME_FIELD)
         try:
             # Check if input matches username or email (case-insensitive)
-            user = User.objects.get(Q(username__iexact=username) | Q(email__iexact=username))
+            user = User.objects.get(
+                Q(username__iexact=username) | Q(email__iexact=username)
+            )
         except User.DoesNotExist:
             # Run the password hasher to prevent timing attacks
             User().set_password(password)
         except User.MultipleObjectsReturned:
             # If multiple users match, get the first active one or the first one created
-            user = User.objects.filter(Q(username__iexact=username) | Q(email__iexact=username)).order_by('id').first()
+            user = (
+                User.objects.filter(
+                    Q(username__iexact=username) | Q(email__iexact=username)
+                )
+                .order_by("id")
+                .first()
+            )
             if user and user.check_password(password):
                 return user
         else:

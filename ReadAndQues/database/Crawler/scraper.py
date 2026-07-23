@@ -1,4 +1,5 @@
 from __future__ import annotations
+
 import ipaddress
 import logging
 import socket
@@ -8,58 +9,54 @@ from urllib.parse import urljoin, urlparse
 
 from django.conf import settings
 from lxml import html as lxml_html
-from trafilatura import bare_extraction, fetch_response
+from trafilatura import bare_extraction, fetch_response, extract
 from trafilatura.settings import use_config
+from bs4 import BeautifulSoup
 
+import re
 from .formatter import to_markdown
+
 logger = logging.getLogger(__name__)
 
 TRAFILATURA_CONFIG = use_config()
-TRAFILATURA_CONFIG.read(str(settings.TRAFILATURA_CONFIG_FILE))
+config_file = getattr(settings, "TRAFILATURA_CONFIG_FILE", None)
+if config_file:
+    TRAFILATURA_CONFIG.read(str(config_file))
+
 
 class CrawlError(Exception):
-    def __init__(self,code:str,public_message: str):
+    def __init__(self, code: str, public_message: str):
         super().__init__(public_message)
         self.code = code
         self.public_message = public_message
 
-def _error(code:str,message:str) ->dict[str,Any]:
-    return {
-        "success": False,
-        "error":message,
-        "error_code":code
-    }
 
-def _validate_public_http_url(url:str) ->None:
+def _error(code: str, message: str) -> dict[str, Any]:
+    return {"success": False, "error": message, "error_code": code}
+
+
+def _validate_public_http_url(url: str) -> None:
     parsed = urlparse(url)
 
-    if parsed.scheme not in {"http","https"}:
+    if parsed.scheme not in {"http", "https"}:
         raise CrawlError(
-            "INVALID_URL",
-            "URL phải bắt đầu bằng http:// hoặc là https:// nha!"
+            "INVALID_URL", "URL must start with http:// or https://"
         )
     if not parsed.hostname:
-        raise CrawlError(
-            "INVALID_URL",
-            "URL không có tên miền hợp lệ"
-        )
+        raise CrawlError("INVALID_URL", "URL does not have a valid domain")
     if parsed.username or parsed.password:
-        raise CrawlError(
-            "INVALID_URL",
-            "URL chứa thông tin đăng nhập!"
-        )
+        raise CrawlError("INVALID_URL", "URL contains credentials!")
     try:
         address_info = socket.getaddrinfo(
             parsed.hostname,
-            parsed.port or(443 if parsed.scheme == "https" else 80),
-            type=socket.SOCK_STREAM
+            parsed.port or (443 if parsed.scheme == "https" else 80),
+            type=socket.SOCK_STREAM,
         )
     except socket.gaierror as exc:
         raise CrawlError(
-            "INVALID_URL",
-            "Tên miền không hợp lệ hoặc không tồn tại"
+            "INVALID_URL", "Domain is invalid or does not exist"
         ) from exc
-    
+
     for item in address_info:
         ip = ipaddress.ip_address(item[4][0])
         if any(
@@ -74,38 +71,40 @@ def _validate_public_http_url(url:str) ->None:
         ):
             raise CrawlError(
                 "PRIVATE_ADDRESS",
-                "URL trỏ tới địa chỉ mạng không được phép.",
+                "URL points to a restricted private network address.",
             )
 
 def _parse_published_at(value: Any) -> datetime | None:
     if not value:
         return None
-    if isinstance(value,datetime):
+    if isinstance(value, datetime):
         parsed = value
     else:
-        text = str(value).strip().replace("Z","+00:00")
+        text = str(value).strip().replace("Z", "+00:00")
         try:
             parsed = datetime.fromisoformat(text)
         except ValueError:
-            logger.info("Không parse được thời gian")
+            logger.info("Failed to parse published time")
             return None
     if parsed.tzinfo is None:
         parsed = parsed.replace(tzinfo=timezone.utc)
     return parsed.astimezone(timezone.utc)
 
-def _first_src_from_srcset(srcset:str) -> str | None:
-    first_candidate = srcset.split(',',1)[0].strip()
+
+def _first_src_from_srcset(srcset: str) -> str | None:
+    first_candidate = srcset.split(",", 1)[0].strip()
     if not first_candidate:
         return None
     return first_candidate.split()[0]
 
-#Dùng để loại bỏ những link ảnh lạ và không hợp lệ
-def _normalize_image_url(raw_url:str | None, base_url:str)-> str|None:
+
+# Normalize and filter out invalid or suspicious image URLs
+def _normalize_image_url(raw_url: str | None, base_url: str) -> str | None:
     if not raw_url:
         return None
-    normalized = urljoin(base_url,raw_url.strip())
+    normalized = urljoin(base_url, raw_url.strip())
     parsed = urlparse(normalized)
-    if parsed.scheme not in {"http","https"} or not parsed.netloc:
+    if parsed.scheme not in {"http", "https"} or not parsed.netloc:
         return None
     lowered = normalized.lower()
     blocked_markers = (".svg", "sprite", "tracking", "pixel", "avatar")
@@ -114,16 +113,14 @@ def _normalize_image_url(raw_url:str | None, base_url:str)-> str|None:
 
     return normalized
 
-#Lấy các hình ảnh ưu tiên lấy hình từ og và twitter
 
+# Extract images, prioritizing Open Graph and Twitter metadata
 def _extract_images(
-        html_content:bytes|str,
-        base_url:str,
-        limit:int
+    html_content: bytes | str, base_url: str, limit: int
 ) -> tuple[str | None, list[str]]:
     try:
-        tree = lxml_html.fromstring(html_content,base_url = base_url)
-    except (ValueError,TypeError):
+        tree = lxml_html.fromstring(html_content, base_url=base_url)
+    except (ValueError, TypeError):
         return None, []
     candidates = []
     metadata_xpaths = (
@@ -134,7 +131,8 @@ def _extract_images(
     )
     for xpath in metadata_xpaths:
         candidates.extend(tree.xpath(xpath))
-    #Lấy cả những ảnh trong nội dung văn bản
+        
+    # Also extract images from the main article body
     for image in tree.xpath("//article//img | //main//img | //img"):
         raw_url = (
             image.get("src")
@@ -154,13 +152,14 @@ def _extract_images(
     top_image = image_urls[0] if image_urls else None
     return top_image, image_urls
 
+
 def _extract_article(
-        html_content: bytes | str,
-        requested_url: str,
-        final_url: str,
-        http_status: int,
-        content_type: str
-) -> dict[str,Any]:
+    html_content: bytes | str,
+    requested_url: str,
+    final_url: str,
+    http_status: int,
+    content_type: str,
+) -> dict[str, Any]:
     document = bare_extraction(
         html_content,
         url=final_url,
@@ -181,7 +180,7 @@ def _extract_article(
     if document is None:
         raise CrawlError(
             "EXTRACTION_FAILED",
-            "Không thể nhận diện nội dung chính của bài báo.",
+            "Could not identify the main content of this article.",
         )
     extracted = document.as_dict()
     raw_text = (extracted.get("text") or getattr(document, "text", "") or "").strip()
@@ -190,34 +189,61 @@ def _extract_article(
     if not raw_text or not title:
         raise CrawlError(
             "EXTRACTION_FAILED",
-            "Bài báo không có tiêu đề hoặc nội dung có thể trích xuất.",
+            "The article is missing a title or extractable content.",
         )
 
     content = to_markdown(raw_text)
+    
+    # Extract raw HTML structure for UI rendering and Sanitize
+    try:
+        if isinstance(html_content, bytes):
+            soup = BeautifulSoup(html_content.decode("utf-8", errors="replace"), "html.parser")
+        else:
+            soup = BeautifulSoup(html_content, "html.parser")
+            
+        # Remove bad tags
+        for tag in soup.find_all(["script", "noscript", "iframe"]):
+            tag.decompose()
+            
+        # Add base tag
+        if soup.head:
+            if not soup.head.find("base"):
+                base_tag = soup.new_tag("base", href=final_url)
+                soup.head.insert(0, base_tag)
+        else:
+            head_tag = soup.new_tag("head")
+            base_tag = soup.new_tag("base", href=final_url)
+            head_tag.append(base_tag)
+            if soup.html:
+                soup.html.insert(0, head_tag)
+            else:
+                soup.insert(0, head_tag)
+                
+        clean_html = str(soup)
+    except Exception as e:
+        logger.error(f"Error parsing HTML with BeautifulSoup: {e}")
+        clean_html = ""
+
     word_count = len(content.split())
 
     if word_count < settings.ARTICLE_MIN_WORDS:
         raise CrawlError(
             "CONTENT_TOO_SHORT",
-            f"Bài báo cần ít nhất {settings.ARTICLE_MIN_WORDS} từ để tạo đề.",
+            f"The article needs at least {settings.ARTICLE_MIN_WORDS} words to generate questions.",
         )
 
     if word_count > settings.ARTICLE_MAX_WORDS:
         raise CrawlError(
             "CONTENT_TOO_LARGE",
-            "Bài báo quá dài để xử lý trong một lần.",
+            "The article is too long to process in a single request.",
         )
     parsed_final_url = urlparse(final_url)
     fallback_source = (parsed_final_url.hostname or "Unknown").removeprefix("www.")
     source_name = (
-        extracted.get("sitename")
-        or extracted.get("hostname")
-        or fallback_source
+        extracted.get("sitename") or extracted.get("hostname") or fallback_source
     )
-    image_url,image_urls = _extract_images(
-        html_content,
-        base_url = final_url,
-        limit = settings.ARTICLE_MAX_IMAGES
+    image_url, image_urls = _extract_images(
+        html_content, base_url=final_url, limit=settings.ARTICLE_MAX_IMAGES
     )
     return {
         "success": True,
@@ -225,6 +251,7 @@ def _extract_article(
         "canonical_url": extracted.get("url") or final_url,
         "title": title,
         "content": content,
+        "html_content": clean_html,
         "source_name": str(source_name).strip(),
         "author": extracted.get("author"),
         "published_at": _parse_published_at(extracted.get("date")),
@@ -243,37 +270,38 @@ def _extract_article(
         },
     }
 
-def crawl_article_content(url:str)->dict[str,Any]:
-    requested_url=url.strip()
+
+def crawl_article_content(url: str) -> dict[str, Any]:
+    requested_url = url.strip()
     try:
         _validate_public_http_url(requested_url)
         response = fetch_response(
             requested_url,
             decode=True,
-            with_headers=True, #Dùng để lấy header (http,...)
-            config=TRAFILATURA_CONFIG
-        ) #request.data sẽ là text html
+            with_headers=True,  # To extract HTTP headers
+            config=TRAFILATURA_CONFIG,
+        )  
         if response is None:
-            raise CrawlError(
-                "DOWNLOAD_FAILED",
-                "Không thể tải bài báo này."
-            )
+            raise CrawlError("DOWNLOAD_FAILED", "Could not download this article.")
         status = int(response.status or 0)
         if status < 200 or status >= 300:
             raise CrawlError(
                 "HTTP_ERROR",
-                f"Trang báo trả về HTTP status {status}.",
+                f"The website returned HTTP status {status}.",
             )
-        final_url = response.url or requested_url
+        if response.url:
+            from urllib.parse import urljoin
 
-        #Kiểm tra lại sau khi redirect xem có chuẩn k
+            final_url = urljoin(requested_url, response.url)
+        else:
+            final_url = requested_url
+
+        # Validate again after redirect
         _validate_public_http_url(final_url)
 
         headers = response.headers or {}
         content_type = str(
-            headers.get("content-type")
-            or headers.get("Content-Type")
-            or ""
+            headers.get("content-type") or headers.get("Content-Type") or ""
         )
 
         if content_type and not any(
@@ -282,13 +310,13 @@ def crawl_article_content(url:str)->dict[str,Any]:
         ):
             raise CrawlError(
                 "UNSUPPORTED_CONTENT",
-                "URL không trả về một trang HTML.",
+                "The URL did not return an HTML page.",
             )
         html_content = response.html if response.html is not None else response.data
         if not html_content:
             raise CrawlError(
                 "DOWNLOAD_FAILED",
-                "Website trả về nội dung rỗng.",
+                "The website returned empty content.",
             )
 
         return _extract_article(
@@ -300,15 +328,15 @@ def crawl_article_content(url:str)->dict[str,Any]:
         )
     except CrawlError as exc:
         logger.info(
-            "Bài báo bị từ chối code = %s url = %s message = %s",
+            "Article rejected: code=%s url=%s message=%s",
             exc.code,
             requested_url,
             exc.public_message,
         )
         return _error(exc.code, exc.public_message)
     except Exception:
-        logger.exception("Lỗi khi đang xử lí %s", requested_url)
+        logger.exception("Error while processing %s", requested_url)
         return _error(
             "UNEXPECTED_ERROR",
-            "Không thể xử lý bài báo này. Vui lòng thử URL khác.",
+            "Could not process this article. Please try another URL.",
         )

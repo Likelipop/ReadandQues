@@ -1,80 +1,82 @@
-import threading
-from datetime import datetime
+"""
+articles/views.py — Web Controller / Views Layer.
 
+Contains view functions for handling HTTP requests, delegating business logic
+to the services layer, and rendering templates or returning JSON responses.
+No heavy LLM or long-running threading logic is performed directly inside views.
+"""
+
+from database.Mongo.crud import get_article_document_by_id
 from django.contrib import messages
-from django.contrib.auth.decorators import login_required
-from django.http import HttpResponseNotAllowed, JsonResponse
+from django.http import HttpResponseNotAllowed, JsonResponse, HttpResponse
 from django.shortcuts import redirect, render
 from pydantic import ValidationError
 
 from .models import ArticleMongoModel
-
-from database.Mongo.crud import (
-    get_article_document_by_id,
-    get_articles_by_user,
-    insert_article_document,
-    update_article_document,
-    get_completed_articles,
-    save_exam_attempt,
-)
-
-def _is_ajax(request) -> bool:
-    return request.headers.get("x-requested-with") == "XMLHttpRequest"
+from .services import import_and_trigger_pipeline
 
 
-@login_required(login_url="login")
+from django.core.cache import cache
+from django.contrib.auth.decorators import login_required
+@login_required(login_url='/login/')
 def import_article_view(request):
-    if request.method != "POST":
-        return render(request, "articles/import.html", {"stars": request.user.profile.stars})
+    """
+    On POST:
+      - Validates input URL.
+      - Checks rate limit.
+      - Calls import_and_trigger_pipeline.
+    """
+    if request.method == "POST":
+        # Rate Limiting
+        client_ip = request.META.get('REMOTE_ADDR', 'unknown_ip')
+        user_identifier = f"user_{request.user.id}" if request.user.is_authenticated else f"ip_{client_ip}"
+        cache_key = f"rate_limit_import_{user_identifier}"
+        
+        # Limit to 5 requests per 60 seconds
+        requests_count = cache.get(cache_key, 0)
+        if requests_count >= 5:
+            if request.headers.get("x-requested-with") == "XMLHttpRequest":
+                return JsonResponse({"status": "error", "message": "Too many requests. Please wait a minute."}, status=429)
+            messages.error(request, "Too many requests. Please wait a minute.")
+            return redirect("home")
+            
+        cache.set(cache_key, requests_count + 1, timeout=60)
 
-    # 1. Deduct Star
-    from .services import deduct_user_star, refund_user_star, import_and_trigger_pipeline
 
-    success, err_msg = deduct_user_star(request.user)
-    if not success:
-        if _is_ajax(request):
-            return JsonResponse({"status": "error", "message": err_msg}, status=403 if err_msg == "NO_STARS" else 500)
-        messages.error(request, "Bạn đã hết Star! Vui lòng liên hệ để yêu cầu thêm star." if err_msg == "NO_STARS" else err_msg)
-        return render(request, "articles/import.html", {"stars": request.user.profile.stars if request.user.profile else 0})
+        url = request.POST.get("url", "").strip()
+        user_id = request.user.id if request.user.is_authenticated else 0
 
-    url = request.POST.get("url", "").strip()
+        is_success, error_msg, inserted_id = import_and_trigger_pipeline(url, user_id)
 
-    # 2. Trigger Pipeline
-    success, err_msg, inserted_id = import_and_trigger_pipeline(url, request.user.id)
+        if not is_success:
+            if request.headers.get("x-requested-with") == "XMLHttpRequest":
+                return JsonResponse(
+                    {"status": "error", "message": error_msg}, status=400
+                )
 
-    if not success:
-        refund_user_star(request.user)
-        if _is_ajax(request):
-            return JsonResponse({"status": "error", "message": err_msg}, status=400)
-        messages.error(request, err_msg)
-        return render(request, "articles/import.html", {"stars": request.user.profile.stars})
+            messages.error(request, error_msg)
+            return redirect("home")
 
-    if _is_ajax(request):
-        return JsonResponse({"status": "started", "id": inserted_id})
+        if request.headers.get("x-requested-with") == "XMLHttpRequest":
+            return JsonResponse({"status": "started", "id": inserted_id})
 
-    return redirect("article_detail", pk=inserted_id)
+        return redirect("articles:article_detail", pk=inserted_id)
+
+    return redirect("home")
 
 
 import_article = import_article_view
 
 
-
-@login_required(login_url="login")
 def article_status(request, pk):
+    """API endpoint to poll the background processing status of an article."""
     if request.method != "GET":
         return HttpResponseNotAllowed(["GET"])
 
     doc = get_article_document_by_id(pk)
     if not doc:
         return JsonResponse(
-            {"status": "error", "message": "Không tìm thấy bài báo."},
-            status=404,
-        )
-
-    if doc.get("user_id") != request.user.id:
-        return JsonResponse(
-            {"status": "error", "message": "Bạn không có quyền truy cập bài báo này."},
-            status=403,
+            {"status": "error", "message": "Article not found."}, status=404
         )
 
     status = doc.get("status", "pending")
@@ -83,58 +85,63 @@ def article_status(request, pk):
         "message": doc.get("error_message", ""),
         "title": doc.get("title", ""),
     }
+
     if status == "completed":
         payload["exams"] = doc.get("exams", [])
 
     return JsonResponse(payload)
 
 
-@login_required(login_url="login")
+from django.views.decorators.cache import never_cache
+
+@login_required(login_url='/login/')
+@never_cache
 def article_detail(request, pk):
+    """Displays the article detail page (reading view & generated exams)."""
     doc = get_article_document_by_id(pk)
     if not doc:
-        messages.error(request, "Không tìm thấy bài báo yêu cầu!")
-        return redirect("home")
-
-    # Relax restriction: users can view/practice completed articles created by others (All Tests / Trending)
-    # But pending or failed imports are restricted to their owner.
-    if doc.get("status") != "completed" and doc.get("user_id") != request.user.id:
-        messages.error(request, "Bạn không có quyền xem bài báo này!")
-        return redirect("home")
+        messages.error(request, "Requested article not found!")
+        return redirect("articles:import_article")
 
     doc["_id"] = str(doc["_id"])
 
     try:
         article = ArticleMongoModel.model_validate(doc)
     except ValidationError:
-        article = type("PendingArticle", (), {
-            "title":         doc.get("title", ""),
-            "original_text": doc.get("original_text", ""),
-            "exams":         doc.get("exams") or [{"quizzes": []}],
-            "status":        doc.get("status", "pending"),
-            "id":            str(doc.get("_id")),
-            "url":           doc.get("url", ""),
-            "analysis":      doc.get("analysis"),
-            "image_url":     doc.get("image_url", ""),
-            "image_urls":    doc.get("image_urls") or [],
-            "source_name":   doc.get("source_name", "Unknown"),
-
-        })()
+        title = doc.get("title", "")
+        original_text = doc.get("original_text", "")
+        status = doc.get("status", "pending")
+        url = doc.get("url", "")
+        article = type("SimpleArticle", (), {})()
+        article.title = title
+        article.original_text = original_text
+        article.exams = doc.get("exams") or [{"quizzes": []}]
+        article.status = status
+        article.id = str(doc.get("_id"))
+        article.url = url
 
     from database.Chroma.operations import get_related_articles_via_chroma
+    from database.Mongo.crud import get_completed_articles
+
     related_articles = get_related_articles_via_chroma(article, exclude_id=str(pk))
     if not related_articles:
         all_completed = get_completed_articles(limit=10)
-        related_articles = [a for a in all_completed if str(a.get("id")) != str(pk) and str(a.get("_id")) != str(pk)][:5]
+        related_articles = [
+            a
+            for a in all_completed
+            if str(a.get("id")) != str(pk) and str(a.get("_id")) != str(pk)
+        ][:5]
 
-    return render(request, "articles/detail.html", {
-        "article": article,
-        "related_articles": related_articles
-    })
-
+    return render(
+        request,
+        "articles/detail.html",
+        {"article": article, "related_articles": related_articles},
+    )
 
 
 def all_tests_view(request):
+    from database.Mongo.crud import (get_completed_articles,
+                                     get_user_attempted_article_ids)
     from django.core.paginator import Paginator
 
     selected_theme = request.GET.get("theme", "All")
@@ -145,7 +152,26 @@ def all_tests_view(request):
         genre=selected_genre if selected_genre != "All" else None,
     )
 
-    themes = ["All", "Economy", "Society", "Education", "Technology", "Science", "Environment", "Culture", "Health", "General"]
+    attempted_ids = set()
+    if request.user.is_authenticated:
+        attempted_ids = get_user_attempted_article_ids(request.user.id)
+
+    for art in articles:
+        art_id = str(art.get("id") or art.get("_id") or "")
+        art["has_attempted"] = art_id in attempted_ids
+
+    themes = [
+        "All",
+        "Economy",
+        "Society",
+        "Education",
+        "Technology",
+        "Science",
+        "Environment",
+        "Culture",
+        "Health",
+        "General",
+    ]
     genres = ["All", "scientific", "narrative", "persuasive", "poetry", "general"]
 
     paginator = Paginator(articles, 12)
@@ -162,13 +188,20 @@ def all_tests_view(request):
     return render(request, "articles/all_tests.html", context)
 
 
-@login_required(login_url="login")
+from datetime import datetime
+
+from django.views.decorators.csrf import csrf_exempt
+
+
+@login_required(login_url='/login/')
+@csrf_exempt
 def submit_exam_attempt(request, pk):
     if request.method != "POST":
         return HttpResponseNotAllowed(["POST"])
 
     try:
         import json
+
         data = json.loads(request.body)
         score = data.get("score", 0)
         total_questions = data.get("total_questions", 0)
@@ -176,38 +209,82 @@ def submit_exam_attempt(request, pk):
         highlighted_markdown = data.get("highlighted_markdown", "")
         elapsed_time = data.get("elapsed_time", 0)
 
+        user_id = request.user.id if request.user.is_authenticated else 0
+
         attempt_data = {
-            "user_id": request.user.id,
+            "user_id": user_id,
             "article_id": pk,
             "score": score,
             "total_questions": total_questions,
             "answers": answers,
             "highlighted_markdown": highlighted_markdown,
             "elapsed_time": elapsed_time,
-            "submitted_at": datetime.utcnow()
+            "submitted_at": datetime.utcnow(),
         }
 
         # validate with pydantic
         from .models import AttemptMongoModel
+
         model = AttemptMongoModel(**attempt_data)
+
+        from database.Mongo.crud import save_exam_attempt
 
         inserted_id = save_exam_attempt(model.model_dump(by_alias=True, exclude={"id"}))
         if inserted_id:
-            from .services.marker_search import get_related_articles_from_markers
+            from .services.marker_search import \
+                get_related_articles_from_markers
+
             related = get_related_articles_from_markers(
                 highlighted_markdown=highlighted_markdown,
                 article_id=str(pk),
                 limit=5,
             )
-            return JsonResponse({
-                "status": "success", 
-                "id": inserted_id,
-                "related_articles": related
-            })
+            return JsonResponse(
+                {"status": "success", "id": inserted_id, "related_articles": related}
+            )
         else:
-            return JsonResponse({"status": "error", "message": "Failed to save attempt to DB"}, status=500)
+            return JsonResponse(
+                {"status": "error", "message": "Failed to save attempt to DB"},
+                status=500,
+            )
 
     except Exception as e:
         import traceback
+
         traceback.print_exc()
         return JsonResponse({"status": "error", "message": str(e)}, status=400)
+
+
+from django.views.decorators.clickjacking import xframe_options_sameorigin
+from django.views.decorators.cache import never_cache
+
+@login_required(login_url='/login/')
+@xframe_options_sameorigin
+@never_cache
+def raw_html_view(request, pk: str):
+    """
+    Returns the raw HTML of the article to be rendered inside an iframe.
+    If no html_content is present, returns a basic HTML document with the original text.
+    """
+    from database.Mongo.crud import get_article_document_by_id
+
+    article_data = get_article_document_by_id(pk)
+    if not article_data:
+        return HttpResponse("Article not found", status=404)
+
+    html_content = article_data.get("html_content")
+    if html_content:
+        injected_css = "<style>a { cursor: text !important; color: inherit !important; text-decoration: none !important; }</style>"
+        injected_js = "<script>document.addEventListener('DOMContentLoaded', function() { document.querySelectorAll('a').forEach(a => { a.removeAttribute('href'); }); });</script>"
+        injection = injected_css + injected_js
+        if "</head>" in html_content.lower():
+            import re
+            html_content = re.sub(r'(?i)</head>', f'{injection}</head>', html_content)
+        else:
+            html_content = injection + html_content
+    else:
+        # Fallback for old articles without html_content
+        text = article_data.get("original_text", "")
+        html_content = f"<html><body style='font-family:sans-serif; padding: 20px;'><pre style='white-space: pre-wrap; font-family: inherit;'>{text}</pre></body></html>"
+
+    return HttpResponse(html_content, content_type="text/html; charset=utf-8")

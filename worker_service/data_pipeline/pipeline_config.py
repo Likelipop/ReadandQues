@@ -16,7 +16,7 @@ load_dotenv(_PROJECT_ROOT / ".env")
 # ── MongoDB Connection ──────────────────────────────────────────────────────
 MONGO_URI = os.getenv(
     "MONGO_URI",
-    "mongodb://admin:changeme@localhost:27017/articles?authSource=admin",
+    "mongodb://admin:changeme@localhost:27017/articlesDB?authSource=admin",
 )
 DB_NAME = os.getenv("MONGO_DB_NAME", "articles")
 

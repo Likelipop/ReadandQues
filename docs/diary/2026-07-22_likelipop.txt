@@ -1,0 +1,57 @@
+================================================================================
+                    NHẬT KÝ CẬP NHẬT KỸ THUẬT DỰ ÁN READANDQUES
+Ngày cập nhật: 2026-07-22
+Tác giả: likelipop
+================================================================================
+
+1. WORKER SERVICE (Phần xử lý AI & Celery Background Workers):
+
+--------------------------------------TL; DR--------------------------------------
+ copy the logic in ReadAndQues/scraper into WorkerService/scraper. 
+ refactor the logic of data pipeline.
+ refactor the logic of ai_core:  intergrated with redis and celery for calling api. 
+ remove the ai_core in ReadAndQues, all the logic related in llm calling will be use with celery.
+
+--------------------------------------------------------------------------------
+- Tái cấu trúc file `tasks.py` đơn lẻ thành Python package `worker_service/tasks/`
+  được mô đun hóa theo từng nhóm nhiệm vụ chuyên biệt:
+    + `ai_exam_tasks.py`: Nhóm tasks sinh đề bài thi IELTS bằng AI (`generate_exam_task`),
+      cập nhật MongoDB và đánh chỉ mục vector trên ChromaDB.
+    + `pipeline_tasks.py`: Nhóm tasks xử lý batch ETL Data Pipeline định kỳ hàng ngày (`daily_pipeline_task`).
+    + `crawl_tasks.py`: Nhóm tasks crawl bài báo bất đồng bộ ngầm (`crawl_paper_task`).
+- Cập nhật `celery_app.py` tự động autodiscover các task từ package `worker_service.tasks`.
+- Re-export toàn bộ task tại `worker_service/tasks/__init__.py` để giữ 100% tương thích ngược
+  với các câu lệnh import cũ ở các module khác.
+- Định hình `worker_service` làm nơi tập trung duy nhất chứa `ai_core` (LangGraph pipeline, LLM,
+  Prompts, Schemas, Chroma Client).
+
+2. VỀ HỆ THỐNG (System Architecture & DevOps Automation):
+--------------------------------------------------------------------------------
+- Cập nhật và chuẩn hóa Makefile và CMakeLists.txt phục vụ cả môi trường Development và Production.
+- Bổ sung các lệnh tiện ích tự động hóa:
+    + `make help`: Xem danh sách tất cả các lệnh khả dụng.
+    + `make run` / `make dev`: Tự bật Docker DB/Redis/ChromaDB và chạy server Django.
+    + `make worker`: Khởi chạy Celery worker lắng nghe hàng đợi `ai_queue`.
+    + `make docker-up` / `make docker-down` / `make docker-build` / `make docker-logs`: Quản lý Docker Compose stack.
+    + `make migrate` / `make makemigrations` / `make test` / `make shell` / `make clean`: Quản lý database, test và dọn dẹp cache.
+- Tối ưu hóa Docker Compose cho full microservices: Nginx (Port 80), Web (Gunicorn Django 8000),
+  Celery Worker (ai_queue), Celery Beat, Redis, Postgres, MongoDB, ChromaDB, Mongo-Express (Port 8081).
+- Áp dụng quy chuẩn làm việc Git Branch nghiêm ngặt:
+    + Không commit trực tiếp trên nhánh `main`.
+    + Tạo các feature branches (`refactor/...`, `feat/...`, `fix/...`) cho từng nhiệm vụ.
+    + Đã tạo nhánh feature `refactor/crawler-orchestrator-cleanup` cho công việc refactor pipeline.
+
+3. READANDQUES (Web Layer - Django Web Application):
+--------------------------------------------------------------------------------
+- Áp dụng triết lý phân tách trách nhiệm (Separation of Concerns): `ReadAndQues` chỉ chứa
+  logic xử lý Web (Django views, routing, templates, lightweight web services).
+- Xóa bỏ hoàn toàn các thư mục AI Core lặp thừa ở web (`ReadAndQues/AI_core` và `ReadAndQues/ai_core`).
+- Dọn dẹp các file dư thừa/trống: `main.py`, `README.md` (0 byte), `articles/services.py` (0 byte).
+- Tinh gọn `articles/views.py`: Bỏ hoàn toàn `threading.Thread` và logic crawl inline trong views.
+  Views chỉ làm nhiệm vụ nhận HTTP request, validate, ủy quyền cho Service Layer và trả về JsonResponse/Redirect.
+- Nâng cấp `articles/services/pipeline_orchestrator.py`: Ủy quyền toàn bộ việc validate URL (định dạng,
+  HTTP scheme, SSRF, HTTP status, extraction) cho Crawler (`scraper.py`) làm Single Source of Truth,
+  loại bỏ validation dư thừa lặp lại.
+- Đồng bộ Model: Cập nhật `ArticleMongoModel` trong `articles/models.py` bổ sung các trường `theme`, `genre`,
+  `image_url`, `image_urls` tương thích 100% với MongoDB collection `gold_articles`.
+- Sửa cấu hình Django: Thêm `'accounts'` vào `INSTALLED_APPS` trong `settings.py`.

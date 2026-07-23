@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{{ article.title }} - IELTS Reading Practice</title>
+    <title>{{ article.title }} - Reading Practice</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <style>
@@ -102,15 +102,14 @@
         
         <section class="w-1/2 p-8 pl-24 overflow-y-auto bg-white border-r border-gray-200 relative" id="article-section">
 
-            {% if article.image_url %}
-            <div class="mb-6 rounded-2xl overflow-hidden shadow-sm border border-slate-100 bg-slate-100 max-h-80 flex items-center justify-center">
-                <img src="{{ article.image_url }}" alt="{{ article.title }}" class="w-full h-full max-h-80 object-cover" onerror="this.parentElement.style.display='none';">
-            </div>
-            {% endif %}
             <div id="raw-article-text" class="hidden">{{ article.original_text }}</div>
-            <div id="article-rendered-text" class="prose max-w-none text-gray-800 leading-relaxed text-lg">
-                {{ article.original_text|linebreaks }}
-            </div>
+            {% if article.html_content %}
+                <iframe id="article-iframe" src="{% url 'articles:raw_html' article.id %}" class="w-full h-[800px] border-0 rounded-xl bg-white shadow-inner"></iframe>
+            {% else %}
+                <div id="article-rendered-text" class="prose max-w-none text-gray-800 leading-relaxed text-lg prose-headings:text-slate-800 prose-headings:font-bold prose-img:rounded-xl prose-img:shadow-sm prose-a:text-blue-600 hover:prose-a:text-blue-800 prose-li:my-1 prose-ul:my-4 prose-ol:my-4">
+                    {{ article.original_text|linebreaks }}
+                </div>
+            {% endif %}
         </section>
 
         <section class="w-1/2 p-8 overflow-y-auto bg-gray-50">
@@ -178,9 +177,24 @@
 
                 {% else %}
                     <div id="processing-right" class="bg-white p-8 rounded-lg shadow-sm border border-gray-200 text-center">
-                        <div class="h-12 w-12 mx-auto rounded-full border-4 border-blue-600 border-t-transparent animate-spin mb-4"></div>
-                        <p class="text-gray-700 font-semibold">Generating questions... You can keep reading the passage on the left.</p>
-                        <p class="text-sm text-gray-500 mt-2">When generation completes, the questions will appear here automatically.</p>
+                        {% if article.status != 'failed' and article.status != 'error' %}
+                            <div class="h-12 w-12 mx-auto rounded-full border-4 border-blue-600 border-t-transparent animate-spin mb-4"></div>
+                        {% else %}
+                            <div class="h-12 w-12 mx-auto rounded-full bg-red-100 flex items-center justify-center mb-4">
+                                <svg class="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                            </div>
+                        {% endif %}
+                        
+                        {% if article.status == 'crawling' %}
+                            <p class="text-gray-700 font-semibold">Fetching article content...</p>
+                            <p class="text-sm text-gray-500 mt-2">Please wait while we download and clean the article text.</p>
+                        {% elif article.status == 'failed' %}
+                            <p class="text-red-600 font-semibold">Failed to process. Please try again later.</p>
+                            <p class="text-sm text-gray-500 mt-2">We could not generate questions for this article, but you can still read the text on the left.</p>
+                        {% else %}
+                            <p class="text-gray-700 font-semibold">Generating questions... You can keep reading the passage on the left.</p>
+                            <p class="text-sm text-gray-500 mt-2">When generation completes, the questions will appear here automatically.</p>
+                        {% endif %}
                     </div>
                 {% endif %}
 
@@ -188,12 +202,12 @@
                 {% if related_articles %}
                 <div id="related-articles-section" class="hidden mt-12 pt-8 border-t border-slate-200">
                     <div class="flex items-center justify-between mb-6">
-                        <h3 class="text-xl font-bold text-slate-800">✨ Có thể bạn sẽ thích</h3>
-                        <a href="{% url 'all_tests' %}" class="text-sm font-semibold text-blue-600 hover:text-blue-700 transition">Xem tất cả bài kiểm tra →</a>
+                        <h3 class="text-xl font-bold text-slate-800">✨ You might also like</h3>
+                        <a href="{% url 'home' %}" class="text-sm font-semibold text-blue-600 hover:text-blue-700 transition">View all tests →</a>
                     </div>
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         {% for r_art in related_articles %}
-                        <a href="{% url 'article_detail' r_art.id %}" class="group bg-white rounded-xl border border-slate-100 shadow-sm overflow-hidden flex flex-col hover:shadow-md transition duration-200">
+                        <a href="{% url 'articles:article_detail' r_art.id %}" class="group bg-white rounded-xl border border-slate-100 shadow-sm overflow-hidden flex flex-col hover:shadow-md transition duration-200">
                             <!-- Thumbnail banner image -->
                             <div class="h-24 w-full relative overflow-hidden flex items-center justify-center">
                                 {% if r_art.image_url %}
@@ -209,7 +223,7 @@
                             <!-- Card text info -->
                             <div class="p-3">
                                 <h4 class="font-bold text-slate-800 line-clamp-2 text-sm group-hover:text-blue-600 transition min-h-[2.5rem]">
-                                    {{ r_art.title|default:"Chưa có tiêu đề" }}
+                                    {{ r_art.title|default:"No title" }}
                                 </h4>
                             </div>
                         </a>
@@ -221,7 +235,7 @@
                 <!-- BM25 Related Articles Section (Injected by JS) -->
                 <div id="bm25-related-section" class="hidden mt-8 pt-8 border-t border-slate-200">
                     <div class="flex items-center justify-between mb-6">
-                        <h3 class="text-xl font-bold text-slate-800">💡 Dựa trên những gì bạn đã highlight</h3>
+                        <h3 class="text-xl font-bold text-slate-800">💡 Based on what you highlighted</h3>
                     </div>
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-4" id="bm25-grid">
                     </div>
@@ -249,18 +263,42 @@
         const btnMarker = document.getElementById('tool-marker');
         const btnEraser = document.getElementById('tool-eraser');
         const articleSectionContent = document.getElementById('article-rendered-text');
+        const articleIframe = document.getElementById('article-iframe');
+        
+        let targetWindow = window;
+        let targetDoc = document;
+        let targetContainer = articleSectionContent;
 
         function setActiveTool(tool) {
             activeTool = (activeTool === tool) ? null : tool;
-            if (btnMarker) btnMarker.classList.toggle('active', activeTool === 'marker');
-            if (btnEraser) btnEraser.classList.toggle('active', activeTool === 'eraser');
             
-            if (activeTool === 'marker') {
-                articleSectionContent.style.cursor = 'text';
-            } else if (activeTool === 'eraser') {
-                articleSectionContent.style.cursor = 'crosshair';
-            } else {
-                articleSectionContent.style.cursor = 'auto';
+            if (btnMarker) {
+                if (activeTool === 'marker') {
+                    btnMarker.classList.add('bg-yellow-100', 'text-yellow-600');
+                    btnMarker.classList.remove('bg-transparent', 'text-slate-600');
+                } else {
+                    btnMarker.classList.remove('bg-yellow-100', 'text-yellow-600');
+                    btnMarker.classList.add('bg-transparent', 'text-slate-600');
+                }
+            }
+            if (btnEraser) {
+                if (activeTool === 'eraser') {
+                    btnEraser.classList.add('bg-pink-100', 'text-pink-600');
+                    btnEraser.classList.remove('bg-transparent', 'text-slate-600');
+                } else {
+                    btnEraser.classList.remove('bg-pink-100', 'text-pink-600');
+                    btnEraser.classList.add('bg-transparent', 'text-slate-600');
+                }
+            }
+            
+            if (targetContainer) {
+                if (activeTool === 'marker') {
+                    targetContainer.style.cursor = 'text';
+                } else if (activeTool === 'eraser') {
+                    targetContainer.style.cursor = 'crosshair';
+                } else {
+                    targetContainer.style.cursor = 'auto';
+                }
             }
         }
 
@@ -269,26 +307,29 @@
             btnEraser.addEventListener('click', () => setActiveTool('eraser'));
         }
 
-        // Apply Marker
-        if (articleSectionContent) {
-            articleSectionContent.addEventListener('mouseup', () => {
+        function setupHighlighter(tWindow, tDoc, tContainer) {
+            tContainer.addEventListener('mouseup', () => {
                 if (activeTool !== 'marker') return;
-                const selection = window.getSelection();
+                const selection = tWindow.getSelection();
                 if (!selection.rangeCount || selection.isCollapsed) return;
 
                 const range = selection.getRangeAt(0);
-                if (!articleSectionContent.contains(range.commonAncestorContainer)) return;
+                if (!tContainer.contains(range.commonAncestorContainer)) return;
 
                 const content = range.extractContents();
-                const mark = document.createElement('mark');
+                const mark = tDoc.createElement('mark');
                 mark.className = 'user-highlight';
+                // Inline styles for iframe without css file
+                mark.style.backgroundColor = '#fef08a';
+                mark.style.borderRadius = '0.25rem';
+                mark.style.padding = '0.125rem 0.25rem';
+                mark.style.cursor = 'pointer';
                 mark.appendChild(content);
                 range.insertNode(mark);
                 selection.removeAllRanges();
             });
 
-            // Apply Eraser
-            articleSectionContent.addEventListener('click', (e) => {
+            tContainer.addEventListener('click', (e) => {
                 if (activeTool !== 'eraser') return;
                 let target = e.target;
                 if (target.tagName.toLowerCase() === 'mark' && target.classList.contains('user-highlight')) {
@@ -302,17 +343,32 @@
             });
         }
 
+        // Apply Highlighter and Strip Links
+        if (articleIframe) {
+            articleIframe.addEventListener('load', function() {
+                try {
+                    targetWindow = articleIframe.contentWindow;
+                    targetDoc = articleIframe.contentWindow.document;
+                    targetContainer = targetDoc.body;
+                    setupHighlighter(targetWindow, targetDoc, targetContainer);
+                } catch(e) {
+                    console.error("Cannot inject highlighter into iframe:", e);
+                }
+            });
+        } else if (articleSectionContent) {
+            setupHighlighter(window, document, articleSectionContent);
+        }
+
         // Helper to serialize highlighted content
         function getHighlightedMarkdown() {
-            if (!articleSectionContent) return "";
-            const clone = articleSectionContent.cloneNode(true);
+            if (!targetContainer) return "";
+            const clone = targetContainer.cloneNode(true);
             const marks = clone.querySelectorAll('mark.user-highlight');
             marks.forEach(m => {
                 const text = m.textContent;
                 const textNode = document.createTextNode(`==${text}==`);
                 m.parentNode.replaceChild(textNode, m);
             });
-            // Ideally convert back to markdown properly, here we just take the innerText to keep it clean but preserve ==highlight==
             return clone.innerText;
         }
 
@@ -346,6 +402,12 @@
             const articleId = '{{ article.id }}';
             const storageKey = `exam_state_${articleId}`;
             
+            if (window.location.search.includes('retry=1')) {
+                try { localStorage.removeItem(storageKey); } catch(e) {}
+                const cleanUrl = window.location.protocol + "//" + window.location.host + window.location.pathname;
+                window.history.replaceState({path: cleanUrl}, '', cleanUrl);
+            }
+
             let examState = { elapsedTime: 0, answers: {} };
             try {
                 const stored = localStorage.getItem(storageKey);
@@ -411,67 +473,110 @@
             }
             const id = getArticleId();
             function poll() {
-                fetch(`/articles/status/${id}/`)
+                console.log("Polling for status...", id);
+                fetch(`/articles/status/${id}/?t=${Date.now()}`)
                     .then(r => r.json())
                     .then(data => {
-                        if (data.status === 'completed') {
-                            window.location.reload();
-                        } else if (data.status === 'failed' || data.status === 'error') {
-                            const proc = document.getElementById('processing-right');
-                            if (proc) proc.innerHTML = '<p class="text-red-600 font-semibold">Failed to generate questions. Please try again later.</p>';
-                        } else {
+                        console.log("Poll response:", data);
+                        const currentStatus = '{{ article.status }}';
+                        console.log("Current status in template:", currentStatus);
+                        if (data.status === 'completed' && currentStatus !== 'completed') {
+                            window.location.href = window.location.pathname + '?_t=' + Date.now();
+                        } else if ((data.status === 'failed' || data.status === 'error') && currentStatus !== 'failed' && currentStatus !== 'error') {
+                            window.location.href = window.location.pathname + '?_t=' + Date.now();
+                        } else if (data.status === 'processing' && currentStatus === 'crawling') {
+                            window.location.href = window.location.pathname + '?_t=' + Date.now();
+                        } else if (currentStatus !== 'completed' && currentStatus !== 'failed' && currentStatus !== 'error') {
+                            console.log("Scheduling next poll in 2.5s");
                             setTimeout(poll, 2500);
                         }
                     })
-                    .catch(() => setTimeout(poll, 5000));
+                    .catch(() => {
+                        if ('{{ article.status }}' !== 'completed' && '{{ article.status }}' !== 'failed' && '{{ article.status }}' !== 'error') {
+                            setTimeout(poll, 5000);
+                        }
+                    });
             }
             {% if article.status != 'completed' %}
                 poll();
             {% endif %}
         })();
 
-        // ── Submit handler ──
+        // ── Submit handler & Practice Again ──
         const submitBtn = document.getElementById('submit-btn');
         if (submitBtn) {
-            submitBtn.addEventListener('click', function() {
-                // 1. Check completeness
-                let allAnswered = true;
+            
+            function resetQuizForPracticeAgain() {
+                try { if (typeof storageKey !== 'undefined') localStorage.removeItem(storageKey); } catch(e) {}
+                if (typeof examState !== 'undefined') {
+                    examState = { elapsedTime: 0, answers: {}, submitted: false };
+                }
+
                 const items = document.querySelectorAll('.quiz-item');
                 items.forEach(item => {
-                    const qType = item.getAttribute('data-quiz-type');
-                    if (qType === 'fill_in_blank') {
-                        const blanks = item.querySelectorAll('.fib-blank');
-                        blanks.forEach(b => { if (!b.value.trim()) allAnswered = false; });
-                    } else {
-                        const inputs = item.querySelectorAll('input[type="radio"]');
-                        const answered = Array.from(inputs).some(r => r.checked);
-                        if (!answered) allAnswered = false;
-                    }
+                    item.classList.remove('border-green-500', 'bg-green-50', 'border-red-500', 'bg-red-50');
+                    item.classList.add('border-gray-200');
+
+                    const blanks = item.querySelectorAll('.fib-blank');
+                    blanks.forEach(b => {
+                        b.value = '';
+                        b.disabled = false;
+                        b.style.borderColor = '#3b82f6';
+                        b.style.background = '#eff6ff';
+                    });
+
+                    const radios = item.querySelectorAll('input[type="radio"]');
+                    radios.forEach(r => {
+                        r.checked = false;
+                        r.disabled = false;
+                    });
+
+                    const expl = item.querySelector('.explanation');
+                    if (expl) expl.classList.add('hidden');
                 });
 
-                if (!allAnswered) {
-                    const confirmSubmit = confirm('Bạn chưa điền đủ các câu trả lời. Bạn có chắc chắn muốn nộp bài?');
-                    if (!confirmSubmit) return;
+                const scoreDisplay = document.getElementById('score-display');
+                if (scoreDisplay) scoreDisplay.textContent = '0';
+
+                const timerDisplay = document.getElementById('timer-display');
+                if (timerDisplay && typeof examState !== 'undefined') {
+                    if (window.examTimerInterval) clearInterval(window.examTimerInterval);
+                    examState.elapsedTime = 0;
+                    function updateTimer() {
+                        const minutes = Math.floor(examState.elapsedTime / 60);
+                        const seconds = examState.elapsedTime % 60;
+                        timerDisplay.textContent = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+                        examState.elapsedTime++;
+                        if (typeof saveState === 'function') saveState();
+                    }
+                    updateTimer();
+                    window.examTimerInterval = setInterval(updateTimer, 1000);
                 }
 
-                submitBtn.disabled = true;
-                submitBtn.textContent = 'Đã nộp bài';
-                submitBtn.classList.replace('bg-green-600', 'bg-slate-400');
-                submitBtn.classList.replace('hover:bg-green-700', 'hover:bg-slate-500');
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'Submit Exam';
+                submitBtn.className = 'w-full mt-6 bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-4 rounded-lg transition-colors text-lg shadow-md';
+                submitBtn.removeAttribute('data-mode');
 
-                // Stop the timer
-                if (window.examTimerInterval) {
-                    clearInterval(window.examTimerInterval);
+                const chromaSection = document.getElementById('related-articles-section');
+                if (chromaSection) chromaSection.classList.add('hidden');
+                const bm25Section = document.getElementById('bm25-related-section');
+                if (bm25Section) bm25Section.classList.add('hidden');
+
+                const quizContainer = document.getElementById('quiz-container');
+                if (quizContainer) {
+                    quizContainer.scrollIntoView({ behavior: 'smooth', block: 'start' });
                 }
+            }
 
-                // 2. Evaluate answers
+            function evaluateVisually() {
+                const items = document.querySelectorAll('.quiz-item');
                 let correctCount = 0;
                 items.forEach(item => {
                     const correctAnswer = item.getAttribute('data-answer').trim().toLowerCase();
                     const quizType = item.getAttribute('data-quiz-type');
 
                     if (quizType === 'fill_in_blank') {
-                        // FIB: compare each blank answer (pipe-separated)
                         const answers = correctAnswer.split('|').map(a => a.trim());
                         const blanks = item.querySelectorAll('.fib-blank');
                         let allCorrect = true;
@@ -496,7 +601,6 @@
                         }
                         item.classList.remove('border-gray-200');
                     } else {
-                        // Radio-based (YNNG / MCQ)
                         const inputs = item.querySelectorAll('input[type="radio"]');
                         let userAnswer = null;
                         const selected = Array.from(inputs).find(r => r.checked);
@@ -515,16 +619,95 @@
                     const expl = item.querySelector('.explanation');
                     if (expl) expl.classList.remove('hidden');
                 });
-                // Clear cache on submit
-                {% if article.status == 'completed' %}
-                    localStorage.removeItem(storageKey);
-                {% endif %}
                 
+                document.getElementById('score-display').textContent = correctCount;
+                
+                // Change submit button into "Practice Again"
+                submitBtn.disabled = false;
+                submitBtn.textContent = '🔄 Practice Again';
+                submitBtn.className = 'w-full mt-6 bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-4 rounded-lg transition-colors text-lg shadow-md';
+                submitBtn.setAttribute('data-mode', 'retry');
 
+                if (window.examTimerInterval) {
+                    clearInterval(window.examTimerInterval);
+                }
+                
+                return { correctCount, totalQuestions: items.length };
+            }
+
+            function renderBM25Related(related_articles) {
+                if (related_articles && related_articles.length > 0) {
+                    const bm25Section = document.getElementById('bm25-related-section');
+                    const bm25Grid = document.getElementById('bm25-grid');
+                    if (bm25Section && bm25Grid) {
+                        bm25Grid.innerHTML = '';
+                        related_articles.forEach(r_art => {
+                            const a = document.createElement('a');
+                            a.href = `/articles/${r_art.id}/`;
+                            a.className = 'group bg-white rounded-xl border border-slate-100 shadow-sm overflow-hidden flex flex-col hover:shadow-md transition duration-200';
+                            
+                            const imgUrl = r_art.image_url ? r_art.image_url : 'https://images.unsplash.com/photo-1456513080510-7bf3a84b82f8?auto=format&fit=crop&q=80&w=400';
+                            const opacityClass = r_art.image_url ? 'opacity-100' : 'opacity-10';
+                            
+                            a.innerHTML = `
+                                <div class="h-24 w-full relative overflow-hidden flex items-center justify-center">
+                                    <div class="absolute inset-0 ${opacityClass} bg-cover bg-center" style="background-image: url('${imgUrl}');"></div>
+                                    <div class="absolute inset-0 bg-gradient-to-t from-slate-900/40 to-transparent"></div>
+                                    <span class="absolute bottom-2 right-2 text-white text-[10px] font-bold bg-black/40 backdrop-blur-sm px-2 py-0.5 rounded-full">
+                                        ${r_art.source_name || "Unknown"}
+                                    </span>
+                                </div>
+                                <div class="p-3">
+                                    <h4 class="font-bold text-slate-800 line-clamp-2 text-sm group-hover:text-blue-600 transition min-h-[2.5rem]">
+                                        ${r_art.title || "No title"}
+                                    </h4>
+                                </div>
+                            `;
+                            bm25Grid.appendChild(a);
+                        });
+                        bm25Section.classList.remove('hidden');
+                    }
+                }
+            }
+
+            // Restore from state if previously submitted
+            if (typeof examState !== 'undefined' && examState.submitted) {
+                evaluateVisually();
+                const chromaSection = document.getElementById('related-articles-section');
+                if (chromaSection) chromaSection.classList.remove('hidden');
+                renderBM25Related(examState.related_articles);
+            }
+
+            submitBtn.addEventListener('click', function() {
+                if (submitBtn.getAttribute('data-mode') === 'retry') {
+                    resetQuizForPracticeAgain();
+                    return;
+                }
+
+                // 1. Check completeness
+                let allAnswered = true;
+                const items = document.querySelectorAll('.quiz-item');
+                items.forEach(item => {
+                    const qType = item.getAttribute('data-quiz-type');
+                    if (qType === 'fill_in_blank') {
+                        const blanks = item.querySelectorAll('.fib-blank');
+                        blanks.forEach(b => { if (!b.value.trim()) allAnswered = false; });
+                    } else {
+                        const inputs = item.querySelectorAll('input[type="radio"]');
+                        const answered = Array.from(inputs).some(r => r.checked);
+                        if (!answered) allAnswered = false;
+                    }
+                });
+
+                if (!allAnswered) {
+                    const confirmSubmit = confirm("You haven't filled in all the answers. Are you sure you want to submit?");
+                    if (!confirmSubmit) return;
+                }
+
+                const { correctCount, totalQuestions } = evaluateVisually();
 
                 // Send to backend
                 const highlightedMarkdown = getHighlightedMarkdown();
-                const totalQuestions = items.length;
                 let finalAnswers = {};
                 if (typeof examState !== 'undefined') {
                     finalAnswers = examState.answers;
@@ -576,45 +759,22 @@
                 }).then(r => r.json()).then(data => {
                     console.log("Exam submitted:", data);
                     
-                    // 1. Show ChromaDB related articles (always show on submit if available)
+                    {% if article.status == 'completed' %}
+                        if (typeof examState !== 'undefined') {
+                            examState.submitted = true;
+                            examState.related_articles = data.related_articles || [];
+                            saveState();
+                        }
+                    {% endif %}
+                    
+                    // 1. Show ChromaDB related articles
                     const chromaSection = document.getElementById('related-articles-section');
                     if (chromaSection) {
                         chromaSection.classList.remove('hidden');
                     }
 
-                    // 2. Show BM25 related articles (only if user highlighted and returned > 0)
-                    if (data.related_articles && data.related_articles.length > 0) {
-                        const bm25Section = document.getElementById('bm25-related-section');
-                        const bm25Grid = document.getElementById('bm25-grid');
-                        if (bm25Section && bm25Grid) {
-                            bm25Grid.innerHTML = '';
-                            data.related_articles.forEach(r_art => {
-                                const a = document.createElement('a');
-                                a.href = `/articles/${r_art.id}/`;
-                                a.className = 'group bg-white rounded-xl border border-slate-100 shadow-sm overflow-hidden flex flex-col hover:shadow-md transition duration-200';
-                                
-                                const imgUrl = r_art.image_url ? r_art.image_url : 'https://images.unsplash.com/photo-1456513080510-7bf3a84b82f8?auto=format&fit=crop&q=80&w=400';
-                                const opacityClass = r_art.image_url ? 'opacity-100' : 'opacity-10';
-                                
-                                a.innerHTML = `
-                                    <div class="h-24 w-full relative overflow-hidden flex items-center justify-center">
-                                        <div class="absolute inset-0 ${opacityClass} bg-cover bg-center" style="background-image: url('${imgUrl}');"></div>
-                                        <div class="absolute inset-0 bg-gradient-to-t from-slate-900/40 to-transparent"></div>
-                                        <span class="absolute bottom-2 right-2 text-white text-[10px] font-bold bg-black/40 backdrop-blur-sm px-2 py-0.5 rounded-full">
-                                            ${r_art.source_name || "Unknown"}
-                                        </span>
-                                    </div>
-                                    <div class="p-3">
-                                        <h4 class="font-bold text-slate-800 line-clamp-2 text-sm group-hover:text-blue-600 transition min-h-[2.5rem]">
-                                            ${r_art.title || "Chưa có tiêu đề"}
-                                        </h4>
-                                    </div>
-                                `;
-                                bm25Grid.appendChild(a);
-                            });
-                            bm25Section.classList.remove('hidden');
-                        }
-                    }
+                    // 2. Show BM25 related articles
+                    renderBM25Related(data.related_articles);
 
                     // 3. Smooth scroll to the first visible section
                     const scrollToSection = document.getElementById('related-articles-section') || document.getElementById('bm25-related-section');
@@ -624,8 +784,6 @@
                         }, 500);
                     }
                 }).catch(err => console.error("Error submitting exam:", err));
-
-                document.getElementById('score-display').textContent = correctCount;
             });
         }
     </script>
