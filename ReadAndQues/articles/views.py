@@ -16,16 +16,33 @@ from .models import ArticleMongoModel
 from .services import import_and_trigger_pipeline
 
 
+from django.core.cache import cache
+from django.contrib.auth.decorators import login_required
+@login_required(login_url='/login/')
 def import_article_view(request):
     """
     On POST:
       - Validates input URL.
-      - Calls import_and_trigger_pipeline service to ingest article and queue AI exam generation via Celery.
-      - Redirects user immediately to the reading/detail view (or returns JSON for AJAX clients).
-    On GET:
-      - Redirects to home since there is no separate import page anymore.
+      - Checks rate limit.
+      - Calls import_and_trigger_pipeline.
     """
     if request.method == "POST":
+        # Rate Limiting
+        client_ip = request.META.get('REMOTE_ADDR', 'unknown_ip')
+        user_identifier = f"user_{request.user.id}" if request.user.is_authenticated else f"ip_{client_ip}"
+        cache_key = f"rate_limit_import_{user_identifier}"
+        
+        # Limit to 5 requests per 60 seconds
+        requests_count = cache.get(cache_key, 0)
+        if requests_count >= 5:
+            if request.headers.get("x-requested-with") == "XMLHttpRequest":
+                return JsonResponse({"status": "error", "message": "Too many requests. Please wait a minute."}, status=429)
+            messages.error(request, "Too many requests. Please wait a minute.")
+            return redirect("home")
+            
+        cache.set(cache_key, requests_count + 1, timeout=60)
+
+
         url = request.POST.get("url", "").strip()
         user_id = request.user.id if request.user.is_authenticated else 0
 
@@ -77,6 +94,7 @@ def article_status(request, pk):
 
 from django.views.decorators.cache import never_cache
 
+@login_required(login_url='/login/')
 @never_cache
 def article_detail(request, pk):
     """Displays the article detail page (reading view & generated exams)."""
@@ -166,6 +184,7 @@ from datetime import datetime
 from django.views.decorators.csrf import csrf_exempt
 
 
+@login_required(login_url='/login/')
 @csrf_exempt
 def submit_exam_attempt(request, pk):
     if request.method != "POST":
@@ -230,6 +249,7 @@ def submit_exam_attempt(request, pk):
 from django.views.decorators.clickjacking import xframe_options_sameorigin
 from django.views.decorators.cache import never_cache
 
+@login_required(login_url='/login/')
 @xframe_options_sameorigin
 @never_cache
 def raw_html_view(request, pk: str):
