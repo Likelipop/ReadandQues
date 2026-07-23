@@ -141,13 +141,17 @@ def node_question_planner(state: GraphState) -> Dict[str, Any]:
 
     prompt = build_question_prompt(text, analysis, config)
 
-    llm = get_llm(temperature=0.3)  # creative — question variety matters
+    llm = get_llm(temperature=1.0)  # creative — question variety matters
     structured_llm = llm.with_structured_output(
         ExamOutput, include_raw=True, method="function_calling"
     )
     raw_result = structured_llm.invoke(prompt)
 
-    parsed: ExamOutput = raw_result["parsed"]
+    parsed = raw_result.get("parsed")
+    if not parsed:
+        print(f"[question_planner] Failed to parse output. Raw: {raw_result.get('raw')}")
+        raise ValueError("Failed to parse ExamOutput from LLM")
+
     token_log = _append_token_log(
         state.get("token_log", []), "question_planner", raw_result["raw"]
     )

@@ -1,6 +1,6 @@
 {% extends 'articles/base.html' %}
 
-{% block title %}Tất cả bài test - IELTS AI Reading Quiz{% endblock %}
+{% block title %}All Tests - AI Reading Practice Quiz{% endblock %}
 
 {% block content %}
 <div class="space-y-8 my-6">
@@ -8,13 +8,13 @@
     <!-- Header Section -->
     <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-            <h1 class="text-3xl font-extrabold tracking-tight text-slate-900">Tất cả đề thi IELTS Reading</h1>
-            <p class="text-slate-500 text-sm mt-1">Danh sách toàn bộ các đề thi đã được biên dịch hoàn chỉnh. Luyện tập hoàn toàn miễn phí không giới hạn.</p>
+            <h1 class="text-3xl font-extrabold tracking-tight text-slate-900">All Reading Practice Tests</h1>
+            <p class="text-slate-500 text-sm mt-1">List of all completed practice tests. Practice completely free and unlimited.</p>
         </div>
         
         <!-- Search bar -->
         <div class="w-full md:w-80 relative">
-            <input type="text" id="search-input" placeholder="Tìm kiếm đề thi..." 
+            <input type="text" id="search-input" placeholder="Search for tests..." 
                    class="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-200 focus:ring-4 focus:ring-blue-100 focus:border-blue-500 focus:outline-none transition text-sm text-slate-700">
             <span class="absolute left-3.5 top-3 text-slate-400 text-sm">🔍</span>
         </div>
@@ -24,22 +24,22 @@
     <div class="bg-white rounded-2xl p-5 border border-slate-100 shadow-sm space-y-4">
         <!-- Theme Filters -->
         <div class="flex flex-wrap items-center gap-2">
-            <span class="text-xs font-bold text-slate-400 uppercase tracking-wider mr-2">Chủ đề (Theme):</span>
+            <span class="text-xs font-bold text-slate-400 uppercase tracking-wider mr-2">Theme:</span>
             {% for theme_item in themes %}
                 <a href="?theme={{ theme_item }}&genre={{ selected_genre }}" 
                    class="px-3.5 py-1.5 rounded-full text-xs font-bold transition-all duration-150 {% if selected_theme == theme_item %}bg-blue-600 text-white shadow-sm shadow-blue-200{% else %}bg-slate-100 text-slate-600 hover:bg-slate-200{% endif %}">
-                    {% if theme_item == 'All' %}Tất cả{% else %}{{ theme_item }}{% endif %}
+                    {% if theme_item == 'All' %}All{% else %}{{ theme_item }}{% endif %}
                 </a>
             {% endfor %}
         </div>
 
         <!-- Genre Filters -->
         <div class="flex flex-wrap items-center gap-2 pt-2 border-t border-slate-100">
-            <span class="text-xs font-bold text-slate-400 uppercase tracking-wider mr-2">Thể loại (Genre):</span>
+            <span class="text-xs font-bold text-slate-400 uppercase tracking-wider mr-2">Genre:</span>
             {% for genre_item in genres %}
                 <a href="?theme={{ selected_theme }}&genre={{ genre_item }}" 
                    class="px-3 py-1 rounded-lg text-xs font-semibold transition-all duration-150 capitalize {% if selected_genre == genre_item %}bg-slate-900 text-white{% else %}bg-slate-50 text-slate-500 hover:bg-slate-100{% endif %}">
-                    {% if genre_item == 'All' %}Tất cả thể loại{% else %}{{ genre_item }}{% endif %}
+                    {% if genre_item == 'All' %}All genres{% else %}{{ genre_item }}{% endif %}
                 </a>
             {% endfor %}
         </div>
@@ -79,7 +79,7 @@
                     <div class="p-5 space-y-2">
                         <span class="text-[10px] font-bold text-blue-600 uppercase tracking-wider block">{{ art.source_name|default:"VietNam News" }}</span>
                         <h3 class="font-bold text-slate-800 line-clamp-2 text-base group-hover:text-blue-600 transition min-h-[3rem]">
-                            {{ art.title|default:"Chưa có tiêu đề" }}
+                            {{ art.title|default:"No title" }}
                         </h3>
                         <p class="text-slate-400 text-xs line-clamp-2 leading-relaxed">
                             {{ art.original_text|truncatewords:20 }}
@@ -99,8 +99,8 @@
         {% else %}
             <div class="col-span-full bg-white border border-slate-100 rounded-2xl p-16 text-center text-slate-500 max-w-lg mx-auto shadow-sm">
                 <div class="text-5xl mb-4">📰</div>
-                <h3 class="text-lg font-bold text-slate-800 mb-2">Chưa có bài test nào</h3>
-                <p class="text-slate-450 text-sm">Không tìm thấy bài test nào phù hợp với bộ lọc hiện tại. Hãy chọn chủ đề khác hoặc tạo bài viết mới!</p>
+                <h3 class="text-lg font-bold text-slate-800 mb-2">No tests yet</h3>
+                <p class="text-slate-450 text-sm">No tests found matching the current filters. Please select a different theme or create a new article!</p>
             </div>
         {% endif %}
     </div>
@@ -111,11 +111,11 @@
         <nav class="inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
             {% if page_obj.has_previous %}
                 <a href="?page={{ page_obj.previous_page_number }}&theme={{ selected_theme }}&genre={{ selected_genre }}" class="relative inline-flex items-center px-4 py-2 rounded-l-md border border-slate-300 bg-white text-sm font-medium text-slate-700 hover:bg-slate-50">
-                    Trước
+                    Previous
                 </a>
             {% else %}
                 <span class="relative inline-flex items-center px-4 py-2 rounded-l-md border border-slate-300 bg-slate-100 text-sm font-medium text-slate-400 cursor-not-allowed">
-                    Trước
+                    Previous
                 </span>
             {% endif %}
 
@@ -133,11 +133,11 @@
 
             {% if page_obj.has_next %}
                 <a href="?page={{ page_obj.next_page_number }}&theme={{ selected_theme }}&genre={{ selected_genre }}" class="relative inline-flex items-center px-4 py-2 rounded-r-md border border-slate-300 bg-white text-sm font-medium text-slate-700 hover:bg-slate-50">
-                    Tiếp
+                    Next
                 </a>
             {% else %}
                 <span class="relative inline-flex items-center px-4 py-2 rounded-r-md border border-slate-300 bg-slate-100 text-sm font-medium text-slate-400 cursor-not-allowed">
-                    Tiếp
+                    Next
                 </span>
             {% endif %}
         </nav>
@@ -147,8 +147,8 @@
     <!-- Empty search result state -->
     <div id="no-results" class="hidden bg-white border border-slate-100 rounded-2xl p-16 text-center text-slate-550 max-w-md mx-auto shadow-sm">
         <div class="text-4xl mb-3">🔍</div>
-        <h3 class="text-base font-bold text-slate-800 mb-1">Không tìm thấy bài test phù hợp</h3>
-        <p class="text-slate-450 text-xs">Vui lòng kiểm tra lại từ khóa tìm kiếm của bạn.</p>
+        <h3 class="text-base font-bold text-slate-800 mb-1">No matching tests found</h3>
+        <p class="text-slate-450 text-xs">Please check your search keywords.</p>
     </div>
 
 </div>

@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{% block title %}IELTS AI Reading Quiz{% endblock %}</title>
+    <title>{% block title %}AI Reading Practice Quiz{% endblock %}</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap');
@@ -19,7 +19,7 @@
         <div class="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between gap-4">
             <a href="{% url 'home' %}" class="flex items-center gap-2 hover:opacity-90 transition shrink-0">
                 <span class="text-2xl">📰</span>
-                <span class="font-extrabold text-xl bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent hidden sm:block">IELTS Reading AI</span>
+                <span class="font-extrabold text-xl bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent hidden sm:block">Reading AI</span>
             </a>
             
             <!-- Global Omni Search Bar -->
@@ -81,7 +81,7 @@
     <!-- Footer -->
     <footer class="bg-white border-t border-slate-100 py-6 mt-12">
         <div class="max-w-6xl mx-auto px-4 text-center text-sm text-slate-400">
-            &copy; 2026 IELTS Academic Reading & Quiz Generator. Built with LangGraph & Django.
+            &copy; 2026 Reading Academic Reading & Quiz Generator. Built with LangGraph & Django.
         </div>
     </footer>
 
@@ -126,7 +126,7 @@
                         window.location.href = `/articles/${data.id}/`;
                     } else {
                         // Show error
-                        importError.textContent = data.message || 'Có lỗi xảy ra.';
+                        importError.textContent = data.message || 'An error occurred.';
                         importError.classList.remove('hidden');
                         importInput.disabled = false;
                         importSpinner.classList.add('hidden');
@@ -134,7 +134,7 @@
                 })
                 .catch(error => {
                     console.error('Error:', error);
-                    importError.textContent = 'Mạng chậm hoặc lỗi máy chủ, vui lòng thử lại.';
+                    importError.textContent = 'Slow network or server error, please try again.';
                     importError.classList.remove('hidden');
                     importInput.disabled = false;
                     importSpinner.classList.add('hidden');

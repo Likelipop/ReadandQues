@@ -31,7 +31,7 @@ def import_and_trigger_pipeline(
     # 1. Insert initial pending document into MongoDB
     pending_document = {
         "url": url,
-        "title": "Đang tải tiêu đề...",
+        "title": "Loading title...",
         "original_text": "",
         "status": "crawling",
         "user_id": user_id,
@@ -42,7 +42,7 @@ def import_and_trigger_pipeline(
         inserted_id = insert_article_document(pending_document)
     except Exception as e:
         logger.error(f"Failed to insert pending article: {e}")
-        return False, "Lỗi cơ sở dữ liệu khi tạo bài báo mới.", None
+        return False, "Database error while creating new article.", None
 
     # 2. Queue AI exam generation in Celery
     generate_exam_task.delay(

@@ -209,7 +209,7 @@ class QuizItem(BaseModel):
     supporting_text: str = Field(
         ..., description="Verbatim sentence(s) from the article that ground the answer"
     )
-    source_chunk_ids: Optional[Union[List[str], str]] = Field(
+    source_chunk_ids: Optional[List[str]] = Field(
         default=None,
         description="Optional reference to chunk IDs; null when chunking is not used",
     )

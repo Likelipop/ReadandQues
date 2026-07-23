@@ -16,14 +16,8 @@ def get_mongo_client() -> MongoClient:
         mongo_uri,
         server_api=ServerApi("1"),
         serverSelectionTimeoutMS=5000,
+        connect=False,
     )
-
-    # Try an initial ping to avoid surprising failures later; swallow exceptions so app can still start.
-    try:
-        client.admin.command("ping")
-    except Exception:
-        pass
-
     return client
 
 

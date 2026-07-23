@@ -12,7 +12,7 @@ class QuizItem(BaseModel):
     """
     Standard schema for a single quiz item saved to MongoDB.
     Supports two types:
-      - yes_no_not_given : Yes/No/Not Given (IELTS Reading style)
+      - yes_no_not_given : Yes/No/Not Given
       - fill_in_blank    : Summary Completion (5 blanks, answers separated by ' | ')
     """
 

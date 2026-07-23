@@ -21,13 +21,8 @@ client = MongoClient(
     MONGO_URI,
     server_api=ServerApi("1"),
     serverSelectionTimeoutMS=5000,
+    connect=False,
 )
-
-# Ping on import — swallow exceptions so scripts can still start
-try:
-    client.admin.command("ping")
-except Exception:
-    pass
 
 db = client[DB_NAME]
 

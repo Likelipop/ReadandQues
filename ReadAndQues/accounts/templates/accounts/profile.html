@@ -1,13 +1,13 @@
 {% extends 'articles/base.html' %}
 
-{% block title %}Tài khoản của tôi - IELTS AI Reading Quiz{% endblock %}
+{% block title %}My Profile - AI Reading Practice Quiz{% endblock %}
 
 {% block content %}
 <div class="max-w-5xl mx-auto my-6 space-y-8">
     <!-- Header Page Title -->
     <div>
-        <h1 class="text-3xl font-extrabold tracking-tight text-slate-900">Tài khoản của tôi</h1>
-        <p class="text-slate-500 text-sm mt-1">Quản lý thông tin cá nhân, theo dõi tiến trình học tập và đổi mật khẩu.</p>
+        <h1 class="text-3xl font-extrabold tracking-tight text-slate-900">My Profile</h1>
+        <p class="text-slate-500 text-sm mt-1">Manage your personal information, track your progress, and change your password.</p>
     </div>
 
     <!-- Main Grid Layout -->
@@ -24,40 +24,40 @@
                     <span class="absolute bottom-0 right-1 h-5 w-5 bg-emerald-500 border-2 border-white rounded-full" title="Active"></span>
                 </div>
                 <h2 class="text-xl font-bold text-slate-800">{{ user.username }}</h2>
-                <p class="text-slate-400 text-xs mt-0.5">Thành viên từ ngày {{ user.date_joined|date:"d/m/Y" }}</p>
+                <p class="text-slate-400 text-xs mt-0.5">Member since {{ user.date_joined|date:"d/m/Y" }}</p>
                 
                 <div class="w-full border-t border-slate-100 my-4"></div>
                 
                 <!-- Credentials Info list -->
                 <div class="w-full text-left space-y-3">
                     <div>
-                        <span class="block text-[10px] uppercase font-bold text-slate-400 tracking-wider">Địa chỉ Email</span>
-                        <span class="text-sm font-semibold text-slate-700 break-all">{{ user.email|default:"Chưa cập nhật" }}</span>
+                        <span class="block text-[10px] uppercase font-bold text-slate-400 tracking-wider">Email Address</span>
+                        <span class="text-sm font-semibold text-slate-700 break-all">{{ user.email|default:"Not updated" }}</span>
                     </div>
                     <div>
-                        <span class="block text-[10px] uppercase font-bold text-slate-400 tracking-wider">Trạng thái xác thực</span>
+                        <span class="block text-[10px] uppercase font-bold text-slate-400 tracking-wider">Verification Status</span>
                         {% if user.is_active %}
                             <span class="inline-flex items-center gap-1 mt-0.5 px-2.5 py-0.5 text-xs font-semibold rounded-full bg-emerald-50 text-emerald-700 border border-emerald-100">
-                                <span class="h-1.5 w-1.5 rounded-full bg-emerald-500"></span> Đã xác thực
+                                <span class="h-1.5 w-1.5 rounded-full bg-emerald-500"></span> Verified
                             </span>
                         {% else %}
                             <span class="inline-flex items-center gap-1 mt-0.5 px-2.5 py-0.5 text-xs font-semibold rounded-full bg-amber-50 text-amber-700 border border-amber-100">
-                                <span class="h-1.5 w-1.5 rounded-full bg-amber-500"></span> Chưa xác thực
+                                <span class="h-1.5 w-1.5 rounded-full bg-amber-500"></span> Not Verified
                             </span>
                         {% endif %}
                     </div>
                 </div>
                 <div class="w-full border-t border-slate-100 my-4"></div>
                 <button id="toggle-pw-btn" class="w-full py-2.5 px-4 bg-slate-50 hover:bg-slate-100 text-slate-700 font-bold rounded-xl text-xs transition duration-150 flex items-center justify-center gap-1.5 border border-slate-150">
-                    <span>🔒</span> Đổi mật khẩu
+                    <span>🔒</span> Change Password
                 </button>
             </div>
 
             <!-- Quick Action Info card -->
             <div class="bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-100/50 rounded-2xl p-6 text-center">
-                <h3 class="text-sm font-bold text-blue-900 mb-1">Cần thêm Star?</h3>
-                <p class="text-xs text-blue-700/80 mb-4 leading-relaxed">Mỗi lượt import bài báo tiêu tốn 1 Star. Nếu hết, hãy liên hệ với chúng tôi để nhận thêm.</p>
-                <a href="mailto:support@ieltsquiz.com?subject=Request%20More%20Stars&body=Username:%20{{ user.username }}" class="inline-flex items-center gap-1.5 px-4 py-2.5 text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-xl transition shadow-md shadow-blue-100">
+                <h3 class="text-sm font-bold text-blue-900 mb-1">Need more Stars?</h3>
+                <p class="text-xs text-blue-700/80 mb-4 leading-relaxed">Each article import costs 1 Star. If you run out, please contact us to receive more.</p>
+                <a href="mailto:support@readingpractice.com?subject=Request%20More%20Stars&body=Username:%20{{ user.username }}" class="inline-flex items-center gap-1.5 px-4 py-2.5 text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-xl transition shadow-md shadow-blue-100">
                     📧 Request Stars
                 </a>
             </div>
@@ -69,7 +69,7 @@
             <!-- Dashboard Stats Grid -->
             <div>
                 <h3 class="text-lg font-bold text-slate-800 mb-4 flex items-center gap-2">
-                    <span>📊</span> Thống kê hoạt động
+                    <span>📊</span> Activity Statistics
                 </h3>
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <!-- Stars remaining Card -->
@@ -78,7 +78,7 @@
                             ⭐
                         </div>
                         <div>
-                            <span class="block text-slate-400 text-xs font-medium">Stars còn lại</span>
+                            <span class="block text-slate-400 text-xs font-medium">Stars remaining</span>
                             <span class="text-2xl font-extrabold text-slate-850">{{ profile.stars }}</span>
                         </div>
                     </div>
@@ -89,8 +89,8 @@
                             📅
                         </div>
                         <div>
-                            <span class="block text-slate-400 text-xs font-medium">Số ngày đăng nhập</span>
-                            <span class="text-2xl font-extrabold text-slate-850">{{ profile.login_days_count }} ngày</span>
+                            <span class="block text-slate-400 text-xs font-medium">Login days</span>
+                            <span class="text-2xl font-extrabold text-slate-850">{{ profile.login_days_count }} days</span>
                         </div>
                     </div>
 
@@ -100,8 +100,8 @@
                             📰
                         </div>
                         <div>
-                            <span class="block text-slate-400 text-xs font-medium">Bài báo đã thực hiện</span>
-                            <span class="text-2xl font-extrabold text-slate-850">{{ total_articles }} bài</span>
+                            <span class="block text-slate-400 text-xs font-medium">Articles completed</span>
+                            <span class="text-2xl font-extrabold text-slate-850">{{ total_articles }} articles</span>
                         </div>
                     </div>
 
@@ -111,7 +111,7 @@
                             🏆
                         </div>
                         <div>
-                            <span class="block text-slate-400 text-xs font-medium">Điểm streak hiện tại</span>
+                            <span class="block text-slate-400 text-xs font-medium">Current streak</span>
                             <span class="text-2xl font-extrabold text-slate-850">{{ profile.streak }}</span>
                         </div>
                     </div>
@@ -121,9 +121,9 @@
             <!-- Security & Change Password Card -->
             <div id="password-card" class="bg-white rounded-2xl border border-slate-100 shadow-md p-6 {% if not password_form.errors and not password_form.non_field_errors %}hidden{% endif %} transition-all duration-300">
                 <h3 class="text-lg font-bold text-slate-800 mb-2 flex items-center gap-2">
-                    <span>🔒</span> Bảo mật & Đổi mật khẩu
+                    <span>🔒</span> Security & Change Password
                 </h3>
-                <p class="text-slate-400 text-xs mb-6">Chúng tôi tuân thủ các chuẩn mã hóa bảo mật tiên tiến nhất để bảo vệ thông tin mật khẩu của bạn.</p>
+                <p class="text-slate-400 text-xs mb-6">We adhere to the most advanced security encryption standards to protect your password information.</p>
 
                 <form method="POST" action="{% url 'profile' %}" class="space-y-4 max-w-md">
                     {% csrf_token %}
@@ -156,7 +156,7 @@
 
                     <div class="pt-2">
                         <button type="submit" class="w-full py-3 px-4 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-bold rounded-xl shadow-lg shadow-blue-100 hover:shadow-blue-200 transition duration-200 text-sm">
-                            Cập nhật mật khẩu mới
+                            Update new password
                         </button>
                     </div>
                 </form>

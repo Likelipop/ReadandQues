@@ -59,7 +59,7 @@ def article_status(request, pk):
     doc = get_article_document_by_id(pk)
     if not doc:
         return JsonResponse(
-            {"status": "error", "message": "Không tìm thấy bài báo."}, status=404
+            {"status": "error", "message": "Article not found."}, status=404
         )
 
     status = doc.get("status", "pending")
@@ -75,11 +75,14 @@ def article_status(request, pk):
     return JsonResponse(payload)
 
 
+from django.views.decorators.cache import never_cache
+
+@never_cache
 def article_detail(request, pk):
     """Displays the article detail page (reading view & generated exams)."""
     doc = get_article_document_by_id(pk)
     if not doc:
-        messages.error(request, "Không tìm thấy bài báo yêu cầu!")
+        messages.error(request, "Requested article not found!")
         return redirect("articles:import_article")
 
     doc["_id"] = str(doc["_id"])
@@ -225,8 +228,10 @@ def submit_exam_attempt(request, pk):
 
 
 from django.views.decorators.clickjacking import xframe_options_sameorigin
+from django.views.decorators.cache import never_cache
 
 @xframe_options_sameorigin
+@never_cache
 def raw_html_view(request, pk: str):
     """
     Returns the raw HTML of the article to be rendered inside an iframe.
@@ -239,7 +244,16 @@ def raw_html_view(request, pk: str):
         return HttpResponse("Article not found", status=404)
 
     html_content = article_data.get("html_content")
-    if not html_content:
+    if html_content:
+        injected_css = "<style>a { cursor: text !important; color: inherit !important; text-decoration: none !important; }</style>"
+        injected_js = "<script>document.addEventListener('DOMContentLoaded', function() { document.querySelectorAll('a').forEach(a => { a.removeAttribute('href'); }); });</script>"
+        injection = injected_css + injected_js
+        if "</head>" in html_content.lower():
+            import re
+            html_content = re.sub(r'(?i)</head>', f'{injection}</head>', html_content)
+        else:
+            html_content = injection + html_content
+    else:
         # Fallback for old articles without html_content
         text = article_data.get("original_text", "")
         html_content = f"<html><body style='font-family:sans-serif; padding: 20px;'><pre style='white-space: pre-wrap; font-family: inherit;'>{text}</pre></body></html>"

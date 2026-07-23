@@ -113,7 +113,7 @@ class AccountsAuthTests(TestCase):
         self.bypass_rate_limit()
         response = self.client.post(reverse("verify_email"), {"code": "654321"})
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "Mã xác thực không chính xác.")
+        self.assertContains(response, "Incorrect verification code.")
         user.refresh_from_db()
         self.assertFalse(user.is_active)
 
@@ -124,7 +124,7 @@ class AccountsAuthTests(TestCase):
         self.bypass_rate_limit()
         response = self.client.post(reverse("verify_email"), {"code": "123456"})
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "Mã xác thực đã hết hạn.")
+        self.assertContains(response, "The verification code has expired.")
         user.refresh_from_db()
         self.assertFalse(user.is_active)
 
@@ -148,7 +148,7 @@ class AccountsAuthTests(TestCase):
 
         # 1. First resend attempt immediately (within 60s) -> should be blocked by cooldown
         response = self.client.get(reverse("resend_verification"), follow=True)
-        self.assertContains(response, "giây trước khi gửi lại mã.")
+        self.assertContains(response, "seconds before resending the code.")
 
         # 2. Backdate created_at of verification record in DB by 61 seconds
         verification.created_at = timezone.now() - datetime.timedelta(seconds=61)
@@ -283,7 +283,7 @@ class ProfileAndStarsTests(TestCase):
             },
         )
         self.assertEqual(response.status_code, 200)  # Form errors displayed
-        self.assertContains(response, "Vui lòng sửa các lỗi bên dưới")
+        self.assertContains(response, "Please fix the errors below")
 
         # Verify old password still works
         self.user.refresh_from_db()
@@ -301,7 +301,7 @@ class ProfileAndStarsTests(TestCase):
         )
         # Should render import page with errors
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "Bạn đã hết Star!")
+        self.assertContains(response, "You are out of Stars!")
 
         # Ajax attempt
         response = self.client.post(

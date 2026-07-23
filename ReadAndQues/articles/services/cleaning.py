@@ -17,7 +17,7 @@ def clean_and_validate_article(
     during article extraction in scraper.py.
     """
     if not crawl_result.get("success"):
-        return False, crawl_result.get("error", "Lỗi khi cào nội dung bài báo."), {}
+        return False, crawl_result.get("error", "Error scraping article content."), {}
 
     content = crawl_result.get("content", "").strip()
     title = crawl_result.get("title", "").strip()

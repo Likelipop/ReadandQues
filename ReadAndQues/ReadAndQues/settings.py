@@ -142,6 +142,7 @@ CELERY_TIMEZONE = "UTC"
 CELERY_TASK_ACKS_LATE = True
 CELERY_TASK_REJECT_ON_WORKER_LOST = True
 CELERY_WORKER_PREFETCH_MULTIPLIER = 1
+CELERY_TASK_DEFAULT_QUEUE = "ai_queue"
 CELERY_BEAT_SCHEDULE = {
     "daily-pipeline-run": {
         "task": "worker_service.tasks.daily_pipeline_task",

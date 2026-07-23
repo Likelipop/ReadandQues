@@ -27,7 +27,7 @@ def deduct_user_star(user) -> Tuple[bool, str]:
             return True, ""
     except Exception as e:
         logger.error(f"Error deducting star for user {user.id}: {e}")
-        return False, "Lỗi hệ thống khi cập nhật số lượng Star."
+        return False, "System error while updating stars."
 
 
 def refund_user_star(user):

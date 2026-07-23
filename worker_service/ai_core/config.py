@@ -8,7 +8,7 @@ import os
 from pathlib import Path
 
 from dotenv import load_dotenv
-from langchain_openai import ChatOpenAI
+from langchain_openai import AzureChatOpenAI
 from pydantic import BaseModel, SecretStr
 
 # Load .env from project root (two levels up from this file)
@@ -42,16 +42,25 @@ class ExamConfig(BaseModel):
         return cls(word_count=wc, total_questions=total)
 
 
-def get_llm(temperature: float = 0.3) -> ChatOpenAI:
+def get_llm(temperature: float = 0.3) -> AzureChatOpenAI:
     """
     Return a configured LLM instance.
 
     temperature=0.0  → deterministic; use for analyzer (genre grounding) and verifier.
     temperature=0.3  → default; use for question_planner (needs creative variation).
     """
-    return ChatOpenAI(
-        base_url=_ENDPOINT,
+    # Fix the endpoint for Azure if it ends in /openai/v1
+    base_endpoint = _ENDPOINT
+    if base_endpoint.endswith("/openai/v1"):
+        base_endpoint = base_endpoint.replace("/openai/v1", "")
+
+    # The model (like o1/o3-mini) might only support temperature=1
+    return AzureChatOpenAI(
+        azure_endpoint=base_endpoint,
         api_key=SecretStr(_API_KEY),
-        model=_MODEL,
-        temperature=temperature,
+        azure_deployment=_MODEL,
+        api_version="2023-05-15",
+        max_retries=10,
+        timeout=180.0,
+        # temperature=temperature  # omitted because o-series rejects temp != 1
     )

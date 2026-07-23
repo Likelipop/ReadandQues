@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{{ article.title }} - IELTS Reading Practice</title>
+    <title>{{ article.title }} - Reading Practice</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <style>
@@ -102,11 +102,6 @@
         
         <section class="w-1/2 p-8 pl-24 overflow-y-auto bg-white border-r border-gray-200 relative" id="article-section">
 
-            {% if article.image_url %}
-            <div class="mb-6 rounded-2xl overflow-hidden shadow-sm border border-slate-100 bg-slate-100 max-h-80 flex items-center justify-center">
-                <img src="{{ article.image_url }}" alt="{{ article.title }}" class="w-full h-full max-h-80 object-cover" onerror="this.parentElement.style.display='none';">
-            </div>
-            {% endif %}
             <div id="raw-article-text" class="hidden">{{ article.original_text }}</div>
             {% if article.html_content %}
                 <iframe id="article-iframe" src="{% url 'articles:raw_html' article.id %}" class="w-full h-[800px] border-0 rounded-xl bg-white shadow-inner"></iframe>
@@ -182,10 +177,20 @@
 
                 {% else %}
                     <div id="processing-right" class="bg-white p-8 rounded-lg shadow-sm border border-gray-200 text-center">
-                        <div class="h-12 w-12 mx-auto rounded-full border-4 border-blue-600 border-t-transparent animate-spin mb-4"></div>
+                        {% if article.status != 'failed' and article.status != 'error' %}
+                            <div class="h-12 w-12 mx-auto rounded-full border-4 border-blue-600 border-t-transparent animate-spin mb-4"></div>
+                        {% else %}
+                            <div class="h-12 w-12 mx-auto rounded-full bg-red-100 flex items-center justify-center mb-4">
+                                <svg class="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                            </div>
+                        {% endif %}
+                        
                         {% if article.status == 'crawling' %}
                             <p class="text-gray-700 font-semibold">Fetching article content...</p>
                             <p class="text-sm text-gray-500 mt-2">Please wait while we download and clean the article text.</p>
+                        {% elif article.status == 'failed' %}
+                            <p class="text-red-600 font-semibold">Failed to process. Please try again later.</p>
+                            <p class="text-sm text-gray-500 mt-2">We could not generate questions for this article, but you can still read the text on the left.</p>
                         {% else %}
                             <p class="text-gray-700 font-semibold">Generating questions... You can keep reading the passage on the left.</p>
                             <p class="text-sm text-gray-500 mt-2">When generation completes, the questions will appear here automatically.</p>
@@ -197,8 +202,8 @@
                 {% if related_articles %}
                 <div id="related-articles-section" class="hidden mt-12 pt-8 border-t border-slate-200">
                     <div class="flex items-center justify-between mb-6">
-                        <h3 class="text-xl font-bold text-slate-800">✨ Có thể bạn sẽ thích</h3>
-                        <a href="{% url 'home' %}" class="text-sm font-semibold text-blue-600 hover:text-blue-700 transition">Xem tất cả bài kiểm tra →</a>
+                        <h3 class="text-xl font-bold text-slate-800">✨ You might also like</h3>
+                        <a href="{% url 'home' %}" class="text-sm font-semibold text-blue-600 hover:text-blue-700 transition">View all tests →</a>
                     </div>
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         {% for r_art in related_articles %}
@@ -218,7 +223,7 @@
                             <!-- Card text info -->
                             <div class="p-3">
                                 <h4 class="font-bold text-slate-800 line-clamp-2 text-sm group-hover:text-blue-600 transition min-h-[2.5rem]">
-                                    {{ r_art.title|default:"Chưa có tiêu đề" }}
+                                    {{ r_art.title|default:"No title" }}
                                 </h4>
                             </div>
                         </a>
@@ -230,7 +235,7 @@
                 <!-- BM25 Related Articles Section (Injected by JS) -->
                 <div id="bm25-related-section" class="hidden mt-8 pt-8 border-t border-slate-200">
                     <div class="flex items-center justify-between mb-6">
-                        <h3 class="text-xl font-bold text-slate-800">💡 Dựa trên những gì bạn đã highlight</h3>
+                        <h3 class="text-xl font-bold text-slate-800">💡 Based on what you highlighted</h3>
                     </div>
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-4" id="bm25-grid">
                     </div>
@@ -266,8 +271,25 @@
 
         function setActiveTool(tool) {
             activeTool = (activeTool === tool) ? null : tool;
-            if (btnMarker) btnMarker.classList.toggle('active', activeTool === 'marker');
-            if (btnEraser) btnEraser.classList.toggle('active', activeTool === 'eraser');
+            
+            if (btnMarker) {
+                if (activeTool === 'marker') {
+                    btnMarker.classList.add('bg-yellow-100', 'text-yellow-600');
+                    btnMarker.classList.remove('bg-transparent', 'text-slate-600');
+                } else {
+                    btnMarker.classList.remove('bg-yellow-100', 'text-yellow-600');
+                    btnMarker.classList.add('bg-transparent', 'text-slate-600');
+                }
+            }
+            if (btnEraser) {
+                if (activeTool === 'eraser') {
+                    btnEraser.classList.add('bg-pink-100', 'text-pink-600');
+                    btnEraser.classList.remove('bg-transparent', 'text-slate-600');
+                } else {
+                    btnEraser.classList.remove('bg-pink-100', 'text-pink-600');
+                    btnEraser.classList.add('bg-transparent', 'text-slate-600');
+                }
+            }
             
             if (targetContainer) {
                 if (activeTool === 'marker') {
@@ -321,7 +343,7 @@
             });
         }
 
-        // Apply Highlighter
+        // Apply Highlighter and Strip Links
         if (articleIframe) {
             articleIframe.addEventListener('load', function() {
                 try {
@@ -445,21 +467,29 @@
             }
             const id = getArticleId();
             function poll() {
-                fetch(`/articles/status/${id}/`)
+                console.log("Polling for status...", id);
+                fetch(`/articles/status/${id}/?t=${Date.now()}`)
                     .then(r => r.json())
                     .then(data => {
-                        if (data.status === 'completed') {
-                            window.location.reload();
-                        } else if (data.status === 'failed' || data.status === 'error') {
-                            const proc = document.getElementById('processing-right');
-                            if (proc) proc.innerHTML = `<p class="text-red-600 font-semibold">${data.message || 'Failed to process. Please try again later.'}</p>`;
-                        } else if (data.status === 'processing' && '{{ article.status }}' === 'crawling') {
-                            window.location.reload();
-                        } else {
+                        console.log("Poll response:", data);
+                        const currentStatus = '{{ article.status }}';
+                        console.log("Current status in template:", currentStatus);
+                        if (data.status === 'completed' && currentStatus !== 'completed') {
+                            window.location.href = window.location.pathname + '?_t=' + Date.now();
+                        } else if ((data.status === 'failed' || data.status === 'error') && currentStatus !== 'failed' && currentStatus !== 'error') {
+                            window.location.href = window.location.pathname + '?_t=' + Date.now();
+                        } else if (data.status === 'processing' && currentStatus === 'crawling') {
+                            window.location.href = window.location.pathname + '?_t=' + Date.now();
+                        } else if (currentStatus !== 'completed' && currentStatus !== 'failed' && currentStatus !== 'error') {
+                            console.log("Scheduling next poll in 2.5s");
                             setTimeout(poll, 2500);
                         }
                     })
-                    .catch(() => setTimeout(poll, 5000));
+                    .catch(() => {
+                        if ('{{ article.status }}' !== 'completed' && '{{ article.status }}' !== 'failed' && '{{ article.status }}' !== 'error') {
+                            setTimeout(poll, 5000);
+                        }
+                    });
             }
             {% if article.status != 'completed' %}
                 poll();
@@ -523,7 +553,7 @@
                 
                 document.getElementById('score-display').textContent = correctCount;
                 submitBtn.disabled = true;
-                submitBtn.textContent = 'Đã nộp bài';
+                submitBtn.textContent = 'Submitted';
                 submitBtn.classList.replace('bg-green-600', 'bg-slate-400');
                 submitBtn.classList.replace('hover:bg-green-700', 'hover:bg-slate-500');
                 
@@ -558,7 +588,7 @@
                                 </div>
                                 <div class="p-3">
                                     <h4 class="font-bold text-slate-800 line-clamp-2 text-sm group-hover:text-blue-600 transition min-h-[2.5rem]">
-                                        ${r_art.title || "Chưa có tiêu đề"}
+                                        ${r_art.title || "No title"}
                                     </h4>
                                 </div>
                             `;
@@ -596,7 +626,7 @@
                 });
 
                 if (!allAnswered) {
-                    const confirmSubmit = confirm('Bạn chưa điền đủ các câu trả lời. Bạn có chắc chắn muốn nộp bài?');
+                    const confirmSubmit = confirm("You haven't filled in all the answers. Are you sure you want to submit?");
                     if (!confirmSubmit) return;
                 }
 
