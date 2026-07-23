@@ -89,9 +89,13 @@
 
                 <!-- Footer Button (redirect to detail if logged in, else redirect to login) -->
                 <div class="p-5 pt-0">
-                    <a href="{% if user.is_authenticated %}{% url 'articles:article_detail' art.id %}{% else %}{% url 'login' %}{% endif %}" 
-                       class="w-full py-2.5 px-4 bg-slate-50 hover:bg-blue-600 group-hover:bg-blue-600 text-slate-700 group-hover:text-white font-bold rounded-xl text-xs transition duration-150 flex items-center justify-center gap-1.5 border border-slate-100 group-hover:border-blue-600">
-                        📖 Practice Quiz
+                    <a href="{% if user.is_authenticated %}{% url 'articles:article_detail' art.id %}{% if art.has_attempted %}?retry=1{% endif %}{% else %}{% url 'login' %}{% endif %}" 
+                       class="w-full py-2.5 px-4 {% if art.has_attempted %}bg-indigo-50 text-indigo-700 hover:bg-indigo-600 hover:text-white border-indigo-200{% else %}bg-slate-50 hover:bg-blue-600 text-slate-700 hover:text-white border-slate-100{% endif %} font-bold rounded-xl text-xs transition duration-150 flex items-center justify-center gap-1.5 border">
+                        {% if art.has_attempted %}
+                            🔄 Practice Again
+                        {% else %}
+                            📖 Practice Quiz
+                        {% endif %}
                     </a>
                 </div>
             </div>

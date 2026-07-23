@@ -3,7 +3,8 @@ import random
 import re
 import time
 
-from database.Mongo.crud import get_articles_by_user, get_completed_articles
+from database.Mongo.crud import (get_articles_by_user, get_completed_articles,
+                                 get_user_attempted_article_ids)
 from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth import (authenticate, login, logout,
@@ -21,12 +22,22 @@ from .models import EmailVerification
 def home_view(request):
     trending_articles = get_completed_articles(limit=6)
     user_articles = []
+    attempted_ids = set()
 
     if request.user.is_authenticated:
         user_articles = get_articles_by_user(request.user.id)
         profile = request.user.profile
         profile.total_articles_imported = len(user_articles)
         profile.save()
+        attempted_ids = get_user_attempted_article_ids(request.user.id)
+
+    for art in trending_articles:
+        art_id = str(art.get("id") or art.get("_id") or "")
+        art["has_attempted"] = art_id in attempted_ids
+
+    for art in user_articles:
+        art_id = str(art.get("id") or art.get("_id") or "")
+        art["has_attempted"] = art_id in attempted_ids
 
     context = {
         "trending_articles": trending_articles,

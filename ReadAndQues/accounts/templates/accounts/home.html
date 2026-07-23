@@ -98,9 +98,13 @@
 
                     <!-- Button Footer -->
                     <div class="p-5 pt-0">
-                        <a href="{% if user.is_authenticated %}{% url 'articles:article_detail' art.id %}{% else %}{% url 'login' %}{% endif %}" 
-                           class="w-full py-2.5 px-4 bg-slate-50 hover:bg-blue-600 group-hover:bg-blue-600 text-slate-700 group-hover:text-white font-bold rounded-xl text-xs transition duration-150 flex items-center justify-center gap-1.5 border border-slate-100 group-hover:border-blue-600">
-                            📖 Practice Quiz
+                        <a href="{% if user.is_authenticated %}{% url 'articles:article_detail' art.id %}{% if art.has_attempted %}?retry=1{% endif %}{% else %}{% url 'login' %}{% endif %}" 
+                           class="w-full py-2.5 px-4 {% if art.has_attempted %}bg-indigo-50 text-indigo-700 hover:bg-indigo-600 hover:text-white border-indigo-200{% else %}bg-slate-50 hover:bg-blue-600 text-slate-700 hover:text-white border-slate-100{% endif %} font-bold rounded-xl text-xs transition duration-150 flex items-center justify-center gap-1.5 border">
+                            {% if art.has_attempted %}
+                                🔄 Practice Again
+                            {% else %}
+                                📖 Practice Quiz
+                            {% endif %}
                         </a>
                     </div>
                 </div>
@@ -157,8 +161,12 @@
                                         {% endif %}
                                     </td>
                                     <td class="py-4 px-6 text-right">
-                                        <a href="{% url 'articles:article_detail' art.id %}" class="inline-flex items-center justify-center px-4 py-2 text-xs font-bold text-slate-700 hover:text-blue-600 bg-slate-100 hover:bg-blue-50 rounded-lg transition">
-                                            {% if art.status == 'completed' %}Practice{% else %}View Details{% endif %} →
+                                        <a href="{% url 'articles:article_detail' art.id %}{% if art.has_attempted %}?retry=1{% endif %}" class="inline-flex items-center justify-center px-4 py-2 text-xs font-bold text-slate-700 hover:text-blue-600 bg-slate-100 hover:bg-blue-50 rounded-lg transition">
+                                            {% if art.status == 'completed' %}
+                                                {% if art.has_attempted %}Practice Again{% else %}Practice{% endif %}
+                                            {% else %}
+                                                View Details
+                                            {% endif %} →
                                         </a>
                                     </td>
                                 </tr>

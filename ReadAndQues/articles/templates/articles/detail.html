@@ -402,6 +402,12 @@
             const articleId = '{{ article.id }}';
             const storageKey = `exam_state_${articleId}`;
             
+            if (window.location.search.includes('retry=1')) {
+                try { localStorage.removeItem(storageKey); } catch(e) {}
+                const cleanUrl = window.location.protocol + "//" + window.location.host + window.location.pathname;
+                window.history.replaceState({path: cleanUrl}, '', cleanUrl);
+            }
+
             let examState = { elapsedTime: 0, answers: {} };
             try {
                 const stored = localStorage.getItem(storageKey);
@@ -496,10 +502,73 @@
             {% endif %}
         })();
 
-        // ── Submit handler ──
+        // ── Submit handler & Practice Again ──
         const submitBtn = document.getElementById('submit-btn');
         if (submitBtn) {
             
+            function resetQuizForPracticeAgain() {
+                try { if (typeof storageKey !== 'undefined') localStorage.removeItem(storageKey); } catch(e) {}
+                if (typeof examState !== 'undefined') {
+                    examState = { elapsedTime: 0, answers: {}, submitted: false };
+                }
+
+                const items = document.querySelectorAll('.quiz-item');
+                items.forEach(item => {
+                    item.classList.remove('border-green-500', 'bg-green-50', 'border-red-500', 'bg-red-50');
+                    item.classList.add('border-gray-200');
+
+                    const blanks = item.querySelectorAll('.fib-blank');
+                    blanks.forEach(b => {
+                        b.value = '';
+                        b.disabled = false;
+                        b.style.borderColor = '#3b82f6';
+                        b.style.background = '#eff6ff';
+                    });
+
+                    const radios = item.querySelectorAll('input[type="radio"]');
+                    radios.forEach(r => {
+                        r.checked = false;
+                        r.disabled = false;
+                    });
+
+                    const expl = item.querySelector('.explanation');
+                    if (expl) expl.classList.add('hidden');
+                });
+
+                const scoreDisplay = document.getElementById('score-display');
+                if (scoreDisplay) scoreDisplay.textContent = '0';
+
+                const timerDisplay = document.getElementById('timer-display');
+                if (timerDisplay && typeof examState !== 'undefined') {
+                    if (window.examTimerInterval) clearInterval(window.examTimerInterval);
+                    examState.elapsedTime = 0;
+                    function updateTimer() {
+                        const minutes = Math.floor(examState.elapsedTime / 60);
+                        const seconds = examState.elapsedTime % 60;
+                        timerDisplay.textContent = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+                        examState.elapsedTime++;
+                        if (typeof saveState === 'function') saveState();
+                    }
+                    updateTimer();
+                    window.examTimerInterval = setInterval(updateTimer, 1000);
+                }
+
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'Submit Exam';
+                submitBtn.className = 'w-full mt-6 bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-4 rounded-lg transition-colors text-lg shadow-md';
+                submitBtn.removeAttribute('data-mode');
+
+                const chromaSection = document.getElementById('related-articles-section');
+                if (chromaSection) chromaSection.classList.add('hidden');
+                const bm25Section = document.getElementById('bm25-related-section');
+                if (bm25Section) bm25Section.classList.add('hidden');
+
+                const quizContainer = document.getElementById('quiz-container');
+                if (quizContainer) {
+                    quizContainer.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }
+            }
+
             function evaluateVisually() {
                 const items = document.querySelectorAll('.quiz-item');
                 let correctCount = 0;
@@ -552,11 +621,13 @@
                 });
                 
                 document.getElementById('score-display').textContent = correctCount;
-                submitBtn.disabled = true;
-                submitBtn.textContent = 'Submitted';
-                submitBtn.classList.replace('bg-green-600', 'bg-slate-400');
-                submitBtn.classList.replace('hover:bg-green-700', 'hover:bg-slate-500');
                 
+                // Change submit button into "Practice Again"
+                submitBtn.disabled = false;
+                submitBtn.textContent = '🔄 Practice Again';
+                submitBtn.className = 'w-full mt-6 bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-4 rounded-lg transition-colors text-lg shadow-md';
+                submitBtn.setAttribute('data-mode', 'retry');
+
                 if (window.examTimerInterval) {
                     clearInterval(window.examTimerInterval);
                 }
@@ -608,7 +679,10 @@
             }
 
             submitBtn.addEventListener('click', function() {
-                if (typeof examState !== 'undefined' && examState.submitted) return;
+                if (submitBtn.getAttribute('data-mode') === 'retry') {
+                    resetQuizForPracticeAgain();
+                    return;
+                }
 
                 // 1. Check completeness
                 let allAnswered = true;
