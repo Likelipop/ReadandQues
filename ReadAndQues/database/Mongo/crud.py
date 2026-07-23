@@ -104,3 +104,15 @@ def get_article_document_by_url(url: str):
         return doc
     except Exception as e:
         return None
+
+
+def get_user_attempted_article_ids(user_id: int) -> set[str]:
+    """Return a set of article_id strings for which user_id has at least one attempt."""
+    if not user_id:
+        return set()
+    try:
+        cursor = attempts_collection.find({"user_id": user_id}, {"article_id": 1})
+        return {str(doc["article_id"]) for doc in cursor if "article_id" in doc}
+    except Exception:
+        return set()
+

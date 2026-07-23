@@ -140,7 +140,8 @@ def article_detail(request, pk):
 
 
 def all_tests_view(request):
-    from database.Mongo.crud import get_completed_articles
+    from database.Mongo.crud import (get_completed_articles,
+                                     get_user_attempted_article_ids)
     from django.core.paginator import Paginator
 
     selected_theme = request.GET.get("theme", "All")
@@ -150,6 +151,14 @@ def all_tests_view(request):
         theme=selected_theme if selected_theme != "All" else None,
         genre=selected_genre if selected_genre != "All" else None,
     )
+
+    attempted_ids = set()
+    if request.user.is_authenticated:
+        attempted_ids = get_user_attempted_article_ids(request.user.id)
+
+    for art in articles:
+        art_id = str(art.get("id") or art.get("_id") or "")
+        art["has_attempted"] = art_id in attempted_ids
 
     themes = [
         "All",
