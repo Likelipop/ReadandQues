@@ -1,0 +1,4 @@
+# Directory to place SSL certificates on production Droplet:
+# - cert.pem
+# - key.pem
+# - cloudflare.crt
