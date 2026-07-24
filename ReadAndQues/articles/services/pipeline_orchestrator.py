@@ -12,7 +12,7 @@ from typing import Optional, Tuple
 from database.Crawler.scraper import crawl_article_content
 from database.Mongo.crud import insert_article_document
 
-from worker_service.tasks import generate_exam_task
+from pipeline.orchestrator import run_article_pipeline_async
 
 from .cleaning import clean_and_validate_article
 
@@ -24,7 +24,7 @@ def import_and_trigger_pipeline(
 ) -> Tuple[bool, str, Optional[str]]:
     """
     Runs the ingestion and cleaning steps.
-    If successful, inserts a pending document in MongoDB and kicks off the AI exam pipeline asynchronously via Celery.
+    If successful, inserts a pending document in MongoDB and kicks off the AI exam pipeline asynchronously via background thread.
     Returns (success, error_message, inserted_id).
     """
     from database.Mongo.crud import get_article_document_by_url
@@ -37,7 +37,6 @@ def import_and_trigger_pipeline(
         if status in ("crawling", "processing", "completed"):
             logger.info(f"Deduplication: Article {url} already exists with status {status}. Reusing _id: {existing_doc.get('_id')}")
             return True, "", str(existing_doc.get("_id"))
-        # If it failed, we can let it create a new task to try again (or we could update the old one). For now, we proceed to create a new entry.
 
     # 1. Insert initial pending document into MongoDB
     pending_document = {
@@ -55,10 +54,8 @@ def import_and_trigger_pipeline(
         logger.error(f"Failed to insert pending article: {e}")
         return False, "Database error while creating new article.", None
 
-    # 2. Queue AI exam generation in Celery
-    generate_exam_task.delay(
-        inserted_id,
-        url,
-    )
+    # 2. Trigger AI exam generation asynchronously via background thread
+    run_article_pipeline_async(inserted_id, url)
 
     return True, "", inserted_id
+

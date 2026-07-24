@@ -9,8 +9,10 @@ import os
 bind = "0.0.0.0:8000"
 
 # ── Worker processes ───────────────────────────────────────────────────────
-workers = 3
-worker_class = "sync"
+workers = 2
+threads = 4
+worker_class = "gthread"
+
 
 # Timeout for long-running AI requests (seconds)
 timeout = 120

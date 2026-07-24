@@ -13,4 +13,5 @@ COPY . /app/
 
 EXPOSE 8000
 
-CMD ["gunicorn", "--bind", "0.0.0.0:8000", "--workers", "3", "--chdir", "/app/ReadAndQues", "ReadAndQues.wsgi:application"]
+CMD ["gunicorn", "--config", "/app/gunicorn.conf.py", "--chdir", "/app/ReadAndQues", "ReadAndQues.wsgi:application"]
+

@@ -142,9 +142,10 @@ class CategoryAndThemeTests(TestCase):
             self.assertEqual(source_name, expected)
 
     def test_semantic_analysis_theme_schema(self):
-        from worker_service.ai_core.schemas import (CoreAnalysis,
+        from pipeline.ai_core.schemas import (CoreAnalysis,
                                                     SemanticAnalysis,
                                                     TextGenre, ThemeCategory)
+
 
         analysis = SemanticAnalysis(
             genre=TextGenre.scientific,

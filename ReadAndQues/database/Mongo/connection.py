@@ -2,6 +2,9 @@ from django.conf import settings
 from pymongo import MongoClient
 from pymongo.server_api import ServerApi
 
+import os
+import socket
+
 # Determine Mongo URI from settings / environment. Fall back to a local docker-compose mapping.
 mongo_uri = getattr(settings, "MONGO_URI", None)
 if not mongo_uri or mongo_uri.startswith("******"):
@@ -9,6 +12,13 @@ if not mongo_uri or mongo_uri.startswith("******"):
         "MONGO_URI",
         "mongodb://admin:changeme@localhost:27017/articlesDB?authSource=admin",
     )
+
+if "@mongo:" in mongo_uri:
+    try:
+        socket.gethostbyname("mongo")
+    except socket.gaierror:
+        mongo_uri = mongo_uri.replace("@mongo:", "@localhost:")
+
 
 
 def get_mongo_client() -> MongoClient:
@@ -22,7 +32,12 @@ def get_mongo_client() -> MongoClient:
 
 
 client = get_mongo_client()
-DB_NAME = getattr(settings, "MONGO_DB_NAME", "articles")
+DB_NAME = getattr(settings, "MONGO_DB_NAME", "articlesDB")
 db = client[DB_NAME]
 article_collection = db["gold_articles"]
+gold_collection = db["gold_articles"]
+silver_collection = db["silver_articles"]
+bronze_collection = db["bronze_articles"]
+pipeline_logs_collection = db["pipeline_logs"]
 attempts_collection = db["attempts"]
+

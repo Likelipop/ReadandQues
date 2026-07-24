@@ -56,6 +56,7 @@ INSTALLED_APPS = [
     "django.contrib.staticfiles",
     "accounts",
     "articles",
+    "pipeline",
 ]
 
 MIDDLEWARE = [
@@ -150,29 +151,14 @@ SECURE_CONTENT_TYPE_NOSNIFF = True
 X_FRAME_OPTIONS = "DENY"
 SESSION_COOKIE_HTTPONLY = True
 CSRF_COOKIE_HTTPONLY = True
+CSRF_COOKIE_SAMESITE = "Lax"
+SESSION_COOKIE_AGE = 86400  # 24 hours
+SESSION_SAVE_EVERY_REQUEST = True
 
 # Crawler & Article word count limits
 ARTICLE_MIN_WORDS = int(os.getenv("ARTICLE_MIN_WORDS", 500))
 ARTICLE_MAX_WORDS = int(os.getenv("ARTICLE_MAX_WORDS", 4000))
 ARTICLE_MAX_IMAGES = int(os.getenv("ARTICLE_MAX_IMAGES", 10))
-
-# Celery broker and result backend configuration
-CELERY_BROKER_URL = os.getenv("CELERY_BROKER_URL", "redis://redis:6379/0")
-CELERY_RESULT_BACKEND = os.getenv("CELERY_RESULT_BACKEND", "redis://redis:6379/0")
-CELERY_ACCEPT_CONTENT = ["json"]
-CELERY_TASK_SERIALIZER = "json"
-CELERY_RESULT_SERIALIZER = "json"
-CELERY_TIMEZONE = "UTC"
-CELERY_TASK_ACKS_LATE = True
-CELERY_TASK_REJECT_ON_WORKER_LOST = True
-CELERY_WORKER_PREFETCH_MULTIPLIER = 1
-CELERY_TASK_DEFAULT_QUEUE = "ai_queue"
-CELERY_BEAT_SCHEDULE = {
-    "daily-pipeline-run": {
-        "task": "worker_service.tasks.daily_pipeline_task",
-        "schedule": crontab(hour=21, minute=0),
-    },
-}
 
 MONGO_URI = os.getenv(
     "MONGO_URI", "mongodb://admin:changeme@mongo:27017/articlesDB?authSource=admin"

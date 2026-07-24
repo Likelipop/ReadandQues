@@ -1,18 +1,6 @@
 version: "3.9"
 
 services:
-  redis:
-    image: redis:7-alpine
-    container_name: redis
-    restart: unless-stopped
-    ports:
-      - "6379:6379"
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-
   postgres:
     image: postgres:15-alpine
     container_name: postgres
@@ -80,8 +68,6 @@ services:
         condition: service_healthy
       mongo:
         condition: service_healthy
-      redis:
-        condition: service_healthy
       chromadb:
         condition: service_healthy
     command: >
@@ -100,66 +86,6 @@ services:
     expose:
       - "8000"
 
-  worker:
-    build:
-      context: .
-      dockerfile: worker_service/Dockerfile
-    container_name: celery-worker
-    restart: unless-stopped
-    env_file:
-      - .env
-    environment:
-      PYTHONPATH: /app:/app/ReadAndQues
-      DJANGO_SETTINGS_MODULE: ReadAndQues.settings_prod
-      CELERY_BROKER_URL: redis://redis:6379/0
-      CELERY_RESULT_BACKEND: redis://redis:6379/0
-    dns:
-      - 8.8.8.8
-      - 1.1.1.1
-    depends_on:
-      redis:
-        condition: service_healthy
-      postgres:
-        condition: service_healthy
-      mongo:
-        condition: service_healthy
-      chromadb:
-        condition: service_healthy
-    command: sh -c "celery -A worker_service.celery_app worker -l info -Q ai_queue"
-    healthcheck:
-      test: ["CMD-SHELL", "celery -A worker_service.celery_app inspect ping || exit 1"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-    volumes:
-      - .:/app
-
-  beat:
-    build:
-      context: .
-      dockerfile: worker_service/Dockerfile
-    container_name: celery-beat
-    restart: unless-stopped
-    env_file:
-      - .env
-    environment:
-      PYTHONPATH: /app:/app/ReadAndQues
-      DJANGO_SETTINGS_MODULE: ReadAndQues.settings_prod
-      CELERY_BROKER_URL: redis://redis:6379/0
-      CELERY_RESULT_BACKEND: redis://redis:6379/0
-    depends_on:
-      redis:
-        condition: service_healthy
-      postgres:
-        condition: service_healthy
-      mongo:
-        condition: service_healthy
-      chromadb:
-        condition: service_healthy
-    command: sh -c "celery -A worker_service.celery_app beat -l info"
-    volumes:
-      - .:/app
-
   nginx:
     image: nginx:1.27-alpine
     container_name: nginx
@@ -177,6 +103,7 @@ services:
     volumes:
       - ./nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
       - static_volume:/app/staticfiles:ro
+      - ./ReadAndQues/media:/app/media:ro
 
   mongo-express:
     image: mongo-express:latest
@@ -200,5 +127,3 @@ volumes:
   postgres_data:
   chroma_data:
   static_volume:
-
-  
