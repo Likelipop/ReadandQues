@@ -1,14 +1,12 @@
-.PHONY: help run dev worker docker-up docker-down docker-build docker-logs migrate makemigrations test shell clean
+.PHONY: help run dev docker-up docker-down docker-build docker-logs migrate makemigrations test shell clean
 
 PYTHON := .venv/bin/python
-CELERY := .venv/bin/celery
 
 help:
 	@echo "========================================================================"
 	@echo "                      ReadAndQues Project Commands                      "
 	@echo "========================================================================"
 	@echo "  make run           : Start Docker services & launch local Django server"
-	@echo "  make worker        : Start local Celery worker (ai_queue)"
 	@echo "  make docker-up     : Start all services via Docker Compose"
 	@echo "  make docker-down   : Stop all Docker Compose services"
 	@echo "  make docker-build  : Build and start all Docker Compose services"
@@ -26,12 +24,8 @@ dev: docker-up
 	@echo "🚀 Launching Django server on 0.0.0.0:8000..."
 	cd ReadAndQues && ../$(PYTHON) manage.py runserver 0.0.0.0:8000
 
-worker: docker-up
-	@echo "⚡ Starting Celery worker for ai_queue..."
-	cd ReadAndQues && ../$(CELERY) -A worker_service.celery_app worker -l info -Q ai_queue
-
 docker-up:
-	@echo "🐳 Starting Docker background services (DB, Redis, ChromaDB)..."
+	@echo "🐳 Starting Docker background services (Postgres, Mongo, ChromaDB)..."
 	docker compose up -d
 
 docker-down:
