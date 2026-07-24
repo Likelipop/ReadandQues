@@ -2,7 +2,6 @@ cmake_minimum_required(VERSION 3.10)
 project(ReadAndQues NONE)
 
 set(PYTHON "${CMAKE_SOURCE_DIR}/.venv/bin/python")
-set(CELERY "${CMAKE_SOURCE_DIR}/.venv/bin/celery")
 set(DJANGO_DIR "${CMAKE_SOURCE_DIR}/ReadAndQues")
 
 # Custom target: run / dev
@@ -11,14 +10,6 @@ add_custom_target(run
     COMMAND ${PYTHON} ${DJANGO_DIR}/manage.py runserver 0.0.0.0:8000
     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
     COMMENT "Starting Docker background services and launching Django server..."
-)
-
-# Custom target: worker
-add_custom_target(worker
-    COMMAND docker compose up -d
-    COMMAND ${CELERY} -A worker_service.celery_app worker -l info -Q ai_queue
-    WORKING_DIRECTORY ${DJANGO_DIR}
-    COMMENT "Starting Celery worker process for ai_queue..."
 )
 
 # Custom target: docker-up
