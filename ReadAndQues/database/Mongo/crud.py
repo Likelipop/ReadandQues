@@ -116,3 +116,126 @@ def get_user_attempted_article_ids(user_id: int) -> set[str]:
     except Exception:
         return set()
 
+
+# ── Medallion Pipeline CRUD Helpers ──────────────────────────────────────────
+
+from datetime import datetime, timezone
+from .connection import (bronze_collection, silver_collection, gold_collection, pipeline_logs_collection)
+
+
+def find_existing_bronze_urls(urls: list[str]) -> set[str]:
+    try:
+        cursor = bronze_collection.find({"url": {"$in": urls}}, {"url": 1})
+        return {doc["url"] for doc in cursor if "url" in doc}
+    except Exception:
+        return set()
+
+
+def insert_bronze_doc(doc: dict) -> str:
+    res = bronze_collection.insert_one(doc)
+    return str(res.inserted_id)
+
+
+def get_bronze_by_url(url: str) -> dict | None:
+    try:
+        return bronze_collection.find_one({"url": url})
+    except Exception:
+        return None
+
+
+def get_bronze_by_id(pk: str) -> dict | None:
+    try:
+        return bronze_collection.find_one({"_id": ObjectId(pk)})
+    except Exception:
+        return None
+
+
+def get_unprocessed_bronze_docs() -> list[dict]:
+    try:
+        processed_bronze_ids = set(
+            silver_collection.distinct("bronze_id")
+        )
+        rejected_bronze_ids = set(
+            pipeline_logs_collection.distinct("document_id", {"stage": "silver", "status": "rejected"})
+        )
+        exclude_ids = [ObjectId(bid) for bid in (processed_bronze_ids | rejected_bronze_ids) if ObjectId.is_valid(bid)]
+        cursor = bronze_collection.find({"_id": {"$nin": exclude_ids}}).sort("crawled_at", 1)
+        docs = []
+        for d in cursor:
+            d["_str_id"] = str(d["_id"])
+            docs.append(d)
+        return docs
+    except Exception:
+        return []
+
+
+def save_silver_doc(doc: dict) -> str:
+    res = silver_collection.insert_one(doc)
+    return str(res.inserted_id)
+
+
+def get_silver_by_bronze_id(bronze_id: str) -> dict | None:
+    try:
+        return silver_collection.find_one({"bronze_id": bronze_id})
+    except Exception:
+        return None
+
+
+def get_silver_by_id(pk: str) -> dict | None:
+    try:
+        return silver_collection.find_one({"_id": ObjectId(pk)})
+    except Exception:
+        return None
+
+
+def get_unprocessed_silver_docs() -> list[dict]:
+    try:
+        processed_silver_ids = set(
+            gold_collection.distinct("silver_id")
+        )
+        exclude_ids = [ObjectId(sid) for sid in processed_silver_ids if ObjectId.is_valid(sid)]
+        cursor = silver_collection.find({"_id": {"$nin": exclude_ids}}).sort("cleaned_at", 1)
+        docs = []
+        for d in cursor:
+            d["_str_id"] = str(d["_id"])
+            docs.append(d)
+        return docs
+    except Exception:
+        return []
+
+
+def insert_gold_doc(doc: dict) -> str:
+    res = gold_collection.insert_one(doc)
+    return str(res.inserted_id)
+
+
+def update_gold_doc(gold_id: str, update_data: dict) -> bool:
+    try:
+        res = gold_collection.update_one({"_id": ObjectId(gold_id)}, {"$set": update_data})
+        return res.modified_count > 0
+    except Exception:
+        return False
+
+
+def insert_pipeline_log(
+    stage: str,
+    status: str,
+    message: str = "",
+    document_id: str | None = None,
+    url: str | None = None,
+) -> str:
+    log_doc = {
+        "stage": stage,
+        "status": status,
+        "message": message,
+        "document_id": document_id,
+        "url": url,
+        "created_at": datetime.now(timezone.utc),
+    }
+    try:
+        res = pipeline_logs_collection.insert_one(log_doc)
+        return str(res.inserted_id)
+    except Exception:
+        return ""
+
+
