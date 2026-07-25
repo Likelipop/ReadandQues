@@ -87,7 +87,7 @@ def ingest_batch(entries: list[dict], dry_run: bool = False) -> dict:
         bronze_doc = {
             "url": url,
             "title": crawl_res.get("title", entry.get("title", "")),
-            "raw_text": crawl_res.get("raw_text", ""),
+            "raw_text": crawl_res.get("raw_text") or crawl_res.get("content") or "",
             "source_name": crawl_res.get("source_name", "Unknown"),
             "image_url": crawl_res.get("image_url"),
             "image_urls": crawl_res.get("image_urls", []),

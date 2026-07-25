@@ -39,7 +39,7 @@ def ingest_one(url: str, user_id: Optional[int] = None) -> dict:
     bronze_doc = {
         "url": url,
         "title": crawl_res.get("title", ""),
-        "raw_text": crawl_res.get("raw_text", ""),
+        "raw_text": crawl_res.get("raw_text") or crawl_res.get("content") or "",
         "source_name": crawl_res.get("source_name", "Unknown"),
         "image_url": crawl_res.get("image_url"),
         "image_urls": crawl_res.get("image_urls", []),

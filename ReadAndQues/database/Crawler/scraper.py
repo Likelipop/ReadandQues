@@ -250,6 +250,7 @@ def _extract_article(
         "url": requested_url,
         "canonical_url": extracted.get("url") or final_url,
         "title": title,
+        "raw_text": raw_text,
         "content": content,
         "html_content": clean_html,
         "source_name": str(source_name).strip(),
