@@ -12,8 +12,6 @@ from typing import Optional, Tuple
 from database.Crawler.scraper import crawl_article_content
 from database.Mongo.crud import insert_article_document
 
-from pipeline.orchestrator import run_article_pipeline_async
-
 from .cleaning import clean_and_validate_article
 
 logger = logging.getLogger(__name__)
@@ -55,6 +53,7 @@ def import_and_trigger_pipeline(
         return False, "Database error while creating new article.", None
 
     # 2. Trigger AI exam generation asynchronously via background thread
+    from pipeline.orchestrator import run_article_pipeline_async
     run_article_pipeline_async(inserted_id, url)
 
     return True, "", inserted_id

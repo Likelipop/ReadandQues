@@ -5,8 +5,6 @@ articles/services/exam_generation.py — Task Trigger Service for AI Exam Genera
 import logging
 from typing import Optional, Tuple
 
-from pipeline.orchestrator import run_article_pipeline_async
-
 logger = logging.getLogger(__name__)
 
 
@@ -16,6 +14,8 @@ def trigger_async_exam_generation(
     """
     Triggers background thread for AI exam generation and Chroma vector indexing.
     """
+    from pipeline.orchestrator import run_article_pipeline_async
+
     try:
         run_article_pipeline_async(article_id, url)
         logger.info(
