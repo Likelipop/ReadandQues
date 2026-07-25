@@ -46,9 +46,24 @@ def import_article_view(request):
         url = request.POST.get("url", "").strip()
         user_id = request.user.id if request.user.is_authenticated else 0
 
-        is_success, error_msg, inserted_id = import_and_trigger_pipeline(url, user_id)
+        # Check and deduct star for authenticated users
+        if request.user.is_authenticated:
+            from .services.user_stars import deduct_user_star, refund_user_star
+            success_deduct, err_msg = deduct_user_star(request.user)
+            if not success_deduct:
+                error_response = "You do not have enough stars to import articles. Please contact support to get more stars."
+                if request.headers.get("x-requested-with") == "XMLHttpRequest":
+                    return JsonResponse({"status": "error", "message": error_response}, status=400)
+                messages.error(request, error_response)
+                return redirect("home")
+        else:
+            from .services.user_stars import refund_user_star
+
+        is_success, error_msg, inserted_id, is_reused = import_and_trigger_pipeline(url, user_id)
 
         if not is_success:
+            if request.user.is_authenticated:
+                refund_user_star(request.user)
             if request.headers.get("x-requested-with") == "XMLHttpRequest":
                 return JsonResponse(
                     {"status": "error", "message": error_msg}, status=400
@@ -56,6 +71,10 @@ def import_article_view(request):
 
             messages.error(request, error_msg)
             return redirect("home")
+
+        # If article already exists and is reused, refund the pre-deducted star
+        if is_reused and request.user.is_authenticated:
+            refund_user_star(request.user)
 
         if request.headers.get("x-requested-with") == "XMLHttpRequest":
             return JsonResponse({"status": "started", "id": inserted_id})

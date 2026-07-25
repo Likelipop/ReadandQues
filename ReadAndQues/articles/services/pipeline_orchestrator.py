@@ -19,11 +19,11 @@ logger = logging.getLogger(__name__)
 
 def import_and_trigger_pipeline(
     url: str, user_id: int
-) -> Tuple[bool, str, Optional[str]]:
+) -> Tuple[bool, str, Optional[str], bool]:
     """
     Runs the ingestion and cleaning steps.
     If successful, inserts a pending document in MongoDB and kicks off the AI exam pipeline asynchronously via background thread.
-    Returns (success, error_message, inserted_id).
+    Returns (success, error_message, inserted_id, is_reused).
     """
     from database.Mongo.crud import get_article_document_by_url
 
@@ -34,7 +34,7 @@ def import_and_trigger_pipeline(
         # If the article is already being crawled, processed, or is completed, return the existing ID directly.
         if status in ("crawling", "processing", "completed"):
             logger.info(f"Deduplication: Article {url} already exists with status {status}. Reusing _id: {existing_doc.get('_id')}")
-            return True, "", str(existing_doc.get("_id"))
+            return True, "", str(existing_doc.get("_id")), True
 
     # 1. Insert initial pending document into MongoDB
     pending_document = {
@@ -50,11 +50,11 @@ def import_and_trigger_pipeline(
         inserted_id = insert_article_document(pending_document)
     except Exception as e:
         logger.error(f"Failed to insert pending article: {e}")
-        return False, "Database error while creating new article.", None
+        return False, "Database error while creating new article.", None, False
 
     # 2. Trigger AI exam generation asynchronously via background thread
     from pipeline.orchestrator import run_article_pipeline_async
     run_article_pipeline_async(inserted_id, url)
 
-    return True, "", inserted_id
+    return True, "", inserted_id, False
 

@@ -307,7 +307,66 @@
             btnEraser.addEventListener('click', () => setActiveTool('eraser'));
         }
 
+        function getArticleId() {
+            return '{{ article.id|default:request.resolver_match.kwargs.pk }}';
+        }
+
+        function saveHighlightsToStorage() {
+            if (!targetContainer) return;
+            try {
+                const marks = targetContainer.querySelectorAll('mark.user-highlight');
+                const snippets = Array.from(marks).map(m => m.textContent.trim()).filter(s => s.length > 2);
+                localStorage.setItem(`article_highlights_${getArticleId()}`, JSON.stringify(snippets));
+            } catch(e) {
+                console.error("Error saving highlights:", e);
+            }
+        }
+
+        function restoreHighlightsFromStorage(tDoc, tContainer) {
+            if (!tContainer || !tDoc) return;
+            try {
+                const raw = localStorage.getItem(`article_highlights_${getArticleId()}`);
+                if (!raw) return;
+                const snippets = JSON.parse(raw);
+                if (!Array.isArray(snippets) || snippets.length === 0) return;
+
+                snippets.forEach(textToFind => {
+                    if (!textToFind || textToFind.length < 3) return;
+                    const walker = tDoc.createTreeWalker(tContainer, NodeFilter.SHOW_TEXT, null, false);
+                    let node;
+                    const textNodes = [];
+                    while (node = walker.nextNode()) {
+                        if (node.parentNode && node.parentNode.nodeName.toLowerCase() !== 'mark' && node.parentNode.nodeName.toLowerCase() !== 'script' && node.parentNode.nodeName.toLowerCase() !== 'style') {
+                            textNodes.push(node);
+                        }
+                    }
+                    for (let tNode of textNodes) {
+                        const idx = tNode.nodeValue.indexOf(textToFind);
+                        if (idx !== -1) {
+                            const range = tDoc.createRange();
+                            range.setStart(tNode, idx);
+                            range.setEnd(tNode, idx + textToFind.length);
+                            const mark = tDoc.createElement('mark');
+                            mark.className = 'user-highlight';
+                            mark.style.backgroundColor = '#fef08a';
+                            mark.style.borderRadius = '0.25rem';
+                            mark.style.padding = '0.125rem 0.25rem';
+                            mark.style.cursor = 'pointer';
+                            try {
+                                range.surroundContents(mark);
+                            } catch(e) {}
+                            break;
+                        }
+                    }
+                });
+            } catch(e) {
+                console.error("Error restoring highlights:", e);
+            }
+        }
+
         function setupHighlighter(tWindow, tDoc, tContainer) {
+            restoreHighlightsFromStorage(tDoc, tContainer);
+
             tContainer.addEventListener('mouseup', () => {
                 if (activeTool !== 'marker') return;
                 const selection = tWindow.getSelection();
@@ -327,6 +386,7 @@
                 mark.appendChild(content);
                 range.insertNode(mark);
                 selection.removeAllRanges();
+                saveHighlightsToStorage();
             });
 
             tContainer.addEventListener('click', (e) => {
@@ -339,6 +399,7 @@
                     }
                     parent.removeChild(target);
                     parent.normalize();
+                    saveHighlightsToStorage();
                 }
             });
         }
