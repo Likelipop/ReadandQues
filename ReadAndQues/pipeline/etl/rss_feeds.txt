@@ -1,2 +1,1 @@
-# RSS Feeds for automated bronze ingestion
-https://feeds.bbci.co.uk/news/world/rss.xml
+https://www.sciencedaily.com/rss/top.xml
