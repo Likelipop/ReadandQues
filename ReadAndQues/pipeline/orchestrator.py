@@ -112,9 +112,15 @@ def run_article_pipeline_async(article_id: str, url: str) -> None:
 
 def run_daily_pipeline() -> Dict[str, str]:
     """
-    Runs the daily ETL pipeline (Silver cleaning & Gold AI enrichment).
+    Runs the full daily ETL pipeline (Bronze RSS Ingestion -> Silver cleaning -> Gold AI enrichment).
     """
     logger.info("🕘 Daily pipeline started")
+    try:
+        from pipeline.etl.bronze_batch import main as run_bronze_batch
+        run_bronze_batch()
+    except Exception as e:
+        logger.error("❌ Bronze batch ingestion error: %s", e)
+
     process_silver()
     process_gold()
     return {"status": "completed", "message": "Daily pipeline processed successfully"}
