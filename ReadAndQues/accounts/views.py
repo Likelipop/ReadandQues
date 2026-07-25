@@ -12,10 +12,10 @@ from django.contrib.auth import (authenticate, login, logout,
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.forms import PasswordChangeForm
 from django.contrib.auth.models import User
-from django.core.mail import send_mail
 from django.shortcuts import redirect, render
 from django.utils import timezone
 
+from .emails import send_verification_email
 from .models import EmailVerification
 
 
@@ -134,25 +134,8 @@ def register_view(request):
                 user=user, defaults={"code": code, "expires_at": expires_at}
             )
 
-            # Send code via email with safe fallback
-            try:
-                send_mail(
-                    "Account Registration Verification Code",
-                    f"Your verification code is: {code}. The code is valid for 5 minutes.",
-                    settings.DEFAULT_FROM_EMAIL,
-                    [email],
-                    fail_silently=False,
-                )
-            except Exception as e:
-                # Fallback print to terminal console
-                print(f"\n[EMAIL FALLBACK] Failed to send email via SMTP: {e}")
-                print(f"Account Registration Verification Code")
-                print(f"To: {email}")
-                print(f"Your verification code is: {code}. The code is valid for 5 minutes.\n")
-                messages.warning(
-                    request,
-                    "System encountered an error sending verification email. Please check the terminal console for the OTP.",
-                )
+            # Send verification code via Resend API (with console fallback)
+            send_verification_email(email, code)
 
             request.session["verification_user_id"] = user.id
             messages.success(
@@ -280,24 +263,8 @@ def resend_verification_view(request):
     else:
         EmailVerification.objects.create(user=user, code=code, expires_at=expires_at)
 
-    try:
-        send_mail(
-            "Account Registration Verification Code (Resend)",
-            f"Your new verification code is: {code}. The code is valid for 5 minutes.",
-            settings.DEFAULT_FROM_EMAIL,
-            [user.email],
-            fail_silently=False,
-        )
-    except Exception as e:
-        # Fallback print to terminal console
-        print(f"\n[EMAIL FALLBACK] Failed to send email via SMTP (Resend): {e}")
-        print(f"Account Registration Verification Code (Resend)")
-        print(f"To: {user.email}")
-        print(f"Your new verification code is: {code}. The code is valid for 5 minutes.\n")
-        messages.warning(
-            request,
-            "System encountered an error sending verification email. Please check the terminal console for the OTP.",
-        )
+    # Send verification code via Resend API (with console fallback)
+    send_verification_email(user.email, code, is_resend_action=True)
 
     messages.success(request, "A new verification code has been sent to your email.")
     return redirect("verify_email")
