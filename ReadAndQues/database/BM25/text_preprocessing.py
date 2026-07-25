@@ -16,10 +16,16 @@ logger = logging.getLogger(__name__)
 try:
     _nlp = spacy.load("en_core_web_sm", disable=["parser", "ner"])
 except OSError:
-    logger.error(
-        "[TextPreprocessing] spaCy model 'en_core_web_sm' not found. Run: python -m spacy download en_core_web_sm"
-    )
-    _nlp = None
+    try:
+        logger.info("[TextPreprocessing] Model 'en_core_web_sm' not found, downloading...")
+        from spacy.cli import download
+        download("en_core_web_sm")
+        _nlp = spacy.load("en_core_web_sm", disable=["parser", "ner"])
+    except Exception as e:
+        logger.error(
+            f"[TextPreprocessing] spaCy model 'en_core_web_sm' failed to download/load: {e}"
+        )
+        _nlp = None
 
 
 def clean_text(text: str) -> str:
