@@ -60,6 +60,9 @@ services:
       dockerfile: Dockerfile
     container_name: gunicorn
     restart: unless-stopped
+    dns:                 
+      - 8.8.8.8
+      - 1.1.1.1
     env_file:
       - .env
     environment:
