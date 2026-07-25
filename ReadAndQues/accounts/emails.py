@@ -32,9 +32,9 @@ def get_otp_email_html(code: str) -> str:
           <!-- Main Body -->
           <tr>
             <td style="padding: 40px 32px 32px 32px; text-align: center;">
-              <h2 style="color: #0f172a; font-size: 20px; font-weight: 700; margin: 0 0 12px 0;">Mã Xác Minh Tài Khoản</h2>
+              <h2 style="color: #0f172a; font-size: 20px; font-weight: 700; margin: 0 0 12px 0;">Account Verification Code</h2>
               <p style="color: #64748b; font-size: 14px; line-height: 1.6; margin: 0 0 28px 0;">
-                Cảm ơn bạn đã đăng ký tài khoản tại <strong>ReadQues</strong>. Dưới đây là mã xác thực OTP của bạn để hoàn tất quá trình đăng ký.
+                Thank you for registering an account with <strong>ReadQues</strong>. Below is your 6-digit verification code to complete your registration.
               </p>
 
               <!-- OTP Display Card -->
@@ -46,13 +46,13 @@ def get_otp_email_html(code: str) -> str:
 
               <!-- Expiry Warning -->
               <p style="color: #ef4444; font-size: 13px; font-weight: 600; margin: 0 0 20px 0; display: inline-flex; align-items: center; gap: 4px;">
-                ⏱️ Mã này có hiệu lực trong vòng <strong>5 phút</strong>.
+                ⏱️ This code will expire in <strong>5 minutes</strong>.
               </p>
 
               <hr style="border: none; border-top: 1px solid #f1f5f9; margin: 24px 0;" />
 
               <p style="color: #94a3b8; font-size: 12px; line-height: 1.5; margin: 0;">
-                Nếu bạn không yêu cầu mã này, vui lòng bỏ qua email này. Vui lòng không chia sẻ mã OTP cho bất kỳ ai.
+                If you did not request this code, please ignore this email. Never share your verification code with anyone.
               </p>
             </td>
           </tr>
