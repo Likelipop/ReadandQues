@@ -1,1 +1,4 @@
+https://rss.nytimes.com/services/xml/rss/nyt/ArtandDesign.xml
+https://rss.nytimes.com/services/xml/rss/nyt/Movies.xml
+https://rss.nytimes.com/services/xml/rss/nyt/World.xml
 https://www.sciencedaily.com/rss/top.xml

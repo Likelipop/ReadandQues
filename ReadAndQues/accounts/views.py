@@ -4,7 +4,7 @@ import re
 import time
 
 from database.Mongo.crud import (get_articles_by_user, get_completed_articles,
-                                 get_user_attempted_article_ids)
+                                 get_user_attempted_article_ids, get_paraphrase_demo)
 from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth import (authenticate, login, logout,
@@ -39,9 +39,12 @@ def home_view(request):
         art_id = str(art.get("id") or art.get("_id") or "")
         art["has_attempted"] = art_id in attempted_ids
 
+    paraphrase_demo = get_paraphrase_demo()
+
     context = {
         "trending_articles": trending_articles,
         "user_articles": user_articles,
+        "paraphrase_demo": paraphrase_demo,
     }
     return render(request, "accounts/home.html", context)
 

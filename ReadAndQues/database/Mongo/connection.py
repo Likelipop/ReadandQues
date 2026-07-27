@@ -40,4 +40,4 @@ silver_collection = db["silver_articles"]
 bronze_collection = db["bronze_articles"]
 pipeline_logs_collection = db["pipeline_logs"]
 attempts_collection = db["attempts"]
-
+paraphrases_collection = db["paraphrases"]
