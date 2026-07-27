@@ -100,6 +100,7 @@ def process_gold():
             "url": url,
             "title": title,
             "original_text": original_text,
+            "html_content": doc.get("html_content"),
             "source_name": doc.get("source_name", "Unknown"),
             "image_url": doc.get("image_url"),
             "image_urls": doc.get("image_urls", []),

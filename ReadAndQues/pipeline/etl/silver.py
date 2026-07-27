@@ -73,6 +73,7 @@ def clean_document(doc: dict) -> dict:
         "url": doc["url"].strip(),
         "title": doc["title"].strip(),
         "original_text": original_text,
+        "html_content": doc.get("html_content"),
         "source_name": (doc.get("source_name") or "Unknown").strip(),
         "image_url": image_url,
         "image_urls": image_urls,

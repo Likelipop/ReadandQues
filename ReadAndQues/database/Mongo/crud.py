@@ -217,6 +217,29 @@ def update_gold_doc(gold_id: str, update_data: dict) -> bool:
         return False
 
 
+def get_unprocessed_gold_docs() -> list[dict]:
+    from .connection import paraphrases_collection
+    try:
+        processed_gold_ids = set(
+            paraphrases_collection.distinct("article_id")
+        )
+        exclude_ids = [ObjectId(gid) for gid in processed_gold_ids if ObjectId.is_valid(gid)]
+        # We only want to process gold docs that actually have a summary generated
+        query = {
+            "_id": {"$nin": exclude_ids},
+            "status": "completed", 
+            "analysis.core.summary": {"$exists": True}
+        }
+        cursor = gold_collection.find(query).sort("created_at", 1)
+        docs = []
+        for d in cursor:
+            d["_str_id"] = str(d["_id"])
+            docs.append(d)
+        return docs
+    except Exception:
+        return []
+
+
 def insert_pipeline_log(
     stage: str,
     status: str,
@@ -238,4 +261,35 @@ def insert_pipeline_log(
     except Exception:
         return ""
 
+def insert_paraphrase(doc: dict) -> str:
+    from .connection import paraphrases_collection
+    res = paraphrases_collection.insert_one(doc)
+    return str(res.inserted_id)
 
+def get_paraphrase_demo() -> dict | None:
+    from .connection import paraphrases_collection
+    try:
+        # Get the latest generated paraphrase
+        doc = paraphrases_collection.find_one({}, sort=[("_id", -1)])
+        if doc:
+            doc["id"] = str(doc["_id"])
+            return doc
+    except Exception:
+        pass
+        
+    # Fallback mock data if DB is empty or fails
+    return {
+        "original_summary": "The quick brown fox jumps over the lazy dog in the dense forest.",
+        "phrases": [
+            {
+                "id": "p1",
+                "original_text": "quick brown fox",
+                "alternatives": ["swift auburn canine", "fast colored fox", "speedy brown fox"]
+            },
+            {
+                "id": "p2",
+                "original_text": "lazy dog",
+                "alternatives": ["sleepy hound", "tired puppy", "sluggish dog"]
+            }
+        ]
+    }
