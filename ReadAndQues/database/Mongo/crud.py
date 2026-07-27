@@ -273,6 +273,8 @@ def get_paraphrase_demo() -> dict | None:
         doc = paraphrases_collection.find_one({}, sort=[("_id", -1)])
         if doc:
             doc["id"] = str(doc["_id"])
+            if "_id" in doc:
+                del doc["_id"]
             return doc
     except Exception:
         pass
