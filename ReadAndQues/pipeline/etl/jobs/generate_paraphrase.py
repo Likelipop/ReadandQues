@@ -1,33 +1,25 @@
-import json
 import logging
+import uuid
 from datetime import datetime, timezone
-
-from langchain.prompts import PromptTemplate
 
 from database.Mongo.crud import (get_unprocessed_gold_docs,
                                  insert_paraphrase, insert_pipeline_log)
-from pipeline.ai_core.connection import get_llm
+from pipeline.ai_core.graphs.paraphrase_generator.graph import app as paraphrase_app
 from pipeline.etl.config import BATCH_SIZE
 from pipeline.etl.registry import job
 
 logger = logging.getLogger(__name__)
 
-PARAPHRASE_PROMPT = """
-You are an expert English language teacher.
-Extract 2-4 key phrases from the following summary text. 
-For each phrase, provide 2-3 alternative ways to express the same idea in different contexts.
-
-Input summary text:
-{text}
-
-Output ONLY valid JSON in the following format:
-[
-  {{
-    "original_text": "the key phrase from text",
-    "alternatives": ["alternative 1", "alternative 2"]
-  }}
-]
-"""
+def run_paraphrase_pipeline(text: str) -> list[dict] | None:
+    session_id = f"session_{uuid.uuid4().hex}"
+    graph_config = {"configurable": {"thread_id": session_id}}
+    state_input = {"text": text, "phrases": []}
+    try:
+        final_state = paraphrase_app.invoke(state_input, config=graph_config)
+        return final_state.get("phrases", [])
+    except Exception as e:
+        logger.error(f"Error invoking paraphrase graph: {e}")
+        return None
 
 @job("generate_paraphrase")
 def generate_paraphrase(**kwargs):
@@ -38,10 +30,6 @@ def generate_paraphrase(**kwargs):
         logger.info("No unprocessed gold docs found for paraphrase generation.")
         return {"processed": 0, "success": 0}
 
-    llm = get_llm(temperature=0.7)
-    prompt = PromptTemplate(template=PARAPHRASE_PROMPT, input_variables=["text"])
-    chain = prompt | llm
-
     success_count = 0
     for doc in gold_docs:
         gold_id = doc["_str_id"]
@@ -51,17 +39,20 @@ def generate_paraphrase(**kwargs):
             continue
             
         logger.info(f"Generating paraphrase for gold_id: {gold_id}")
-        try:
-            response = chain.invoke({"text": summary})
-            # Parse the JSON response
-            content = response.content
-            if content.startswith("```json"):
-                content = content.replace("```json", "").replace("```", "").strip()
-            elif content.startswith("```"):
-                content = content.replace("```", "").strip()
-                
-            phrases = json.loads(content)
+        
+        phrases = run_paraphrase_pipeline(summary)
+        
+        if not phrases:
+            logger.warning(f"Failed to generate paraphrase for {gold_id}")
+            insert_pipeline_log(
+                stage="platinum_paraphrase",
+                status="failed",
+                message="AI pipeline failed to generate paraphrase",
+                document_id=gold_id,
+            )
+            continue
             
+        try:
             # Format output
             formatted_phrases = []
             for i, p in enumerate(phrases):
@@ -83,7 +74,7 @@ def generate_paraphrase(**kwargs):
             logger.info(f"Successfully generated paraphrase for {gold_id}")
             
         except Exception as e:
-            logger.error(f"Failed to generate paraphrase for {gold_id}: {e}")
+            logger.error(f"Failed to insert paraphrase for {gold_id}: {e}")
             insert_pipeline_log(
                 stage="platinum_paraphrase",
                 status="failed",
