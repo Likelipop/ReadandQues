@@ -222,3 +222,7 @@ scripts
 # SSL Certificates & Private Keys
 *.pem
 .pem
+
+# Local overrides
+nginx/default.local.conf
+docker-compose.override.yml

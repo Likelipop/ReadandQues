@@ -295,3 +295,42 @@ def get_paraphrase_demo() -> dict | None:
             }
         ]
     }
+
+
+def upsert_rss_link(data: dict) -> str:
+    from .connection import rss_links_collection
+    link = data.get("link")
+    pubdate = data.get("pubDate")
+    try:
+        result = rss_links_collection.update_one(
+            {"link": link, "pubDate": pubdate},
+            {"$set": data},
+            upsert=True
+        )
+        if result.upserted_id:
+            return str(result.upserted_id)
+        return "updated"
+    except Exception:
+        return ""
+
+
+def get_unprocessed_rss_links(limit: int = 50) -> list[dict]:
+    from .connection import rss_links_collection
+    try:
+        cursor = rss_links_collection.find({"is_extracted": False}).limit(limit)
+        docs = []
+        for d in cursor:
+            d["_str_id"] = str(d["_id"])
+            docs.append(d)
+        return docs
+    except Exception:
+        return []
+
+
+def mark_rss_link_extracted(link: str) -> bool:
+    from .connection import rss_links_collection
+    try:
+        res = rss_links_collection.update_one({"link": link}, {"$set": {"is_extracted": True}})
+        return res.modified_count > 0
+    except Exception:
+        return False

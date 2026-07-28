@@ -1,4 +1,10 @@
-https://rss.nytimes.com/services/xml/rss/nyt/ArtandDesign.xml
-https://rss.nytimes.com/services/xml/rss/nyt/Movies.xml
-https://rss.nytimes.com/services/xml/rss/nyt/World.xml
-https://www.sciencedaily.com/rss/top.xml
+https://e.vnexpress.net/rss/home.rss
+https://e.vnexpress.net/rss/life.rss
+https://e.vnexpress.net/rss/news.rss
+https://e.vnexpress.net/rss/sports.rss
+https://e.vnexpress.net/rss/business.rss
+https://e.vnexpress.net/rss/world.rss
+https://e.vnexpress.net/rss/tech.rss
+https://e.vnexpress.net/rss/perspectives.rss
+https://e.vnexpress.net/rss/travel.rss
+https://e.vnexpress.net/rss/vne-go.rss

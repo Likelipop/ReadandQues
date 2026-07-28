@@ -14,8 +14,10 @@ from database.Chroma.operations import add_article_vector
 from database.Crawler.scraper import crawl_article_content
 from database.Mongo.crud import update_article_document
 
-from pipeline.etl.gold import process_gold, run_ai_pipeline
-from pipeline.etl.silver import process_silver
+from pipeline.etl.jobs.generate_questions import run_ai_pipeline
+from pipeline.etl.registry import get_pipe
+# Load pipes
+import pipeline.etl.pipes  # noqa: F401
 
 logger = logging.getLogger(__name__)
 
@@ -112,15 +114,14 @@ def run_article_pipeline_async(article_id: str, url: str) -> None:
 
 def run_daily_pipeline() -> Dict[str, str]:
     """
-    Runs the full daily ETL pipeline (Bronze RSS Ingestion -> Silver cleaning -> Gold AI enrichment).
+    Runs the full daily ETL pipeline using the new framework.
     """
     logger.info("🕘 Daily pipeline started")
     try:
-        from pipeline.etl.bronze_batch import main as run_bronze_batch
-        run_bronze_batch()
+        get_pipe("ingest_news_pipe").invoke()
+        get_pipe("generate_questions_pipe").invoke()
+        get_pipe("generate_paraphrase_pipe").invoke()
     except Exception as e:
-        logger.error("❌ Bronze batch ingestion error: %s", e)
+        logger.error("❌ Pipeline execution error: %s", e)
 
-    process_silver()
-    process_gold()
     return {"status": "completed", "message": "Daily pipeline processed successfully"}
