@@ -112,15 +112,21 @@ def run_article_pipeline_async(article_id: str, url: str) -> None:
     logger.info("🚀 Spawned background thread for article_id=%s", article_id)
 
 
-def run_daily_pipeline() -> Dict[str, str]:
+def run_daily_pipeline(max_news: int = None) -> dict[str, str]:
     """
     Runs the full daily ETL pipeline using the new framework.
     """
     logger.info("🕘 Daily pipeline started")
+    kwargs = {}
+    if max_news is not None:
+        kwargs["max_links"] = max_news
+        kwargs["max_docs"] = max_news
+        logger.info(f"Using max_news overriding: {max_news}")
+        
     try:
-        get_pipe("ingest_news_pipe").invoke()
-        get_pipe("generate_questions_pipe").invoke()
-        get_pipe("generate_paraphrase_pipe").invoke()
+        get_pipe("ingest_news_pipe").invoke(**kwargs)
+        get_pipe("generate_questions_pipe").invoke(**kwargs)
+        get_pipe("generate_paraphrase_pipe").invoke(**kwargs)
     except Exception as e:
         logger.error("❌ Pipeline execution error: %s", e)
 
