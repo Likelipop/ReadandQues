@@ -33,7 +33,7 @@ def run_ai_pipeline(original_text: str) -> Optional[dict]:
     """
     Run the LangGraph AI pipeline to generate an exam.
     """
-    from pipeline.ai_core.graph import app
+    from pipeline.ai_core.graphs.question_generator.graph import app
 
     session_id = f"session_{uuid.uuid4().hex}"
     graph_config = {"configurable": {"thread_id": session_id}}

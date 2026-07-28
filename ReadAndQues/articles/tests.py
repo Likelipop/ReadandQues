@@ -142,9 +142,9 @@ class CategoryAndThemeTests(TestCase):
             self.assertEqual(source_name, expected)
 
     def test_semantic_analysis_theme_schema(self):
-        from pipeline.ai_core.schemas import (CoreAnalysis,
-                                                    SemanticAnalysis,
-                                                    TextGenre, ThemeCategory)
+        from pipeline.ai_core.graphs.question_generator.schemas import (CoreAnalysis,
+                                                       SemanticAnalysis, TextGenre,
+                                                       ThemeCategory)
 
 
         analysis = SemanticAnalysis(

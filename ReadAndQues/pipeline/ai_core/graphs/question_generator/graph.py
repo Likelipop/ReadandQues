@@ -8,11 +8,20 @@ from typing import Any, Dict, List
 
 from langgraph.graph import END, START, StateGraph
 
-from .config import ExamConfig, get_llm
-from .prompts import (build_analysis_prompt, build_question_prompt,
-                      build_verifier_prompt)
-from .schemas import (ExamOutput, GraphState, SemanticAnalysis, TokenUsageLog,
-                      VerifierFeedback)
+from pipeline.ai_core.connection import get_llm
+from pipeline.ai_core.utils.config import ExamConfig
+from pipeline.ai_core.graphs.question_generator.prompts import (
+    build_analysis_prompt,
+    build_question_prompt,
+    build_verifier_prompt,
+)
+from pipeline.ai_core.graphs.question_generator.schemas import (
+    ExamOutput,
+    GraphState,
+    SemanticAnalysis,
+    TokenUsageLog,
+    VerifierFeedback,
+)
 
 MAX_RETRIES = 2
 

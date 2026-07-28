@@ -14,7 +14,7 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "ReadAndQues.settings")
 django.setup()
 
-from pipeline.ai_core.config import get_llm
+from pipeline.ai_core.connection import get_llm
 from database.Mongo.crud import get_unprocessed_gold_docs, insert_pipeline_log, insert_paraphrase
 
 logger = logging.getLogger(__name__)
@@ -52,7 +52,7 @@ def process_platinum():
         prompt = f"""
 You are an expert editor. Below is a summary of an article.
 I want to create an interactive "living text" card.
-Identify 1 to 3 short phrases (3 to 8 words) in the summary that can be paraphrased without changing the overall meaning of the sentence.
+Identify 3 to 10 short phrases or vocabulary (1 to 8 words) in the summary that can be paraphrased without changing the overall meaning of the sentence.
 For each phrase, provide exactly 3 alternative phrasings that fit perfectly in the original sentence grammatically and semantically.
 
 Summary:
