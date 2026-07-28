@@ -18,3 +18,6 @@ generate_questions_pipe = Pipe("generate_questions_pipe").add_job("generate_ques
 
 # 6.4 generate_paraphrase_pipe (AI paraphrase)
 generate_paraphrase_pipe = Pipe("generate_paraphrase_pipe").add_job("generate_paraphrase")
+
+# Single article real-time pipe
+single_article_pipe = Pipe("single_article_pipe").add_job("process_single_article")
