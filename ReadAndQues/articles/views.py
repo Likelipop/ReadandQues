@@ -140,6 +140,7 @@ def article_detail(request, pk):
         article.url = url
 
     from pipeline.etl.registry import get_pipe
+    from pipeline.etl import pipes  # Trigger registration
     from database.Mongo.crud import get_completed_articles
 
     pipe = get_pipe("related_articles_pipe")
@@ -335,6 +336,7 @@ def smart_paraphrase_view(request, pk: str):
         paragraph_hash = hashlib.md5(paragraph_text.encode('utf-8')).hexdigest()
 
         from pipeline.etl.registry import get_pipe
+        from pipeline.etl import pipes  # Trigger registration
         pipe = get_pipe("smart_ink_pipe")
         
         pipe_result = pipe.invoke(
