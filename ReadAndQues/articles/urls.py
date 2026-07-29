@@ -10,6 +10,8 @@ urlpatterns = [
     path("import/", views.import_article, name="import_article"),
     # Đường dẫn kiểm tra trạng thái xử lý bài báo
     path("status/<str:pk>/", views.article_status, name="article_status"),
+    # API xử lý paraphrase thông minh
+    path("api/<str:pk>/smart_paraphrase/", views.smart_paraphrase_view, name="smart_paraphrase"),
     # API nhận kết quả nộp bài thi và trả về bài báo liên quan
     path("<str:pk>/submit/", views.submit_exam_attempt, name="submit_exam"),
     # Đường dẫn lấy raw HTML để nhúng vào Iframe

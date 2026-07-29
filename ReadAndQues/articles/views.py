@@ -310,3 +310,58 @@ def raw_html_view(request, pk: str):
         html_content = f"<html><body style='font-family:sans-serif; padding: 20px;'><pre style='white-space: pre-wrap; font-family: inherit;'>{text}</pre></body></html>"
 
     return HttpResponse(html_content, content_type="text/html; charset=utf-8")
+
+
+@login_required(login_url='/login/')
+@csrf_exempt
+def smart_paraphrase_view(request, pk: str):
+    if request.method != "POST":
+        return HttpResponseNotAllowed(["POST"])
+
+    try:
+        import json
+        import hashlib
+        
+        data = json.loads(request.body)
+        highlighted_text = data.get("highlighted_text", "").strip()
+        paragraph_text = data.get("paragraph_text", "").strip()
+        start_idx = data.get("start_index", 0)
+        end_idx = data.get("end_index", 0)
+
+        if not highlighted_text or not paragraph_text:
+            return JsonResponse({"status": "error", "message": "Missing text data"}, status=400)
+            
+        # Hash the paragraph for quicker DB matching
+        paragraph_hash = hashlib.md5(paragraph_text.encode('utf-8')).hexdigest()
+
+        from pipeline.etl.registry import get_pipe
+        pipe = get_pipe("smart_ink_pipe")
+        
+        pipe_result = pipe.invoke(
+            article_id=pk,
+            paragraph_hash=paragraph_hash,
+            highlighted_text=highlighted_text,
+            paragraph_text=paragraph_text,
+            start_idx=start_idx,
+            end_idx=end_idx
+        )
+        
+        paraphrase_data = pipe_result.get("context", {}).get("paraphrase_data", {})
+        
+        if not paraphrase_data:
+            return JsonResponse({"status": "error", "message": "Failed to generate paraphrase"}, status=500)
+
+        # We return the exact indices and texts so the frontend can animate properly
+        return JsonResponse({
+            "status": "success",
+            "expanded_text": paraphrase_data.get("original_expanded_text"),
+            "paraphrased_text": paraphrase_data.get("paraphrased_text"),
+            "start_index": paraphrase_data.get("start_index"),
+            "end_index": paraphrase_data.get("end_index")
+        })
+
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return JsonResponse({"status": "error", "message": str(e)}, status=400)
+

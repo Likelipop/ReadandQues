@@ -26,3 +26,11 @@ single_article_pipe = Pipe("single_article_pipe").add_job("process_single_articl
 
 # Query pipes
 related_articles_pipe = Pipe("related_articles_pipe").add_job("fetch_related_articles")
+
+# Smart Ink Paraphrase pipe
+smart_ink_pipe = (
+    Pipe("smart_ink_pipe")
+    .add_job("db_find_overlapping_paraphrase")
+    .add_job("logic_smart_paraphrase_llm")
+    .add_job("db_save_smart_paraphrase")
+)
