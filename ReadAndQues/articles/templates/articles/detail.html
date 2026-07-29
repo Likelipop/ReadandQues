@@ -315,7 +315,7 @@
             if (!targetContainer) return;
             try {
                 const marks = targetContainer.querySelectorAll('mark.user-highlight');
-                const snippets = Array.from(marks).map(m => m.textContent.trim()).filter(s => s.length > 2);
+                const snippets = Array.from(marks).map(m => (m.getAttribute('data-original-text') || m.textContent).trim()).filter(s => s.length > 2);
                 localStorage.setItem(`article_highlights_${getArticleId()}`, JSON.stringify(snippets));
             } catch(e) {
                 console.error("Error saving highlights:", e);
@@ -352,6 +352,7 @@
                             mark.style.borderRadius = '0.25rem';
                             mark.style.padding = '0.125rem 0.25rem';
                             mark.style.cursor = 'pointer';
+                            mark.setAttribute('data-original-text', textToFind);
                             try {
                                 range.surroundContents(mark);
                             } catch(e) {}
@@ -384,6 +385,7 @@
                 mark.style.padding = '0.125rem 0.25rem';
                 mark.style.cursor = 'pointer';
                 mark.appendChild(content);
+                mark.setAttribute('data-original-text', mark.textContent);
                 range.insertNode(mark);
                 selection.removeAllRanges();
                 saveHighlightsToStorage();
@@ -391,21 +393,41 @@
 
             tContainer.addEventListener('click', async (e) => {
                 let target = e.target;
+                
+                // If they clicked on a child element of mark (like strong or span), get the parent mark
+                if (target.tagName.toLowerCase() !== 'mark' && target.closest('mark.user-highlight')) {
+                    target = target.closest('mark.user-highlight');
+                }
+
                 if (target.tagName.toLowerCase() === 'mark' && target.classList.contains('user-highlight')) {
                     if (activeTool === 'eraser') {
-                        const parent = target.parentNode;
-                        while (target.firstChild) {
-                            parent.insertBefore(target.firstChild, target);
+                        if (target.classList.contains('is-paraphrased')) {
+                            // Revert to original text, keep the yellow highlight
+                            target.innerHTML = target.getAttribute('data-original-text');
+                            target.classList.remove('is-paraphrased');
+                            target.style.backgroundColor = '#fef08a';
+                            target.style.opacity = '1';
+                            saveHighlightsToStorage();
+                        } else {
+                            // Fully erase the highlight
+                            const parent = target.parentNode;
+                            while (target.firstChild) {
+                                parent.insertBefore(target.firstChild, target);
+                            }
+                            parent.removeChild(target);
+                            parent.normalize();
+                            saveHighlightsToStorage();
                         }
-                        parent.removeChild(target);
-                        parent.normalize();
-                        saveHighlightsToStorage();
                     } else {
                         // Smart Paraphrase Trigger
-                        // Avoid triggering if it's already loading
-                        if (target.classList.contains('is-loading')) return;
+                        // Avoid triggering if it's already loading or already paraphrased
+                        if (target.classList.contains('is-loading') || target.classList.contains('is-paraphrased')) return;
 
-                        const highlightedText = target.textContent;
+                        const highlightedText = target.getAttribute('data-original-text') || target.textContent;
+                        
+                        if (!target.hasAttribute('data-original-text')) {
+                            target.setAttribute('data-original-text', highlightedText);
+                        }
                         
                         // Find the enclosing paragraph to give context
                         let pContextNode = target.closest('p, div, li');
@@ -414,18 +436,11 @@
                         
                         // Find start index of this mark within the paragraph
                         // A rough estimation:
-                        const clone = pContextNode.cloneNode(true);
-                        const marks = clone.querySelectorAll('mark.user-highlight');
-                        let currentMarkIdx = -1;
-                        let textBefore = "";
-                        
-                        // Just rely on paragraph text and string matching for start_index
-                        // For a precise calculation, we use the textContent before the node
                         let walker = tDoc.createTreeWalker(pContextNode, NodeFilter.SHOW_TEXT, null, false);
                         let node;
                         let startIdx = 0;
                         while (node = walker.nextNode()) {
-                            if (node.parentNode === target) {
+                            if (node.parentNode === target || node.parentNode.closest('mark.user-highlight') === target) {
                                 break;
                             }
                             startIdx += node.nodeValue.length;
@@ -469,6 +484,7 @@
                                         
                                         // Clean up classes
                                         target.classList.remove('is-loading');
+                                        target.classList.add('is-paraphrased');
                                         saveHighlightsToStorage();
                                     }, 300);
                                 }, 1000); // 1s reading time for expanded text
