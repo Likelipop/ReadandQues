@@ -139,10 +139,13 @@ def article_detail(request, pk):
         article.id = str(doc.get("_id"))
         article.url = url
 
-    from database.Chroma.operations import get_related_articles_via_chroma
+    from pipeline.etl.registry import get_pipe
     from database.Mongo.crud import get_completed_articles
 
-    related_articles = get_related_articles_via_chroma(article, exclude_id=str(pk))
+    pipe = get_pipe("related_articles_pipe")
+    pipe_result = pipe.invoke(article=article, exclude_id=str(pk), limit=5)
+    related_articles = pipe_result.get("context", {}).get("related_articles", [])
+    
     if not related_articles:
         all_completed = get_completed_articles(limit=10)
         related_articles = [

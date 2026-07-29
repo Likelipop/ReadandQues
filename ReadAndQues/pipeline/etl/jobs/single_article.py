@@ -1,7 +1,7 @@
 import logging
 from typing import Any, Dict
 
-from articles.services.cleaning import clean_and_validate_article
+from pipeline.etl.jobs.clean_logic import clean_and_validate_article
 from database.Chroma.operations import add_article_vector
 from database.Crawler.scraper import crawl_article_content
 from database.Mongo.crud import update_article_document

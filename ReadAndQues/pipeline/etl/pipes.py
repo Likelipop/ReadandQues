@@ -10,7 +10,9 @@ ingest_news_pipe = (
     Pipe("ingest_news_pipe")
     .add_job("extract_rss")
     .add_job("crawl_news")
-    .add_job("clean_text")
+    .add_job("db_fetch_unprocessed_bronze")
+    .add_job("logic_clean_batch")
+    .add_job("db_save_silver_batch")
 )
 
 # 6.3 generate_questions_pipe (AI graph)
@@ -21,3 +23,6 @@ generate_paraphrase_pipe = Pipe("generate_paraphrase_pipe").add_job("generate_pa
 
 # Single article real-time pipe
 single_article_pipe = Pipe("single_article_pipe").add_job("process_single_article")
+
+# Query pipes
+related_articles_pipe = Pipe("related_articles_pipe").add_job("fetch_related_articles")

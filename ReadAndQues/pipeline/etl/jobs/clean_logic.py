@@ -5,9 +5,12 @@ articles/services/cleaning.py — Article text formatting and document cleaning 
 import logging
 from typing import Any, Dict, Tuple
 
+from pipeline.etl.registry import job
+
 logger = logging.getLogger(__name__)
 
 
+@job("clean_and_validate_article", inputs=["crawl_result"], outputs=["is_valid", "error_msg", "cleaned_doc"])
 def clean_and_validate_article(
     crawl_result: Dict[str, Any],
 ) -> Tuple[bool, str, Dict[str, Any]]:

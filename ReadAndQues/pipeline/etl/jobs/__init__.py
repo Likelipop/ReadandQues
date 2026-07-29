@@ -1,3 +1,3 @@
-# Import all jobs to trigger their registration decorators
-from . import (clean_text, crawl_news, extract_rss, generate_paraphrase,
-               generate_questions, init_db, single_article)
+from . import (clean_logic, clean_text, crawl_news, db_jobs, extract_rss,
+               generate_paraphrase, generate_questions, init_db, query_jobs,
+               single_article)

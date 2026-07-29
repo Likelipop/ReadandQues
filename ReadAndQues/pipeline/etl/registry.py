@@ -8,14 +8,18 @@ _JOBS: Dict[str, Callable] = {}
 _PIPES: Dict[str, "Pipe"] = {}
 
 
-def job(name: str):
+def job(name: str, inputs: list = None, outputs: list = None):
     """
-    Decorator to register a function as a job.
+    Decorator to register a function as a job, specifying its required inputs and expected outputs.
     """
 
     def decorator(func: Callable):
+        func.job_inputs = inputs or []
+        func.job_outputs = outputs or []
         _JOBS[name] = func
-        logger.info(f"Registered job: {name}")
+        logger.info(
+            f"Registered job: {name} (inputs: {func.job_inputs}, outputs: {func.job_outputs})"
+        )
         return func
 
     return decorator
