@@ -12,7 +12,7 @@ from typing import Optional, Tuple
 from database.Crawler.scraper import crawl_article_content
 from database.Mongo.crud import insert_article_document
 
-from .cleaning import clean_and_validate_article
+from pipeline.etl.jobs.clean_logic import clean_and_validate_article
 
 logger = logging.getLogger(__name__)
 

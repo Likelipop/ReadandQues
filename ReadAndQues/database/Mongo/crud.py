@@ -334,3 +334,32 @@ def mark_rss_link_extracted(link: str) -> bool:
         return res.modified_count > 0
     except Exception:
         return False
+def find_overlapping_paraphrase(article_id: str, paragraph_hash: str, start_idx: int, end_idx: int) -> dict | None:
+    from .connection import smart_paraphrase_collection
+    try:
+        # We find a paraphrase in the same article and paragraph where the user's highlight 
+        # [start_idx, end_idx] is completely inside or significantly overlaps the cached expanded highlight.
+        # For simplicity, if the user's highlight is contained within the cached highlight bounds:
+        query = {
+            "article_id": article_id,
+            "paragraph_hash": paragraph_hash,
+            "start_index": {"$lte": start_idx},
+            "end_index": {"$gte": end_idx}
+        }
+        # Get the shortest matching span if multiple exist
+        doc = smart_paraphrase_collection.find_one(query, sort=[("end_index", 1)])
+        if doc:
+            doc["id"] = str(doc["_id"])
+            del doc["_id"]
+            return doc
+        return None
+    except Exception:
+        return None
+
+def save_smart_paraphrase(data: dict) -> str:
+    from .connection import smart_paraphrase_collection
+    try:
+        res = smart_paraphrase_collection.insert_one(data)
+        return str(res.inserted_id)
+    except Exception:
+        return ""
