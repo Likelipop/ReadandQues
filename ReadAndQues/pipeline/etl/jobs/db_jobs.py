@@ -46,6 +46,6 @@ def db_find_overlapping_paraphrase(article_id: str, paragraph_hash: str, start_i
 @job("db_save_smart_paraphrase", inputs=["paraphrase_data"])
 def db_save_smart_paraphrase(paraphrase_data: dict):
     from database.Mongo.crud import save_smart_paraphrase
-    if paraphrase_data:
+    if paraphrase_data and "_id" not in paraphrase_data and "id" not in paraphrase_data:
         save_smart_paraphrase(paraphrase_data)
     return {}
