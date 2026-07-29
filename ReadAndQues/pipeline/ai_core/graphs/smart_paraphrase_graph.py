@@ -2,7 +2,7 @@ import logging
 from typing import Dict
 from langchain_core.prompts import PromptTemplate
 from langchain_core.output_parsers import JsonOutputParser
-from pipeline.ai_core.connection.config import get_llm
+from pipeline.ai_core.connection.router import get_llm
 from pydantic import BaseModel, Field
 
 logger = logging.getLogger(__name__)
@@ -17,7 +17,7 @@ def run_smart_paraphrase_llm(highlighted_text: str, paragraph_context: str) -> D
     Invokes the LLM to process a highlighted text within its paragraph context.
     Returns a dictionary with 'expanded_text' and 'paraphrased_text'.
     """
-    llm = get_llm()
+    llm = get_llm(temperature=1.0)
     parser = JsonOutputParser(pydantic_object=SmartParaphraseOutput)
 
     prompt = PromptTemplate(
