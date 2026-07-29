@@ -17,7 +17,7 @@ def logic_smart_paraphrase_llm(
     if cached_paraphrase:
         logger.info(f"Cache hit for smart paraphrase in article {article_id}")
         # The cache contains expanded_text, paraphrased_text, start_index, end_index
-        return cached_paraphrase
+        return {"paraphrase_data": cached_paraphrase}
 
     logger.info(f"Cache miss. Generating smart paraphrase for article {article_id}")
     from pipeline.ai_core.graphs.smart_paraphrase_graph import run_smart_paraphrase_llm
@@ -46,4 +46,4 @@ def logic_smart_paraphrase_llm(
         "end_index": new_end_idx
     }
 
-    return paraphrase_data
+    return {"paraphrase_data": paraphrase_data}
