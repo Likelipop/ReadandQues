@@ -376,6 +376,37 @@
                 const range = selection.getRangeAt(0);
                 if (!tContainer.contains(range.commonAncestorContainer)) return;
 
+                // Prevent highlighting if selection overlaps with an existing mark
+                let node = range.startContainer;
+                let isOverlapping = false;
+                while (node && node !== tContainer) {
+                    if (node.nodeType === 1 && node.tagName.toLowerCase() === 'mark' && node.classList.contains('user-highlight')) {
+                        isOverlapping = true; break;
+                    }
+                    node = node.parentNode;
+                }
+                
+                node = range.endContainer;
+                while (!isOverlapping && node && node !== tContainer) {
+                    if (node.nodeType === 1 && node.tagName.toLowerCase() === 'mark' && node.classList.contains('user-highlight')) {
+                        isOverlapping = true; break;
+                    }
+                    node = node.parentNode;
+                }
+                
+                if (!isOverlapping) {
+                    const fragment = range.cloneContents();
+                    // DocumentFragment querySelector might not be available in all contexts, fallback to checking child nodes if needed, but it is available in modern browsers.
+                    if (fragment.querySelector && fragment.querySelector('mark.user-highlight')) {
+                        isOverlapping = true;
+                    }
+                }
+                
+                if (isOverlapping) {
+                    selection.removeAllRanges();
+                    return;
+                }
+
                 const content = range.extractContents();
                 const mark = tDoc.createElement('mark');
                 mark.className = 'user-highlight';
