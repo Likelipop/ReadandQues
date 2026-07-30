@@ -118,9 +118,9 @@ class ArticleMongoModel(BaseModel):
 class AttemptMongoModel(BaseModel):
     user_id: int
     article_id: str
-    score: int
-    total_questions: int
-    answers: Dict[str, Any]
+    score: int = 0
+    total_questions: int = 0
+    answers: Dict[str, Any] = {}
     highlighted_markdown: str = ""
     elapsed_time: int = 0
     submitted_at: datetime

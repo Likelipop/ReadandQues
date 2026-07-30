@@ -54,3 +54,18 @@ def fetch_related_articles(article, exclude_id: str, limit: int = 5) -> List[Dic
     except Exception as e:
         logger.error(f"Error fetching related articles from MongoDB: {e}")
         return []
+
+@job("db_get_article_by_id", inputs=["article_id"], outputs=["article_doc"])
+def db_get_article_by_id(article_id: str) -> Dict:
+    from database.Mongo.crud import get_article_document_by_id
+    return {"article_doc": get_article_document_by_id(article_id)}
+
+@job("db_get_completed_articles", inputs=["theme", "genre", "limit"], outputs=["articles_list"])
+def db_get_completed_articles(theme: str = None, genre: str = None, limit: int = 100) -> List[Dict]:
+    from database.Mongo.crud import get_completed_articles
+    return get_completed_articles(theme=theme, genre=genre, limit=limit)
+
+@job("db_get_user_attempted_ids", inputs=["user_id"], outputs=["attempted_ids"])
+def db_get_user_attempted_ids(user_id: int) -> set:
+    from database.Mongo.crud import get_user_attempted_article_ids
+    return get_user_attempted_article_ids(user_id)

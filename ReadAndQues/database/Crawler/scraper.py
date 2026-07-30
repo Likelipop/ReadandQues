@@ -194,35 +194,72 @@ def _extract_article(
 
     content = to_markdown(raw_text)
     
-    # Extract raw HTML structure for UI rendering and Sanitize
+    # Generate standardized HTML for UI rendering
     try:
-        if isinstance(html_content, bytes):
-            soup = BeautifulSoup(html_content.decode("utf-8", errors="replace"), "html.parser")
-        else:
-            soup = BeautifulSoup(html_content, "html.parser")
+        extracted_html = extract(
+            html_content,
+            url=final_url,
+            output_format="html",
+            include_images=True,
+            include_links=True,
+            config=TRAFILATURA_CONFIG,
+        )
+        if not extracted_html:
+            extracted_html = f"<html><body><div><pre>{content}</pre></div></body></html>"
             
-        # Remove bad tags
-        for tag in soup.find_all(["script", "noscript", "iframe"]):
-            tag.decompose()
+        published_date = _parse_published_at(extracted.get("date"))
+        date_str = published_date.strftime("%B %d, %Y") if published_date else ""
+        
+        soup = BeautifulSoup(extracted_html, "html.parser")
+        wrapper = BeautifulSoup("<html><head></head><body><article></article></body></html>", "html.parser")
+        
+        base_tag = wrapper.new_tag("base", href=final_url)
+        wrapper.head.append(base_tag)
+        
+        header_tag = wrapper.new_tag("header")
+        title_tag = wrapper.new_tag("h1")
+        title_tag.string = title
+        header_tag.append(title_tag)
+        
+        if date_str:
+            date_tag = wrapper.new_tag("p")
+            date_strong = wrapper.new_tag("strong")
+            date_strong.string = "Published: "
+            date_tag.append(date_strong)
+            date_tag.append(date_str)
+            header_tag.append(date_tag)
             
-        # Add base tag
-        if soup.head:
-            if not soup.head.find("base"):
-                base_tag = soup.new_tag("base", href=final_url)
-                soup.head.insert(0, base_tag)
-        else:
-            head_tag = soup.new_tag("head")
-            base_tag = soup.new_tag("base", href=final_url)
-            head_tag.append(base_tag)
-            if soup.html:
-                soup.html.insert(0, head_tag)
-            else:
-                soup.insert(0, head_tag)
-                
-        clean_html = str(soup)
+        if extracted.get("author"):
+            author_tag = wrapper.new_tag("p")
+            author_strong = wrapper.new_tag("strong")
+            author_strong.string = "Author: "
+            author_tag.append(author_strong)
+            author_tag.append(extracted.get("author"))
+            header_tag.append(author_tag)
+            
+        wrapper.article.append(header_tag)
+        
+        if soup.body:
+            content_div = wrapper.new_tag("div", attrs={"class": "article-body"})
+            for child in list(soup.body.children):
+                content_div.append(child)
+            wrapper.article.append(content_div)
+            
+        footer_tag = wrapper.new_tag("footer")
+        footer_tag.append(wrapper.new_tag("hr"))
+        link_p = wrapper.new_tag("p")
+        link_p.string = "Source: "
+        a_tag = wrapper.new_tag("a", href=final_url, target="_blank")
+        a_tag.string = final_url
+        link_p.append(a_tag)
+        footer_tag.append(link_p)
+        wrapper.article.append(footer_tag)
+        
+        clean_html = str(wrapper)
     except Exception as e:
-        logger.error(f"Error parsing HTML with BeautifulSoup: {e}")
-        clean_html = ""
+        logger.error(f"Error generating standard HTML: {e}")
+        clean_html = f"<html><body><h1>{title}</h1><div class='article-body'><pre>{content}</pre></div></body></html>"
+
 
     word_count = len(content.split())
 

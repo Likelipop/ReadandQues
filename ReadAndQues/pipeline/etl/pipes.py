@@ -26,6 +26,12 @@ single_article_pipe = Pipe("single_article_pipe").add_job("process_single_articl
 
 # Query pipes
 related_articles_pipe = Pipe("related_articles_pipe").add_job("fetch_related_articles")
+get_article_by_id_pipe = Pipe("get_article_by_id_pipe").add_job("db_get_article_by_id")
+get_completed_articles_pipe = Pipe("get_completed_articles_pipe").add_job("db_get_completed_articles")
+get_user_attempted_ids_pipe = Pipe("get_user_attempted_ids_pipe").add_job("db_get_user_attempted_ids")
+
+# Action pipes
+save_exam_attempt_pipe = Pipe("save_exam_attempt_pipe").add_job("db_save_exam_attempt")
 
 # Smart Ink Paraphrase pipe
 smart_ink_pipe = (
@@ -34,3 +40,4 @@ smart_ink_pipe = (
     .add_job("logic_smart_paraphrase_llm")
     .add_job("db_save_smart_paraphrase")
 )
+

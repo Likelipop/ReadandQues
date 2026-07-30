@@ -86,6 +86,8 @@ def process_single_article(**kwargs) -> Dict[str, Any]:
                     summary=summary,
                     title=title,
                     url=url,
+                    theme=ai_result.get("analysis", {}).get("theme", "General"),
+                    genre=ai_result.get("analysis", {}).get("genre", "general"),
                 )
         logger.info("✅ Single pipeline task completed for article_id=%s, status=%s", article_id, status_msg)
         return {"status": status_msg, "article_id": article_id}

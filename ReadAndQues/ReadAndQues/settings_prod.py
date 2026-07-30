@@ -57,6 +57,8 @@ INSTALLED_APPS = [
     "accounts",
     "articles",
     "pipeline",
+    "homepage",
+    "readspace",
 ]
 
 MIDDLEWARE = [
@@ -79,13 +81,14 @@ ROOT_URLCONF = "ReadAndQues.urls"
 TEMPLATES = [
     {
         "BACKEND": "django.template.backends.django.DjangoTemplates",
-        "DIRS": [BASE_DIR / "articles" / "templates"],
+        "DIRS": [],
         "APP_DIRS": True,
         "OPTIONS": {
             "context_processors": [
                 "django.template.context_processors.request",
                 "django.contrib.auth.context_processors.auth",
                 "django.contrib.messages.context_processors.messages",
+                "articles.context_processors.global_news_context",
             ],
         },
     },

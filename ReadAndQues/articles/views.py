@@ -6,7 +6,8 @@ to the services layer, and rendering templates or returning JSON responses.
 No heavy LLM or long-running threading logic is performed directly inside views.
 """
 
-from database.Mongo.crud import get_article_document_by_id
+from pipeline.etl.registry import get_pipe
+from pipeline.etl import pipes  # Trigger registration
 from django.contrib import messages
 from django.http import HttpResponseNotAllowed, JsonResponse, HttpResponse
 from django.shortcuts import redirect, render
@@ -79,7 +80,7 @@ def import_article_view(request):
         if request.headers.get("x-requested-with") == "XMLHttpRequest":
             return JsonResponse({"status": "started", "id": inserted_id})
 
-        return redirect("articles:article_detail", pk=inserted_id)
+        return redirect("readspace:readspace_detail", pk=inserted_id)
 
     return redirect("home")
 
@@ -92,7 +93,8 @@ def article_status(request, pk):
     if request.method != "GET":
         return HttpResponseNotAllowed(["GET"])
 
-    doc = get_article_document_by_id(pk)
+    pipe_result = get_pipe("get_article_by_id_pipe").invoke(article_id=pk)
+    doc = pipe_result.get("context", {}).get("article_doc")
     if not doc:
         return JsonResponse(
             {"status": "error", "message": "Article not found."}, status=404
@@ -117,7 +119,8 @@ from django.views.decorators.cache import never_cache
 @never_cache
 def article_detail(request, pk):
     """Displays the article detail page (reading view & generated exams)."""
-    doc = get_article_document_by_id(pk)
+    pipe_result = get_pipe("get_article_by_id_pipe").invoke(article_id=pk)
+    doc = pipe_result.get("context", {}).get("article_doc")
     if not doc:
         messages.error(request, "Requested article not found!")
         return redirect("articles:import_article")
@@ -139,16 +142,16 @@ def article_detail(request, pk):
         article.id = str(doc.get("_id"))
         article.url = url
 
-    from pipeline.etl.registry import get_pipe
+
     from pipeline.etl import pipes  # Trigger registration
-    from database.Mongo.crud import get_completed_articles
 
     pipe = get_pipe("related_articles_pipe")
     pipe_result = pipe.invoke(article=article, exclude_id=str(pk), limit=5)
     related_articles = pipe_result.get("context", {}).get("related_articles", [])
     
     if not related_articles:
-        all_completed = get_completed_articles(limit=10)
+        completed_result = get_pipe("get_completed_articles_pipe").invoke(limit=10)
+        all_completed = completed_result.get("context", {}).get("articles_list", [])
         related_articles = [
             a
             for a in all_completed
@@ -163,21 +166,24 @@ def article_detail(request, pk):
 
 
 def all_tests_view(request):
-    from database.Mongo.crud import (get_completed_articles,
-                                     get_user_attempted_article_ids)
+
+    from pipeline.etl import pipes  # Trigger registration
     from django.core.paginator import Paginator
 
     selected_theme = request.GET.get("theme", "All")
     selected_genre = request.GET.get("genre", "All")
 
-    articles = get_completed_articles(
+    completed_result = get_pipe("get_completed_articles_pipe").invoke(
         theme=selected_theme if selected_theme != "All" else None,
         genre=selected_genre if selected_genre != "All" else None,
+        limit=100
     )
+    articles = completed_result.get("context", {}).get("articles_list", [])
 
     attempted_ids = set()
     if request.user.is_authenticated:
-        attempted_ids = get_user_attempted_article_ids(request.user.id)
+        attempt_result = get_pipe("get_user_attempted_ids_pipe").invoke(user_id=request.user.id)
+        attempted_ids = attempt_result.get("context", {}).get("attempted_ids", set())
 
     for art in articles:
         art_id = str(art.get("id") or art.get("_id") or "")
@@ -250,9 +256,13 @@ def submit_exam_attempt(request, pk):
 
         model = AttemptMongoModel(**attempt_data)
 
-        from database.Mongo.crud import save_exam_attempt
 
-        inserted_id = save_exam_attempt(model.model_dump(by_alias=True, exclude={"id"}))
+        from pipeline.etl import pipes
+        
+        save_result = get_pipe("save_exam_attempt_pipe").invoke(
+            attempt_data=model.model_dump(by_alias=True, exclude={"id"})
+        )
+        inserted_id = save_result.get("context", {}).get("inserted_id")
         if inserted_id:
             from .services.marker_search import \
                 get_related_articles_from_markers
@@ -289,9 +299,11 @@ def raw_html_view(request, pk: str):
     Returns the raw HTML of the article to be rendered inside an iframe.
     If no html_content is present, returns a basic HTML document with the original text.
     """
-    from database.Mongo.crud import get_article_document_by_id
 
-    article_data = get_article_document_by_id(pk)
+    from pipeline.etl import pipes
+    
+    pipe_result = get_pipe("get_article_by_id_pipe").invoke(article_id=pk)
+    article_data = pipe_result.get("context", {}).get("article_doc")
     if not article_data:
         return HttpResponse("Article not found", status=404)
 
@@ -335,7 +347,7 @@ def smart_paraphrase_view(request, pk: str):
         # Hash the paragraph for quicker DB matching
         paragraph_hash = hashlib.md5(paragraph_text.encode('utf-8')).hexdigest()
 
-        from pipeline.etl.registry import get_pipe
+
         from pipeline.etl import pipes  # Trigger registration
         pipe = get_pipe("smart_ink_pipe")
         
@@ -366,4 +378,86 @@ def smart_paraphrase_view(request, pk: str):
         import traceback
         traceback.print_exc()
         return JsonResponse({"status": "error", "message": str(e)}, status=400)
+
+
+def search_bm25_api(request):
+    query = request.GET.get("q", "").strip()
+    if not query:
+        return JsonResponse({"status": "error", "message": "Missing query"}, status=400)
+    
+    try:
+        from database.BM25.operations import search_bm25
+        from database.BM25.text_preprocessing import process_text_to_tokens
+        from database.Mongo.connection import article_collection
+        from bson import ObjectId
+        
+        tokens = process_text_to_tokens(query)
+        bm25_results = search_bm25(tokens, n=10)
+        bm25_ids = [r["id"] for r in bm25_results]
+        
+        results = []
+        for obj_id in bm25_ids:
+            try:
+                doc = article_collection.find_one({"_id": ObjectId(obj_id)}, {"title": 1, "created_at": 1, "source_name": 1, "original_text": 1})
+                if doc:
+                    snippet = doc.get("original_text", "")[:150] + "..." if doc.get("original_text") else ""
+                    results.append({
+                        "id": str(doc["_id"]),
+                        "title": doc.get("title", "No Title"),
+                        "source": doc.get("source_name", "Unknown"),
+                        "snippet": snippet,
+                        "date": doc.get("created_at").strftime("%Y-%m-%d") if doc.get("created_at") else ""
+                    })
+            except Exception:
+                pass
+                
+        return JsonResponse({"status": "success", "results": results})
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return JsonResponse({"status": "error", "message": str(e)}, status=500)
+
+
+def search_semantic_api(request):
+    query = request.GET.get("q", "").strip()
+    if not query:
+        return JsonResponse({"status": "error", "message": "Missing query"}, status=400)
+    
+    try:
+        from database.Chroma.operations import search_by_text
+        from database.Mongo.connection import article_collection
+        from bson import ObjectId
+        
+        hits = search_by_text(query, limit=5)
+        
+        results = []
+        for hit in hits:
+            try:
+                obj_id = hit["id"]
+                doc = article_collection.find_one({"_id": ObjectId(obj_id)}, {"title": 1, "created_at": 1, "source_name": 1, "original_text": 1})
+                if doc:
+                    snippet = doc.get("original_text", "")[:150] + "..." if doc.get("original_text") else ""
+                    
+                    # Convert distance to a pseudo similarity score (0-100%)
+                    distance = float(hit.get("distance", 0.0))
+                    # Lower distance means higher similarity. Assuming distance is max ~2.0
+                    similarity = max(0, min(100, int((1.0 - distance / 2.0) * 100)))
+                    
+                    results.append({
+                        "id": str(doc["_id"]),
+                        "title": doc.get("title", "No Title"),
+                        "source": doc.get("source_name", "Unknown"),
+                        "snippet": snippet,
+                        "date": doc.get("created_at").strftime("%Y-%m-%d") if doc.get("created_at") else "",
+                        "similarity": similarity
+                    })
+            except Exception:
+                pass
+                
+        return JsonResponse({"status": "success", "results": results})
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return JsonResponse({"status": "error", "message": str(e)}, status=500)
+
 

@@ -87,6 +87,8 @@ def generate_questions(**kwargs):
                     summary=summary,
                     title=title,
                     url=url,
+                    theme=gold_doc.get("theme", "General"),
+                    genre=gold_doc.get("genre", "general"),
                 )
             success_count += 1
             logger.info(f"Generated questions and saved to gold: {gold_id}")

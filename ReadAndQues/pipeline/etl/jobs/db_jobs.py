@@ -41,7 +41,7 @@ def db_save_silver_batch(silver_docs: list, failed_bronze_logs: list):
 def db_find_overlapping_paraphrase(article_id: str, paragraph_hash: str, start_idx: int, end_idx: int):
     from database.Mongo.crud import find_overlapping_paraphrase
     doc = find_overlapping_paraphrase(article_id, paragraph_hash, start_idx, end_idx)
-    return doc
+    return {"cached_paraphrase": doc}
 
 @job("db_save_smart_paraphrase", inputs=["paraphrase_data"])
 def db_save_smart_paraphrase(paraphrase_data: dict):
@@ -49,3 +49,9 @@ def db_save_smart_paraphrase(paraphrase_data: dict):
     if paraphrase_data and "_id" not in paraphrase_data and "id" not in paraphrase_data:
         save_smart_paraphrase(paraphrase_data)
     return {}
+
+
+@job("db_save_exam_attempt", inputs=["attempt_data"], outputs=["inserted_id"])
+def db_save_exam_attempt(attempt_data: dict) -> str:
+    from database.Mongo.crud import save_exam_attempt
+    return save_exam_attempt(attempt_data)

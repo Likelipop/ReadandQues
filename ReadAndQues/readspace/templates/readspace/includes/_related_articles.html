@@ -1,0 +1,37 @@
+<div class="mt-16 pt-8 border-t border-slate-200">
+    <h3 class="text-xl font-bold text-slate-800 mb-6 flex items-center gap-2">
+        <svg class="w-5 h-5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 002-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path></svg>
+        Related Articles
+    </h3>
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {% for rel_art in related_articles %}
+            <a href="{% url 'readspace:readspace_detail' rel_art.id %}" class="group bg-white rounded-xl border border-slate-100 shadow-sm overflow-hidden flex flex-col hover:shadow-md transition duration-200 h-full">
+                <div class="h-32 w-full bg-slate-100 relative overflow-hidden">
+                    {% if rel_art.image_url %}
+                        <img src="{{ rel_art.image_url }}" alt="{{ rel_art.title }}" class="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition duration-300">
+                    {% else %}
+                        <div class="absolute inset-0 bg-slate-200 flex items-center justify-center">
+                            <span class="text-slate-400 text-xs font-semibold">No Image</span>
+                        </div>
+                    {% endif %}
+                    <div class="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent"></div>
+                    <span class="absolute top-2 left-2 bg-white/95 text-slate-800 text-[9px] font-bold px-2 py-0.5 rounded shadow-sm uppercase tracking-wider">
+                        {{ rel_art.source_name|default:"Related" }}
+                    </span>
+                </div>
+                <div class="p-4 flex flex-col flex-grow">
+                    <h4 class="font-bold text-slate-800 line-clamp-2 text-sm group-hover:text-blue-600 transition mb-2">
+                        {{ rel_art.title }}
+                    </h4>
+                    <p class="text-slate-500 text-xs line-clamp-2 mt-auto">
+                        {{ rel_art.original_text|truncatewords:15 }}
+                    </p>
+                </div>
+            </a>
+        {% empty %}
+            <div class="col-span-full text-center text-slate-500 text-sm py-4 bg-slate-50 rounded-lg">
+                No related articles found.
+            </div>
+        {% endfor %}
+    </div>
+</div>
