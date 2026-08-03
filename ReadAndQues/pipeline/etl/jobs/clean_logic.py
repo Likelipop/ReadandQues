@@ -19,10 +19,9 @@ def clean_and_validate_article(
     Validation for min/max word count, title, and content non-emptiness is handled
     during article extraction in scraper.py.
     """
-    if not crawl_result.get("success"):
-        return False, crawl_result.get("error", "Error scraping article content."), {}
+    # bronze docs are already filtered for success during crawling
 
-    content = crawl_result.get("content", "").strip()
+    content = crawl_result.get("raw_text", "").strip()
     title = crawl_result.get("title", "").strip()
     source_name = crawl_result.get("source_name", "Unknown")
 

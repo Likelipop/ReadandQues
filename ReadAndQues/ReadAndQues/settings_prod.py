@@ -55,8 +55,9 @@ INSTALLED_APPS = [
     "django.contrib.messages",
     "django.contrib.staticfiles",
     "accounts",
-    "articles",
     "pipeline",
+    "homepage",
+    "readspace",
 ]
 
 MIDDLEWARE = [
@@ -79,13 +80,14 @@ ROOT_URLCONF = "ReadAndQues.urls"
 TEMPLATES = [
     {
         "BACKEND": "django.template.backends.django.DjangoTemplates",
-        "DIRS": [BASE_DIR / "articles" / "templates"],
+        "DIRS": [],
         "APP_DIRS": True,
         "OPTIONS": {
             "context_processors": [
                 "django.template.context_processors.request",
                 "django.contrib.auth.context_processors.auth",
                 "django.contrib.messages.context_processors.messages",
+                "homepage.context_processors.global_news_context",
             ],
         },
     },
@@ -225,7 +227,7 @@ LOGGING = {
             "level": "INFO",
             "propagate": True,
         },
-        "articles": {
+        "readspace": {
             "handlers": ["console", "file_error", "file_info"],
             "level": "INFO",
             "propagate": False,

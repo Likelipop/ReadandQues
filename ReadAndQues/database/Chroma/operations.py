@@ -9,7 +9,7 @@ from .connection import articles_collection
 logger = logging.getLogger(__name__)
 
 
-def add_article_vector(gold_id: str, summary: str, title: str, url: str) -> bool:
+def add_article_vector(gold_id: str, summary: str, title: str, url: str, theme: str = "General", genre: str = "general") -> bool:
     """
     Insert or update an article summary embedding in ChromaDB vector store.
     """
@@ -19,7 +19,7 @@ def add_article_vector(gold_id: str, summary: str, title: str, url: str) -> bool
     try:
         articles_collection.add(
             documents=[summary],
-            metadatas=[{"title": title, "url": url}],
+            metadatas=[{"title": title, "url": url, "theme": theme, "genre": genre}],
             ids=[str(gold_id)],
         )
         logger.info(f"Successfully added vector embedding for gold_id: {gold_id}")
@@ -52,4 +52,33 @@ def query_related_chroma_ids(summary: str, exclude_id: str, limit: int = 5) -> L
         return related_ids
     except Exception as e:
         logger.error(f"Error fetching related articles from ChromaDB: {e}")
+        return []
+
+
+def search_by_text(query: str, limit: int = 5) -> List[Dict]:
+    """
+    Search ChromaDB using a text query.
+    Returns a list of dicts with id, distance, and metadata.
+    """
+    if not articles_collection or not query:
+        return []
+
+    try:
+        results = articles_collection.query(query_texts=[query], n_results=limit)
+        
+        if not results or not results["ids"]:
+            return []
+            
+        hits = []
+        for i in range(len(results["ids"][0])):
+            hit = {
+                "id": str(results["ids"][0][i]),
+                "distance": results["distances"][0][i] if "distances" in results and results["distances"] else 0.0,
+                "metadata": results["metadatas"][0][i] if "metadatas" in results and results["metadatas"] else {}
+            }
+            hits.append(hit)
+            
+        return hits
+    except Exception as e:
+        logger.error(f"Error in Semantic Search ChromaDB: {e}")
         return []

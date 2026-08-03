@@ -1,0 +1,25 @@
+{% extends 'homepage/base.html' %}
+
+{% block title %}Homepage - AI Reading Practice Quiz{% endblock %}
+
+{% block content %}
+<div class="homepage-container space-y-12">
+    <!-- Ticker -->
+    {% include 'homepage/sections/ticker.html' %}
+    
+    <!-- Hero / Hot News -->
+    {% include 'homepage/sections/hero_hot_news.html' %}
+    
+    <!-- Vocab & Paraphrase -->
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-8 px-4 max-w-7xl mx-auto">
+        {% include 'homepage/sections/daily_vocab.html' %}
+        {% include 'homepage/sections/paraphrase_card.html' %}
+    </div>
+
+    <!-- Recommendations -->
+    {% include 'homepage/sections/recommendations.html' %}
+    
+    <!-- Explore All Tests -->
+    {% include 'homepage/sections/explore_tests.html' %}
+</div>
+{% endblock %}

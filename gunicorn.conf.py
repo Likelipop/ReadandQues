@@ -15,7 +15,7 @@ worker_class = "gthread"
 
 
 # Timeout for long-running AI requests (seconds)
-timeout = 120
+timeout = 300
 
 # ── Logging ────────────────────────────────────────────────────────────────
 loglevel = "info"

@@ -16,6 +16,8 @@ help:
 	@echo "  make test          : Run Django automated tests"
 	@echo "  make shell         : Open Django interactive shell"
 	@echo "  make clean         : Remove Python byte code & cache files"
+	@echo "  make init-db       : Initialize database (Mongo indexes, migrations, BM25)"
+	@echo "  make seed-db       : Initialize database and seed sample articles"
 	@echo "========================================================================"
 
 run: dev
@@ -47,6 +49,14 @@ migrate: docker-up
 makemigrations:
 	@echo "📝 Generating Django migrations..."
 	cd ReadAndQues && ../$(PYTHON) manage.py makemigrations
+
+init-db: docker-up
+	@echo "🛠️ Initializing database (Migrations, Superuser, Indexes)..."
+	cd ReadAndQues && ../$(PYTHON) manage.py init_db
+
+seed-db: docker-up
+	@echo "🌱 Initializing database and seeding sample articles..."
+	cd ReadAndQues && ../$(PYTHON) manage.py init_db --seed
 
 test: docker-up
 	@echo "🧪 Running Django test suite..."
