@@ -19,5 +19,6 @@ dependencies = [
     "spacy>=3.8.14",
     "newspaper3k>=0.2.8",
     "resend>=2.0.0",
+    "minio>=7.2.14",
 ]
 
