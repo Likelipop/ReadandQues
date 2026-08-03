@@ -55,7 +55,6 @@ INSTALLED_APPS = [
     "django.contrib.messages",
     "django.contrib.staticfiles",
     "accounts",
-    "articles",
     "pipeline",
     "homepage",
     "readspace",
@@ -88,7 +87,7 @@ TEMPLATES = [
                 "django.template.context_processors.request",
                 "django.contrib.auth.context_processors.auth",
                 "django.contrib.messages.context_processors.messages",
-                "articles.context_processors.global_news_context",
+                "homepage.context_processors.global_news_context",
             ],
         },
     },
@@ -228,7 +227,7 @@ LOGGING = {
             "level": "INFO",
             "propagate": True,
         },
-        "articles": {
+        "readspace": {
             "handlers": ["console", "file_error", "file_info"],
             "level": "INFO",
             "propagate": False,

@@ -5,23 +5,37 @@ from pipeline.etl.pipeline import Pipe
 # 6.1 init_pipe
 init_pipe = Pipe("init_pipe").add_job("init_db")
 
-# 6.2 ingest_news_pipe (RSS -> crawl -> clean)
-ingest_news_pipe = (
-    Pipe("ingest_news_pipe")
-    .add_job("extract_rss")
-    .add_job("crawl_news")
-    .add_job("db_fetch_unprocessed_bronze")
-    .add_job("logic_clean_batch")
-    .add_job("db_save_silver_batch")
+# 6.2 Medallion: Bronze Ingestion Pipe (RSS -> MinIO)
+ingest_bronze_pipe = (
+    Pipe("ingest_bronze_pipe")
+    .add_job("read_rss_sources")
+    .add_job("fetch_rss_links")
+    .add_job("filter_new_links")
+    .add_job("ingest_to_bronze")
 )
 
-# 6.3 generate_questions_pipe (AI graph)
+# 6.3 Medallion: Bronze to Silver Pipe (MinIO -> MinIO + Mongo Tracker)
+bronze_to_silver_pipe = (
+    Pipe("bronze_to_silver_pipe")
+    .add_job("fetch_unprocessed_bronze")
+    .add_job("extract_html_content")
+    .add_job("validate_articles")
+    .add_job("clean_article_text")
+    .add_job("save_to_silver")
+)
+
+# 6.4 Medallion: Silver to Gold Pipe (MinIO -> Mongo Gold Collections)
+silver_to_gold_pipe = (
+    Pipe("silver_to_gold_pipe")
+    .add_job("fetch_unprocessed_silver")
+    .add_job("transform_for_homepage")
+    .add_job("transform_for_ai")
+    .add_job("save_to_gold_mongo")
+)
+
+# 6.5 AI features and single article pipes (existing)
 generate_questions_pipe = Pipe("generate_questions_pipe").add_job("generate_questions")
-
-# 6.4 generate_paraphrase_pipe (AI paraphrase)
 generate_paraphrase_pipe = Pipe("generate_paraphrase_pipe").add_job("generate_paraphrase")
-
-# Single article real-time pipe
 single_article_pipe = Pipe("single_article_pipe").add_job("process_single_article")
 
 # Query pipes
@@ -41,3 +55,4 @@ smart_ink_pipe = (
     .add_job("db_save_smart_paraphrase")
 )
 
+find_related_by_markers_pipe = Pipe("find_related_by_markers_pipe").add_job("db_find_related_by_markers")

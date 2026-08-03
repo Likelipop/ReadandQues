@@ -20,7 +20,7 @@ def logic_smart_paraphrase_llm(
         return {"paraphrase_data": cached_paraphrase}
 
     logger.info(f"Cache miss. Generating smart paraphrase for article {article_id}")
-    from pipeline.ai_core.graphs.smart_paraphrase_graph import run_smart_paraphrase_llm
+    from pipeline.ai_core.graphs.smart_paraphrase import run_smart_paraphrase_llm
     
     result = run_smart_paraphrase_llm(highlighted_text, paragraph_text)
     
@@ -40,6 +40,9 @@ def logic_smart_paraphrase_llm(
     paraphrase_data = {
         "article_id": article_id,
         "paragraph_hash": paragraph_hash,
+        "user_highlighted_text": highlighted_text,
+        "user_start_index": start_idx,
+        "user_end_index": end_idx,
         "original_expanded_text": expanded_text,
         "paraphrased_text": paraphrased_text,
         "start_index": new_start_idx,

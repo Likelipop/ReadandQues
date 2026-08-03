@@ -92,7 +92,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // Search function
     function performSearch(query) {
         spinner.classList.remove('hidden');
-        const endpoint = searchMode === 'bm25' ? '/articles/api/search/keyword/' : '/articles/api/search/semantic/';
+        const endpoint = searchMode === 'bm25' ? '/readspace/api/search/keyword/' : '/readspace/api/search/semantic/';
         
         fetch(`${endpoint}?q=${encodeURIComponent(query)}`)
             .then(r => r.json())
@@ -158,7 +158,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const formData = new URLSearchParams();
         formData.append('url', url);
 
-        fetch("/articles/import/", {
+        fetch("/readspace/import/", {
             method: 'POST',
             headers: {
                 'X-Requested-With': 'XMLHttpRequest',

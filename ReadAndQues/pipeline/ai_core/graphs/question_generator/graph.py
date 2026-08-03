@@ -95,11 +95,25 @@ def node_question_planner(state: GraphState) -> Dict[str, Any]:
     structured_llm = llm.with_structured_output(
         ExamOutput, include_raw=True, method="function_calling"
     )
-    raw_result = structured_llm.invoke(prompt)
-
-    parsed = raw_result.get("parsed")
+    
+    max_retries = 3
+    parsed = None
+    last_err = None
+    raw_result = None
+    
+    for attempt in range(max_retries):
+        raw_result = structured_llm.invoke(prompt)
+        parsed = raw_result.get("parsed")
+        if parsed:
+            break
+        else:
+            last_err = raw_result.get("parsing_error")
+            raw_msg = raw_result.get("raw")
+            logger.warning(f"Attempt {attempt + 1} failed to parse ExamOutput. Error: {last_err}")
+            
     if not parsed:
-        raise ValueError("Failed to parse ExamOutput from LLM")
+        logger.error(f"Failed to parse ExamOutput after {max_retries} attempts. Last error: {last_err}")
+        raise ValueError(f"Failed to parse ExamOutput from LLM: {last_err}")
 
     token_log = _append_token_log(
         state.get("token_log", []), "question_planner", raw_result["raw"]

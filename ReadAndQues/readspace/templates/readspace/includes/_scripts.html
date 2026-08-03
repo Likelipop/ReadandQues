@@ -1,4 +1,28 @@
+<div id="csrf-wrapper" style="display: none;">
+    {% csrf_token %}
+</div>
 <script>
+
+    // Global CSRF helper - handles HttpOnly CSRF cookie by reading from the DOM
+    function getCookie(name) {
+        if (name === 'csrftoken') {
+            const csrfInput = document.querySelector('input[name="csrfmiddlewaretoken"]');
+            if (csrfInput) return csrfInput.value;
+        }
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+
     // ── Render Markdown passage ──
     (function() {
         const rawEl = document.getElementById('raw-article-text');
@@ -11,12 +35,96 @@
         }
     })();
 
+    document.addEventListener('DOMContentLoaded', () => {
+        const urlParams = new URLSearchParams(window.location.search);
+        if (urlParams.get('ai_quiz') === '1') {
+            const btnAiQuiz = document.getElementById('tool-ai-quiz');
+            if (btnAiQuiz) btnAiQuiz.click();
+        }
+    });
+
     // ── Toolbox Logic (Marker & Eraser) ──
     let activeTool = null;
     const btnMarker = document.getElementById('tool-marker');
     const btnEraser = document.getElementById('tool-eraser');
     const articleSectionContent = document.getElementById('article-rendered-text');
     const articleIframe = document.getElementById('article-iframe');
+    const toolbox = document.getElementById('toolbox');
+    const dragHandle = document.getElementById('toolbox-drag-handle');
+
+    if (toolbox && dragHandle) {
+        let isDragging = false;
+        let startY, startTop, startX, startLeft;
+
+        function startDrag(clientX, clientY) {
+            isDragging = true;
+            startY = clientY;
+            startX = clientX;
+            
+            // Remove transitions so drag is instantaneous and doesn't rubber-band
+            toolbox.classList.remove('transition-all');
+            
+            const rect = toolbox.getBoundingClientRect();
+            // Remove translate-y-1/2 class to use absolute positioning cleanly
+            if (toolbox.classList.contains('-translate-y-1/2')) {
+                toolbox.classList.remove('-translate-y-1/2', 'top-1/2');
+                // Don't rely on classList.remove for complex tailwind arbitrary classes,
+                // inline style will override them anyway.
+                toolbox.style.top = rect.top + 'px';
+                toolbox.style.left = rect.left + 'px';
+            }
+            
+            const pTop = parseInt(toolbox.style.top, 10);
+            const pLeft = parseInt(toolbox.style.left, 10);
+            startTop = isNaN(pTop) ? rect.top : pTop;
+            startLeft = isNaN(pLeft) ? rect.left : pLeft;
+            
+            document.body.style.userSelect = 'none';
+            if (articleIframe) articleIframe.style.pointerEvents = 'none';
+        }
+
+        function moveDrag(clientX, clientY) {
+            if (!isDragging) return;
+            const deltaY = clientY - startY;
+            const deltaX = clientX - startX;
+            toolbox.style.top = (startTop + deltaY) + 'px';
+            toolbox.style.left = (startLeft + deltaX) + 'px';
+        }
+
+        function stopDrag() {
+            if (isDragging) {
+                isDragging = false;
+                document.body.style.userSelect = '';
+                if (articleIframe) articleIframe.style.pointerEvents = '';
+                // Optional: restore transition if you want snap effects later, but usually better left off after manual drag
+                // toolbox.classList.add('transition-all');
+            }
+        }
+
+        // Mouse Events
+        dragHandle.addEventListener('mousedown', (e) => {
+            if (e.button !== 0) return; // Only left click
+            startDrag(e.clientX, e.clientY);
+        });
+        document.addEventListener('mousemove', (e) => moveDrag(e.clientX, e.clientY));
+        document.addEventListener('mouseup', stopDrag);
+
+        // Touch Events (Mobile/Tablet)
+        dragHandle.addEventListener('touchstart', (e) => {
+            const touch = e.touches[0];
+            if (touch) startDrag(touch.clientX, touch.clientY);
+        }, { passive: false });
+        
+        document.addEventListener('touchmove', (e) => {
+            if (!isDragging) return;
+            // Prevent scrolling page while dragging
+            e.preventDefault(); 
+            const touch = e.touches[0];
+            if (touch) moveDrag(touch.clientX, touch.clientY);
+        }, { passive: false });
+        
+        document.addEventListener('touchend', stopDrag);
+    }
     
     let targetWindow = window;
     let targetDoc = document;
@@ -231,7 +339,8 @@
                         const res = await fetch(`/readspace/api/${getArticleId()}/smart_paraphrase/`, {
                             method: 'POST',
                             headers: {
-                                'Content-Type': 'application/json'
+                                'Content-Type': 'application/json',
+                                'X-CSRFToken': getCookie('csrftoken')
                             },
                             body: JSON.stringify({
                                 highlighted_text: highlightedText,
@@ -313,20 +422,7 @@
         const highlightedMarkdown = getHighlightedMarkdown();
         if (!highlightedMarkdown.includes('==')) return; // No highlights to save
 
-        function getCookie(name) {
-            let cookieValue = null;
-            if (document.cookie && document.cookie !== '') {
-                const cookies = document.cookie.split(';');
-                for (let i = 0; i < cookies.length; i++) {
-                    const cookie = cookies[i].trim();
-                    if (cookie.substring(0, name.length + 1) === (name + '=')) {
-                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
-                        break;
-                    }
-                }
-            }
-            return cookieValue;
-        }
+        
         
         fetch(`/readspace/api/${getArticleId()}/save_markers/`, {
             method: 'POST',
@@ -378,8 +474,28 @@
                 if (timerDisplay) timerDisplay.classList.remove('hidden');
 
                 // Start Polling if not completed
-                if ('{{ article.status }}' !== 'completed' && '{{ article.status }}' !== 'failed' && '{{ article.status }}' !== 'error') {
-                    startPolling();
+                const aiStatus = '{{ article.ai_status|default:"none" }}';
+                if (aiStatus !== 'completed') {
+                    if (aiStatus === 'none' || aiStatus === 'failed' || aiStatus === 'error') {
+                        fetch(`/readspace/trigger-quiz/${getArticleId()}/`, {
+                            method: 'POST',
+                            headers: {
+                                'X-CSRFToken': getCookie('csrftoken')
+                            }
+                        })
+                        .then(res => {
+                            if (!res.ok) throw new Error("Trigger failed");
+                            localStorage.removeItem(`readspace_exam_state_${getArticleId()}`);
+                            startPolling();
+                        })
+                        .catch(err => {
+                            console.error("Failed to trigger AI Quiz:", err);
+                            alert("Failed to start AI Quiz generation. Please try again.");
+                        });
+                    } else if (aiStatus === 'pending_generation' || aiStatus === 'active') {
+                        // Already generating from a previous click/session, just poll
+                        startPolling();
+                    }
                 }
 
             } else {
@@ -407,7 +523,8 @@
     document.querySelectorAll('.fib-paragraph').forEach((container, pIdx) => {
         const raw = container.getAttribute('data-raw-question');
         if (!raw) return;
-        const parts = raw.split(/\[(\d+)\]/);
+        // Split by [1], [ 1 ], (1), etc.
+        const parts = raw.split(/(?:\[|\()\s*(\d+)\s*(?:\]|\))/);
         container.innerHTML = '';
         for (let i = 0; i < parts.length; i++) {
             if (i % 2 === 0) {
@@ -430,14 +547,18 @@
         if (pollTimeout) return; // Already polling
         
         function poll() {
-            fetch(`/articles/status/${getArticleId()}/?t=${Date.now()}`)
+            fetch(`/readspace/status/${getArticleId()}/?t=${Date.now()}`)
                 .then(r => r.json())
                 .then(data => {
                     if (data.status === 'completed') {
                         // Reload to show the quiz
-                        window.location.reload();
+                        const url = new URL(window.location.href);
+                        url.searchParams.set('ai_quiz', '1');
+                        window.location.href = url.toString();
                     } else if (data.status === 'failed' || data.status === 'error') {
-                        window.location.reload();
+                        const url = new URL(window.location.href);
+                        url.searchParams.set('ai_quiz', '1');
+                        window.location.href = url.toString();
                     } else {
                         pollTimeout = setTimeout(poll, 3000);
                     }
@@ -450,7 +571,7 @@
     }
 
     // ── Quiz State & Timer & Submit ──
-    {% if article.status == 'completed' %}
+    {% if article.exams and article.exams.0.quizzes %}
         const storageKey = `readspace_exam_state_${getArticleId()}`;
         
         let examState = { elapsedTime: 0, answers: {}, submitted: false };
@@ -633,30 +754,11 @@
                 const highlightedMarkdown = getHighlightedMarkdown();
                 const elapsedTime = examState.elapsedTime;
                 
-                function getCookie(name) {
-                    let cookieValue = null;
-                    if (document.cookie && document.cookie !== '') {
-                        const cookies = document.cookie.split(';');
-                        for (let i = 0; i < cookies.length; i++) {
-                            const cookie = cookies[i].trim();
-                            if (cookie.substring(0, name.length + 1) === (name + '=')) {
-                                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
-                                break;
-                            }
-                        }
-                    }
-                    return cookieValue;
-                }
-                const csrftoken = getCookie('csrftoken');
-
-                submitBtn.disabled = true;
-                submitBtn.textContent = 'Submitting...';
-
-                fetch(`/articles/{{ article.id|default:request.resolver_match.kwargs.pk }}/submit/`, {
+                fetch(`/readspace/${getArticleId()}/submit/`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
-                        'X-CSRFToken': csrftoken
+                        'X-CSRFToken': getCookie('csrftoken')
                     },
                     body: JSON.stringify({
                         score: correctCount,
@@ -665,29 +767,29 @@
                         highlighted_markdown: highlightedMarkdown,
                         elapsed_time: elapsedTime
                     })
-                }).then(r => r.json()).then(data => {
-                    console.log("Exam submitted:", data);
-                    
-                    examState.submitted = true;
-                    examState.related_articles = data.related_articles || [];
-                    saveState();
-                    
-                    const chromaSection = document.getElementById('related-articles-section');
-                    if (chromaSection) chromaSection.classList.remove('hidden');
-                    renderRelated(data.related_articles);
-                    
-                    submitBtn.textContent = 'Exam Submitted';
-                    submitBtn.className = 'w-full mt-6 bg-gray-400 text-white font-bold py-3 px-4 rounded-lg text-lg shadow-md cursor-not-allowed';
-
-                    const scrollToSection = document.getElementById('related-articles-section') || document.getElementById('bm25-related-section');
-                    if (scrollToSection) {
-                        setTimeout(() => scrollToSection.scrollIntoView({ behavior: 'smooth', block: 'start' }), 500);
+                })
+                .then(r => r.json())
+                .then(data => {
+                    if (data.status === 'success') {
+                        examState.submitted = true;
+                        examState.related_articles = data.related_articles;
+                        saveState();
+                        
+                        evaluateVisually();
+                        const chromaSection = document.getElementById('related-articles-section');
+                        if (chromaSection) chromaSection.classList.remove('hidden');
+                        renderRelated(examState.related_articles);
+                        
+                        submitBtn.disabled = true;
+                        submitBtn.textContent = 'Exam Submitted';
+                        submitBtn.className = 'w-full mt-6 bg-gray-400 text-white font-bold py-3 px-4 rounded-lg text-lg shadow-md cursor-not-allowed';
+                    } else {
+                        alert("Failed to submit exam: " + data.message);
                     }
-                }).catch(err => {
-                    console.error("Error submitting exam:", err);
-                    submitBtn.disabled = false;
-                    submitBtn.textContent = 'Submit Exam';
-                    alert("Failed to submit exam. Please try again.");
+                })
+                .catch(err => {
+                    console.error("Submit error:", err);
+                    alert("An error occurred while submitting.");
                 });
             });
         }

@@ -63,10 +63,12 @@ def process_single_article(**kwargs) -> Dict[str, Any]:
     ai_result = run_ai_pipeline(original_text)
     if ai_result:
         update_data = ai_result
+        update_data["ai_status"] = "completed"
         status_msg = "completed"
     else:
         update_data = {
             "status": "failed",
+            "ai_status": "failed",
             "error_message": "AI pipeline failed to generate exam",
             "exams": [],
         }

@@ -34,8 +34,10 @@ def get_mongo_client() -> MongoClient:
 client = get_mongo_client()
 DB_NAME = getattr(settings, "MONGO_DB_NAME", "articlesDB")
 db = client[DB_NAME]
-article_collection = db["gold_articles"]
-gold_collection = db["gold_articles"]
+article_collection = db["gold_articles"]  # Legacy
+gold_collection = db["gold_articles"]  # Legacy
+gold_homepage_collection = db["gold_homepage_articles"]
+gold_ai_collection = db["gold_ai_articles"]
 silver_collection = db["silver_articles"]
 bronze_collection = db["bronze_articles"]
 pipeline_logs_collection = db["pipeline_logs"]

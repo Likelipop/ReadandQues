@@ -39,8 +39,8 @@ def db_save_silver_batch(silver_docs: list, failed_bronze_logs: list):
 
 @job("db_find_overlapping_paraphrase", inputs=["article_id", "paragraph_hash", "start_idx", "end_idx"], outputs=["cached_paraphrase"])
 def db_find_overlapping_paraphrase(article_id: str, paragraph_hash: str, start_idx: int, end_idx: int):
-    from database.Mongo.crud import find_overlapping_paraphrase
-    doc = find_overlapping_paraphrase(article_id, paragraph_hash, start_idx, end_idx)
+    from database.Mongo.crud import find_exact_paraphrase
+    doc = find_exact_paraphrase(article_id, paragraph_hash, start_idx, end_idx)
     return {"cached_paraphrase": doc}
 
 @job("db_save_smart_paraphrase", inputs=["paraphrase_data"])
