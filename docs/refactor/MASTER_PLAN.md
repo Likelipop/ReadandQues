@@ -36,8 +36,8 @@ when that improves reviewability, but unrelated steps must not be combined.
 
 ### PR 1: Baseline and decisions
 
-- [ ] RQ-001 Document datastore, orchestration, and AI architecture decisions.
-- [ ] RQ-002 Characterize the existing registry and pipeline executor.
+- [x] RQ-001 Document datastore, orchestration, and AI architecture decisions.
+- [x] RQ-002 Characterize the existing registry and pipeline executor.
 - [ ] RQ-003 Characterize article import, quiz, and paraphrase flows.
 - [ ] RQ-004 Add repeatable quality-gate commands.
 
