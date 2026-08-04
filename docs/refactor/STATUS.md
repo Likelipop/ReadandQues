@@ -9,7 +9,7 @@ action so work can resume without relying on conversation memory.
 - Program status: active
 - Current gate: PR 1 — baseline and architecture decisions
 - Current item: Release Gate 1 verification
-- Last verified commit: `54a6290`
+- Last verified commit: `d63aaf0`
 - Worktree at program start: clean
 
 ## Decision index
@@ -88,4 +88,13 @@ and pass the full Release Gate 1 checks before RQ-005.
 - RQ-001: proven by commit `54a6290` and the three accepted ADRs.
 - RQ-002: proven by commit `ac96db0`; nine isolated tests pass.
 - RQ-003: proven by commit `dad57f5`; combined suite passes 16 tests.
-- RQ-004: quality-gate script and Make targets; commit pending.
+- RQ-004: proven by commit `d63aaf0`; `make check-refactor` passes.
+
+## Active release-gate condition
+
+The offline portion of Release Gate 1 is green. The full portion is pending
+because `.venv` does not contain the locked `minio` dependency. Importing
+`pipeline.orchestrator` therefore raises `ModuleNotFoundError`. The requested
+`uv sync --frozen` execution was not approved by the environment. Structural
+renaming must not begin until dependencies are synchronized and
+`make check-refactor-full` passes.
