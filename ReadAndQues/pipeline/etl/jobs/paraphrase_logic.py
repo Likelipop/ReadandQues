@@ -3,7 +3,14 @@ from pipeline.etl.registry import job
 
 logger = logging.getLogger(__name__)
 
-@job("logic_smart_paraphrase_llm", inputs=["cached_paraphrase", "highlighted_text", "paragraph_text", "article_id", "paragraph_hash", "start_idx", "end_idx"], outputs=["paraphrase_data"])
+@job("logic_smart_paraphrase_llm",  inputs=["cached_paraphrase", 
+                                           "highlighted_text", 
+                                           "paragraph_text", 
+                                           "article_id", 
+                                           "paragraph_hash", 
+                                           "start_idx", 
+                                           "end_idx"], 
+                                    outputs=["paraphrase_data"])
 def logic_smart_paraphrase_llm(
     cached_paraphrase: dict,
     highlighted_text: str,

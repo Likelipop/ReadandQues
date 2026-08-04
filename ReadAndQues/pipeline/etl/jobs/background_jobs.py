@@ -27,7 +27,8 @@ def update_trending_articles_job(**kwargs):
         
         update_section_data("trending_articles", trending_data, expires_in_hours=1)
         logger.info(f"Updated trending articles. Count: {len(trending_data)}")
-        return {"status": "success", "count": len(trending_data)}
+        return {"status": "success", 
+                "count": len(trending_data)}
     except Exception as e:
         logger.error(f"Error updating trending articles: {e}")
         return {"status": "failed", "error": str(e)}

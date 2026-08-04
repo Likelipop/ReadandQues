@@ -116,7 +116,7 @@ def save_to_silver(clean_docs: list, invalid_docs: list):
             save_silver_doc(silver_doc)
             
             success_count += 1
-        except Exception as e:
+        except Exception as e: 
             logger.error(f"Failed to save silver doc to MinIO/Mongo: {e}")
             
     for log in invalid_docs:
