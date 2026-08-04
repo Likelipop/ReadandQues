@@ -8,7 +8,7 @@ action so work can resume without relying on conversation memory.
 - Branch: `refactor/service-orchestration`
 - Program status: active
 - Current gate: PR 1 — baseline and architecture decisions
-- Current item: RQ-003
+- Current item: RQ-004
 - Last verified commit: `54a6290`
 - Worktree at program start: clean
 
@@ -52,7 +52,22 @@ requiring live databases or AI providers.
 Next action: characterize article import, AI-only quiz generation, and smart
 paraphrase application flows with mocked infrastructure.
 
+### 2026-08-04 — RQ-003 workflow characterization
+
+- Added seven infrastructure-free tests around single-article processing,
+  crawl failure, orchestrator delegation, AI-only generation/indexing, daemon
+  thread submission, and smart-paraphrase cache hit/miss behavior.
+- Verification: the combined legacy suite passed all 16 tests in 0.011 seconds.
+- Baseline finding: importing `pipeline.orchestrator` in the project virtual
+  environment currently fails because eager job discovery imports MinIO while
+  the installed environment lacks the declared `minio` package. This must be
+  surfaced by RQ-004 dependency/import checks and eliminated by RQ-012.
+
+Next action: add repeatable quality-gate commands for isolated tests, Django
+checks, import smoke checks, migration drift, and forbidden legacy imports.
+
 ## Completion evidence
 
 - RQ-001: proven by commit `54a6290` and the three accepted ADRs.
-- RQ-002: tests in `pipeline/tests/test_pipeline_engine.py`; commit pending.
+- RQ-002: proven by commit `ac96db0`; nine isolated tests pass.
+- RQ-003: tests in `pipeline/tests/test_application_flows.py`; commit pending.
