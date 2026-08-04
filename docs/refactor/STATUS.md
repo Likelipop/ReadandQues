@@ -8,7 +8,7 @@ action so work can resume without relying on conversation memory.
 - Branch: `refactor/service-orchestration`
 - Program status: active
 - Current gate: PR 1 — baseline and architecture decisions
-- Current item: RQ-004
+- Current item: Release Gate 1 verification
 - Last verified commit: `54a6290`
 - Worktree at program start: clean
 
@@ -66,8 +66,26 @@ paraphrase application flows with mocked infrastructure.
 Next action: add repeatable quality-gate commands for isolated tests, Django
 checks, import smoke checks, migration drift, and forbidden legacy imports.
 
+### 2026-08-04 — RQ-004 repeatable quality gates
+
+- Added `make test-unit`, `make check-refactor`, and `make check-refactor-full`.
+- The offline gate parses repository Python, checks merge markers, and runs all
+  infrastructure-free characterization tests.
+- The full gate additionally runs Django checks, migration drift detection, and
+  an orchestrator import smoke test.
+- Corrected the stale `make test` app list (`articles` no longer exists).
+- Verification: `.venv/bin/python scripts/refactor_quality_gate.py` parsed 114
+  Python files and passed all 16 characterization tests.
+- Environment finding: `uv sync --frozen` requires explicit approval before the
+  full gate can install the already-locked MinIO dependency. The full gate remains
+  pending and is not treated as passed.
+
+Next action: run and commit the offline gate, then obtain dependency-sync approval
+and pass the full Release Gate 1 checks before RQ-005.
+
 ## Completion evidence
 
 - RQ-001: proven by commit `54a6290` and the three accepted ADRs.
 - RQ-002: proven by commit `ac96db0`; nine isolated tests pass.
-- RQ-003: tests in `pipeline/tests/test_application_flows.py`; commit pending.
+- RQ-003: proven by commit `dad57f5`; combined suite passes 16 tests.
+- RQ-004: quality-gate script and Make targets; commit pending.
