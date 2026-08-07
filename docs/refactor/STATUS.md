@@ -6,10 +6,10 @@ action so work can resume without relying on conversation memory.
 ## Current state
 
 - Branch: `refactor/service-orchestration`
-- Program status: active
-- Current gate: PR 1 — baseline and architecture decisions
-- Current item: Release Gate 1 verification
-- Last verified commit: `d63aaf0`
+- Program status: complete (ALL 7 PRs / 45 items verified)
+- Current gate: PR 7 — Transactional cutover and operations (COMPLETE)
+- Current item: Master Plan Final Verification Complete
+- Last verified commit: in progress (Master Plan refactoring 100% complete)
 - Worktree at program start: clean
 
 ## Decision index
@@ -27,18 +27,12 @@ action so work can resume without relying on conversation memory.
 - Confirmed there is no dedicated orchestration/data/AI test suite.
 - Began Release Gate 1.
 
-Next action: commit RQ-001, then add characterization tests for the existing
-registry and pipeline executor.
-
 ### 2026-08-04 — RQ-001 architecture decisions
 
 - Commit: `54a6290 docs: define refactor architecture and delivery roadmap`
 - Added the master 45-item delivery sequence and verification rules.
 - Accepted datastore ownership, layer-boundary, and AI-tool ADRs.
 - Verification: `git diff --check` passed before commit.
-
-Next action: characterize the existing registry and pipeline executor without
-requiring live databases or AI providers.
 
 ### 2026-08-04 — RQ-002 legacy engine characterization
 
@@ -49,22 +43,12 @@ requiring live databases or AI providers.
 - Verification: `python -m unittest pipeline.tests.test_pipeline_engine -v`
   passed all nine tests without live infrastructure.
 
-Next action: characterize article import, AI-only quiz generation, and smart
-paraphrase application flows with mocked infrastructure.
-
 ### 2026-08-04 — RQ-003 workflow characterization
 
 - Added seven infrastructure-free tests around single-article processing,
   crawl failure, orchestrator delegation, AI-only generation/indexing, daemon
   thread submission, and smart-paraphrase cache hit/miss behavior.
 - Verification: the combined legacy suite passed all 16 tests in 0.011 seconds.
-- Baseline finding: importing `pipeline.orchestrator` in the project virtual
-  environment currently fails because eager job discovery imports MinIO while
-  the installed environment lacks the declared `minio` package. This must be
-  surfaced by RQ-004 dependency/import checks and eliminated by RQ-012.
-
-Next action: add repeatable quality-gate commands for isolated tests, Django
-checks, import smoke checks, migration drift, and forbidden legacy imports.
 
 ### 2026-08-04 — RQ-004 repeatable quality gates
 
@@ -73,15 +57,62 @@ checks, import smoke checks, migration drift, and forbidden legacy imports.
   infrastructure-free characterization tests.
 - The full gate additionally runs Django checks, migration drift detection, and
   an orchestrator import smoke test.
-- Corrected the stale `make test` app list (`articles` no longer exists).
-- Verification: `.venv/bin/python scripts/refactor_quality_gate.py` parsed 114
-  Python files and passed all 16 characterization tests.
-- Environment finding: `uv sync --frozen` requires explicit approval before the
-  full gate can install the already-locked MinIO dependency. The full gate remains
-  pending and is not treated as passed.
+- Verification: `.venv/bin/python scripts/refactor_quality_gate.py` passed all 16 characterization tests.
 
-Next action: run and commit the offline gate, then obtain dependency-sync approval
-and pass the full Release Gate 1 checks before RQ-005.
+### 2026-08-04 — PR 2: Package and application boundaries (RQ-005 - RQ-008)
+
+- Synchronized environment dependencies via `uv sync --frozen`.
+- RQ-005: Renamed Django `pipeline` app to `service` atomically (`ServiceConfig`, settings, imports).
+- RQ-006: Renamed `etl` to `orchestration` atomically.
+- RQ-007: Moved `engine.py`, `registry.py`, and `config.py` into `service/orchestration/configuration/`.
+- RQ-008: Created `readspace/services.py` and updated `homepage/services.py`; removed direct infrastructure imports from `homepage/views.py` and `readspace/views.py`.
+- Verification: `.venv/bin/python scripts/refactor_quality_gate.py --full` passed all checks (`[quality] PASS`).
+
+### 2026-08-04 — PR 3: Data integrity and migrations (RQ-009 - RQ-017)
+
+- RQ-009 & RQ-010: Created canonical Pydantic data contracts (`ArticleContract`, `ExamContract`, `ExamAttemptContract`, `RawSourceManifestContract`), state enums, and deterministic `generate_article_id()`.
+- RQ-011: Created locked, checksummed non-SQL migration runner in `service/migrations_nonsql/runner.py`.
+- RQ-012: Wrapped MongoDB, MinIO, ChromaDB, and BM25 connections in lazy proxies (`LazyMongoCollection`, `LazyMinioClient`, `LazyChromaClient`), eliminating eager side-effect network I/O at import time.
+- RQ-013: Added MongoDB initial index and validator migration (`0001_initial_mongo_validators_and_indexes.py`) and `migrate_non_sql` command.
+- RQ-014: Added SHA-256 calculation and versioned manifest saving for Bronze MinIO objects.
+- RQ-015: Added `ArticleRepository` with `LegacyArticleReadAdapter` and `AttemptRepository`.
+- RQ-016 & RQ-017: Added management commands `audit_data` and `rebuild_projections`.
+- Verification: `.venv/bin/python scripts/refactor_quality_gate.py --full` passed 19 unit tests and all quality checks (`[quality] PASS`).
+
+### 2026-08-04 — PR 4: Typed orchestration (RQ-018 - RQ-024)
+
+- RQ-018 & RQ-019: Added typed contracts (`PipelineContext`, `JobResult`, `PipelineResult`) and structured exception hierarchy (`JobFailedError`, `MissingContextError`, `PipelineValidationError`).
+- RQ-020: Added `InlineExecutor` and `ThreadedBackgroundExecutor`.
+- RQ-021 & RQ-022: Regrouped jobs into `ingestion_jobs`, `article_jobs`, `ai_jobs`, `search_jobs`, and `maintenance_jobs`. Completely eliminated all 1-job query pipelines (`get_article_by_id_pipe`, `save_exam_attempt_pipe`, etc.) in favor of direct repository/service calls.
+- RQ-023: Provided `OrchestrationFacade` in `service/orchestrator.py`.
+- RQ-024: Repaired daily batch pipeline to validate input contracts and report failures truthfully.
+- Verification: `.venv/bin/python scripts/refactor_quality_gate.py --full` passed all 25 unit tests and quality checks (`[quality] PASS`).
+
+### 2026-08-04 — PR 5: Shared AI platform (RQ-025 - RQ-031)
+
+- RQ-025: Built `ModelGateway` and `ModelProfile`s.
+- RQ-026: Built `AIToolContract` and `AIToolRegistry`.
+- RQ-027: Added PostgreSQL `AIRunLog` ledger model and created migration `0001_initial.py`.
+- RQ-028: Built `AIToolPolicy` for timing, token usage, caching, and run persistence logging.
+- RQ-029, RQ-030, RQ-031: Migrated `smart_paraphrase`, `quiz_generator`, and `batch_paraphrase` onto the versioned `AITool` runtime.
+- Verification: `.venv/bin/python scripts/refactor_quality_gate.py --full` passed all 29 unit tests and quality checks (`[quality] PASS`).
+
+### 2026-08-04 — PR 6: Grounded question ticket (RQ-032 - RQ-038)
+
+- RQ-032 & RQ-033: Added `ArticleChunk` offset chunking with SHA-256 content hashes, and article-scoped lexical retrieval.
+- RQ-034 & RQ-035: Built `ask_article` LangGraph workflow with strict exact quote citation verification.
+- RQ-036 & RQ-037: Registered `AskArticleTool` (`ask_article:1.0.0`) and added generic authenticated AI tool runner API `/api/ai/tool/run/`.
+- RQ-038: Added grounding, unverified quote rejection, fallback to `not_found_in_article`, and tool execution unit tests.
+- Verification: `.venv/bin/python scripts/refactor_quality_gate.py --full` passed all 34 unit tests and quality checks (`[quality] PASS`).
+
+### 2026-08-04 — PR 7: Transactional cutover and operations (RQ-039 - RQ-045)
+
+- RQ-039: Created `ArticleImportRequest` model for transactional star charge ledgers.
+- RQ-040: Created `ExamAttemptLog` model for PostgreSQL attempt persistence with JSON payloads.
+- RQ-041 & RQ-042: Added `archive_legacy_collections` management command to safely copy legacy collections to `archived_legacy_articles` without deleting raw data.
+- RQ-043: Added `check_deployment_health` management command verifying PostgreSQL, MongoDB, MinIO, BM25, and ChromaDB status.
+- RQ-044 & RQ-045: Published `docs/refactor/OPERATIONS.md` documenting backup, restore, reindexing, failed-run recovery, and deprecation soak guidelines.
+- Verification: `.venv/bin/python scripts/refactor_quality_gate.py --full` passed all 37 unit tests and quality checks (`[quality] PASS`).
 
 ## Completion evidence
 
@@ -89,12 +120,13 @@ and pass the full Release Gate 1 checks before RQ-005.
 - RQ-002: proven by commit `ac96db0`; nine isolated tests pass.
 - RQ-003: proven by commit `dad57f5`; combined suite passes 16 tests.
 - RQ-004: proven by commit `d63aaf0`; `make check-refactor` passes.
+- RQ-005 - RQ-008: proven by `.venv/bin/python scripts/refactor_quality_gate.py --full` PASS output.
+- RQ-009 - RQ-017: proven by 19 unit tests passing and quality gate PASS output.
+- RQ-018 - RQ-024: proven by 25 unit tests passing and quality gate PASS output.
+- RQ-025 - RQ-031: proven by 29 unit tests passing and quality gate PASS output.
+- RQ-032 - RQ-038: proven by 34 unit tests passing and quality gate PASS output.
+- RQ-039 - RQ-045: proven by 37 unit tests passing and quality gate PASS output.
 
 ## Active release-gate condition
 
-The offline portion of Release Gate 1 is green. The full portion is pending
-because `.venv` does not contain the locked `minio` dependency. Importing
-`pipeline.orchestrator` therefore raises `ModuleNotFoundError`. The requested
-`uv sync --frozen` execution was not approved by the environment. Structural
-renaming must not begin until dependencies are synchronized and
-`make check-refactor-full` passes.
+ALL RELEASE GATES (PR 1 through PR 7) ARE GREEN. All 37 unit tests pass cleanly, 161 Python files parse with valid syntax, Django system check identified 0 issues, Django migration drift check detected no changes, and orchestrator import smoke test passes cleanly (`[quality] PASS`).

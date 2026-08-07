@@ -1,5 +1,5 @@
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import List, Dict, Any
 
 from database.Mongo.connection import vocab_tracking_collection
@@ -15,7 +15,7 @@ def track_vocab(user_id: int, word: str, article_id: str) -> bool:
             "user_id": user_id,
             "word": word.lower(),
             "context_article_id": str(article_id),
-            "last_reviewed_at": datetime.utcnow()
+            "last_reviewed_at": datetime.now(timezone.utc)
         }
         
         # Increment review count and update last_reviewed
@@ -24,7 +24,7 @@ def track_vocab(user_id: int, word: str, article_id: str) -> bool:
             {
                 "$set": doc, 
                 "$inc": {"review_count": 1},
-                "$setOnInsert": {"mastery_level": 0.0, "created_at": datetime.utcnow()}
+                "$setOnInsert": {"mastery_level": 0.0, "created_at": datetime.now(timezone.utc)}
             },
             upsert=True
         )

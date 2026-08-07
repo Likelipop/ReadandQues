@@ -63,10 +63,10 @@ seed-db: docker-up
 
 test: docker-up
 	@echo "🧪 Running Django test suite..."
-	cd ReadAndQues && ../$(PYTHON) manage.py test accounts homepage readspace pipeline
+	cd ReadAndQues && ../$(PYTHON) manage.py test accounts homepage readspace service
 
 test-unit:
-	cd ReadAndQues && ../$(PYTHON) -m unittest pipeline.tests.test_pipeline_engine pipeline.tests.test_application_flows
+	cd ReadAndQues && ../$(PYTHON) -m unittest service.tests.test_pipeline_engine service.tests.test_application_flows service.tests.test_data_integrity service.tests.test_typed_orchestration service.tests.test_ai_platform service.tests.test_grounded_question_ticket service.tests.test_operations_cutover
 
 check-refactor:
 	$(PYTHON) scripts/refactor_quality_gate.py

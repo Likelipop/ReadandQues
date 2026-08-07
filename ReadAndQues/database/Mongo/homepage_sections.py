@@ -11,8 +11,8 @@ def update_section_data(section_id: str, data: list, expires_in_hours: int = 24)
         doc = {
             "section_id": section_id,
             "data": data,
-            "updated_at": datetime.utcnow(),
-            "expires_at": datetime.utcnow() + timedelta(hours=expires_in_hours)
+            "updated_at": datetime.now(timezone.utc),
+            "expires_at": datetime.now(timezone.utc) + timedelta(hours=expires_in_hours)
         }
         
         homepage_sections_collection.update_one(
@@ -28,7 +28,7 @@ def update_section_data(section_id: str, data: list, expires_in_hours: int = 24)
 def get_section_data(section_id: str) -> Optional[list]:
     try:
         doc = homepage_sections_collection.find_one({"section_id": section_id})
-        if doc and doc.get("expires_at", datetime.min) > datetime.utcnow():
+        if doc and doc.get("expires_at", datetime.min) > datetime.now(timezone.utc):
             return doc.get("data", [])
         return None
     except Exception as e:

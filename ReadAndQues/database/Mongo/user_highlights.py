@@ -1,5 +1,5 @@
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import List, Dict, Any
 
 from database.Mongo.connection import user_highlights_collection
@@ -16,7 +16,7 @@ def add_highlight(user_id: int, article_id: str, highlighted_text: str, note: st
             "article_id": str(article_id),
             "highlighted_text": highlighted_text,
             "note": note,
-            "created_at": datetime.utcnow()
+            "created_at": datetime.now(timezone.utc)
         }
         user_highlights_collection.insert_one(doc)
         return True

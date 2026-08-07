@@ -1,4 +1,4 @@
-from pipeline.ai_core.graphs.question_generator.schemas import ThemeCategory
+from service.ai_core.graphs.question_generator.schemas import ThemeCategory
 from database.Mongo.connection import article_collection
 from django.core.cache import cache
 

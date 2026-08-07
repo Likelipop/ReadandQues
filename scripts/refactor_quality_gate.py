@@ -76,8 +76,13 @@ def isolated_tests() -> None:
             sys.executable,
             "-m",
             "unittest",
-            "pipeline.tests.test_pipeline_engine",
-            "pipeline.tests.test_application_flows",
+            "service.tests.test_pipeline_engine",
+            "service.tests.test_application_flows",
+            "service.tests.test_data_integrity",
+            "service.tests.test_typed_orchestration",
+            "service.tests.test_ai_platform",
+            "service.tests.test_grounded_question_ticket",
+            "service.tests.test_operations_cutover",
         ],
         cwd=DJANGO_ROOT,
     )
@@ -96,7 +101,7 @@ def full_checks() -> None:
     )
     run(
         "orchestrator import smoke check",
-        [sys.executable, "-c", "import pipeline.orchestrator"],
+        [sys.executable, "-c", "import service.orchestrator"],
         cwd=DJANGO_ROOT,
         env=environment,
     )

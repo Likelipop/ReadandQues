@@ -1,314 +1,236 @@
+"""
+database/Mongo/crud.py — Shared CRUD helpers.
+
+Scope: RSS tracking, pipeline logs, exam attempts, user paraphrase cache,
+       and article lookups (via new article_index + exams collections).
+
+Legacy Medallion pipeline helpers (bronze_docs, silver_docs, gold_docs) have
+been moved to article_index.py and exams.py. This file no longer contains
+any `distinct + $nin` patterns.
+"""
+
+import logging
+from datetime import datetime, timedelta, timezone
+from typing import Any, Dict, List, Optional
+
 from bson import ObjectId
 
-from .connection import article_collection, attempts_collection
+from .connection import (
+    attempts_collection,
+    pipeline_logs_collection,
+    rss_links_collection,
+    smart_paraphrase_collection,
+)
+
+logger = logging.getLogger(__name__)
 
 
-def insert_article_document(data: dict) -> str:
-    result = article_collection.insert_one(data)
-    return str(result.inserted_id)
+# ── Article lookups (new schema) ──────────────────────────────────────────────
+
+def get_article_document_by_id(pk: str) -> Optional[dict]:
+    """
+    Fetch a merged article view: article_index metadata + exam data.
+    pk can be either an article_id (art_xxx) or a legacy ObjectId string.
+    """
+    from .article_index import get_article_index
+    from .exams import get_exam
+
+    # Try new schema first
+    doc = get_article_index(pk)
+    if doc:
+        exam = get_exam(pk) or {}
+        merged = {**exam, **doc}
+        merged["id"] = pk
+        merged["article_id"] = pk
+        # UI compat: expose original_text from exam doc if present
+        if "original_text" not in merged and "full_text" in merged:
+            merged["original_text"] = merged["full_text"]
+        return merged
+
+    # Fallback to legacy collection for data not yet migrated
+    from .connection import article_collection
+    try:
+        if ObjectId.is_valid(pk):
+            legacy = article_collection.find_one({"_id": ObjectId(pk)})
+            if legacy:
+                legacy["id"] = str(legacy["_id"])
+                return legacy
+    except Exception as e:
+        logger.error(f"[crud] get_article_document_by_id fallback failed for {pk}: {e}")
+    return None
+
+
+def get_article_document_by_url(url: str) -> Optional[dict]:
+    """Fetch the most recent article document by URL."""
+    from .article_index import get_article_index_by_url
+    doc = get_article_index_by_url(url)
+    if doc:
+        doc["id"] = doc["_id"]
+        doc["article_id"] = doc["_id"]
+        return doc
+
+    # Fallback to legacy
+    from .connection import article_collection
+    try:
+        legacy = article_collection.find_one({"url": url}, sort=[("created_at", -1)])
+        if legacy:
+            legacy["id"] = str(legacy["_id"])
+            return legacy
+    except Exception as e:
+        logger.error(f"[crud] get_article_document_by_url fallback failed: {e}")
+    return None
+
+
+def get_completed_articles(limit: int = None, theme: str = None, genre: str = None) -> list:
+    """
+    Fetch articles that completed AI enrichment.
+    Uses exams collection for theme/genre filtering.
+    """
+    from .exams import list_exams
+    from .article_index import get_article_index
+
+    exam_docs = list_exams(theme=theme, genre=genre, limit=limit or 100)
+    results = []
+    for exam in exam_docs:
+        article_id = exam.get("article_id")
+        index_doc = get_article_index(article_id) or {}
+        merged = {**exam, **index_doc}
+        merged["id"] = article_id
+        results.append(merged)
+    return results
 
 
 def update_article_document(pk: str, updates: dict) -> bool:
-    from .connection import gold_homepage_collection, gold_ai_collection
-    try:
-        hp_doc = gold_homepage_collection.find_one({"_id": ObjectId(pk)})
-        if hp_doc:
-            article_id = hp_doc.get("article_id")
-            if article_id:
-                result = gold_ai_collection.update_one(
-                    {"article_id": article_id},
-                    {"$set": updates},
-                    upsert=True
-                )
-                return result.modified_count > 0 or result.upserted_id is not None
+    """
+    Update article metadata. Routes to article_index for stage/status fields,
+    falls back to legacy collection for unrecognized documents.
+    """
+    from .article_index import get_article_index
+    from .connection import article_index_collection
+
+    doc = get_article_index(pk)
+    if doc:
+        updates["updated_at"] = datetime.now(timezone.utc)
+        try:
+            result = article_index_collection.update_one(
+                {"_id": pk}, {"$set": updates}
+            )
+            return result.modified_count > 0
+        except Exception as e:
+            logger.error(f"[crud] update_article_document failed for {pk}: {e}")
             return False
-            
-        # Fallback to legacy
-        result = article_collection.update_one({"_id": ObjectId(pk)}, {"$set": updates})
-        return result.modified_count > 0
-    except Exception:
-        return False
 
-
-def get_article_document_by_id(pk: str) -> dict | None:
-    from .connection import gold_homepage_collection, gold_ai_collection
-    try:
-        # First try to find in new Medallion schema
-        hp_doc = gold_homepage_collection.find_one({"_id": ObjectId(pk)})
-        if hp_doc:
-            article_id = hp_doc.get("article_id")
-            ai_doc = gold_ai_collection.find_one({"article_id": article_id}) if article_id else {}
-            
-            # Merge them. hp_doc takes precedence for base info.
-            merged = {}
-            if ai_doc:
-                merged.update(ai_doc)
-            merged.update(hp_doc) # _id from homepage doc is preserved
-            
-            # Map full_text back to original_text for UI compatibility
-            if "full_text" in merged and "original_text" not in merged:
-                merged["original_text"] = merged["full_text"]
-                
-            return merged
-            
-        # Fallback to legacy gold_articles
-        from .connection import article_collection
-        return article_collection.find_one({"_id": ObjectId(pk)})
-    except Exception as e:
-        print(f"Error in get_article_document_by_id: {e}")
-        return None
-
-
-def get_articles_by_user(user_id: int) -> list:
+    # Fallback for legacy documents
     from .connection import article_collection
     try:
-        cursor = article_collection.find({"user_id": user_id}).sort("created_at", -1)
-        articles = []
-        for doc in cursor:
-            doc["id"] = str(doc["_id"])
-            articles.append(doc)
-        return articles
-    except Exception:
-        return []
-
-
-def get_completed_articles(limit=None, theme=None, genre=None) -> list:
-    from .connection import gold_homepage_collection, article_collection
-    try:
-        query = {"status": "active"}
-        
-        # In Medallion, we might not have theme/genre in homepage docs if AI hasn't run.
-        # We will ignore theme/genre filters if they are provided but just return the list for now, 
-        # or we can apply them if they exist.
-        if theme and theme != "All":
-            query["theme"] = theme
-        if genre and genre != "All":
-            query["genre"] = genre
-
-        # Query Medallion homepage collection
-        cursor = gold_homepage_collection.find(query).sort("published_at", -1)
-        if limit:
-            cursor = cursor.limit(limit)
-            
-        articles = []
-        for doc in cursor:
-            doc["id"] = str(doc["_id"])
-            articles.append(doc)
-            
-        # Fallback to legacy if Medallion is empty
-        if not articles:
-            legacy_query = {"status": "completed"}
-            if theme and theme != "All":
-                legacy_query["theme"] = theme
-            if genre and genre != "All":
-                legacy_query["genre"] = genre
-                
-            cursor = article_collection.find(legacy_query).sort("created_at", -1)
-            if limit:
-                cursor = cursor.limit(limit)
-            for doc in cursor:
-                doc["id"] = str(doc["_id"])
-                articles.append(doc)
-                
-        return articles
+        if ObjectId.is_valid(pk):
+            result = article_collection.update_one(
+                {"_id": ObjectId(pk)}, {"$set": updates}
+            )
+            return result.modified_count > 0
     except Exception as e:
-        print(f"Error in get_completed_articles: {e}")
-        return []
+        logger.error(f"[crud] update_article_document legacy fallback failed: {e}")
+    return False
 
 
-def save_exam_attempt(data: dict) -> str:
+def insert_article_document(data: dict) -> str:
+    """
+    Legacy insert — used by readspace/services.py import_article().
+    Will be replaced by article_index.create_article_index() in Phase 7.
+    """
+    from .connection import article_collection
     try:
-        result = attempts_collection.insert_one(data)
+        result = article_collection.insert_one(data)
         return str(result.inserted_id)
-    except Exception:
+    except Exception as e:
+        logger.error(f"[crud] insert_article_document failed: {e}")
         return ""
 
 
-def get_articles_by_ids(ids: list[str]) -> list[dict]:
-    """Lấy nhiều articles theo list IDs, giữ nguyên thứ tự."""
-    try:
-        object_ids = [ObjectId(i) for i in ids]
-        docs = list(
-            article_collection.find(
-                {"_id": {"$in": object_ids}},
-                {
-                    "title": 1,
-                    "url": 1,
-                    "theme": 1,
-                    "genre": 1,
-                    "image_url": 1,
-                    "source_name": 1,
-                },
-            )
-        )
+def get_articles_by_ids(ids: List[str]) -> List[dict]:
+    """Fetch multiple article index docs by list of article_ids. Preserves order."""
+    from .article_index import get_article_index
+    from .exams import get_exams_by_article_ids
 
-        # Restore order by score
-        id_to_doc = {str(d["_id"]): d for d in docs}
-        ordered = []
-        for i in ids:
-            if i in id_to_doc:
-                doc = id_to_doc[i]
-                doc["id"] = str(doc["_id"])
-                # Remove _id so it can be JSON serialized in the view response
-                if "_id" in doc:
-                    del doc["_id"]
-                ordered.append(doc)
-        return ordered
-    except Exception:
+    if not ids:
         return []
 
-def get_article_document_by_url(url: str):
-    """Retrieve the most recent article document by URL from MongoDB."""
+    exam_map = get_exams_by_article_ids(ids)
+    results = []
+    for article_id in ids:
+        index_doc = get_article_index(article_id)
+        if index_doc:
+            exam = exam_map.get(article_id, {})
+            merged = {**exam, **index_doc}
+            merged["id"] = article_id
+            results.append(merged)
+    return results
+
+
+# ── RSS Tracking ──────────────────────────────────────────────────────────────
+
+def filter_existing_rss_links(links: List[str]) -> set:
+    """Check which links already exist in rss_links (last 30 days)."""
+    if not links:
+        return set()
+    thirty_days_ago = datetime.now(timezone.utc) - timedelta(days=30)
     try:
-        # Sort by created_at descending to get the newest one if multiple exist
-        doc = article_collection.find_one({"url": url}, sort=[("created_at", -1)])
-        return doc
+        cursor = rss_links_collection.find(
+            {"link": {"$in": links}, "insert_date": {"$gte": thirty_days_ago}},
+            {"link": 1},
+        )
+        return {doc["link"] for doc in cursor if "link" in doc}
     except Exception as e:
-        return None
-
-
-def get_user_attempted_article_ids(user_id: int) -> set[str]:
-    """Return a set of article_id strings for which user_id has at least one attempt."""
-    if not user_id:
-        return set()
-    try:
-        cursor = attempts_collection.find({"user_id": user_id}, {"article_id": 1})
-        return {str(doc["article_id"]) for doc in cursor if "article_id" in doc}
-    except Exception:
+        logger.error(f"[crud] filter_existing_rss_links failed: {e}")
         return set()
 
 
-# ── Medallion Pipeline CRUD Helpers ──────────────────────────────────────────
-
-from datetime import datetime, timezone
-from .connection import (bronze_collection, silver_collection, gold_collection, pipeline_logs_collection)
-
-
-def find_existing_bronze_urls(urls: list[str]) -> set[str]:
+def batch_insert_rss_links(docs: List[dict]) -> int:
+    """Batch insert new RSS link documents. Skips duplicates (ordered=False)."""
+    if not docs:
+        return 0
     try:
-        cursor = bronze_collection.find({"url": {"$in": urls}}, {"url": 1})
-        return {doc["url"] for doc in cursor if "url" in doc}
-    except Exception:
-        return set()
+        result = rss_links_collection.insert_many(docs, ordered=False)
+        return len(result.inserted_ids)
+    except Exception as e:
+        logger.warning(f"[crud] batch_insert_rss_links partial failure (may be duplicates): {e}")
+        return 0
 
 
-def insert_bronze_doc(doc: dict) -> str:
-    res = bronze_collection.insert_one(doc)
-    return str(res.inserted_id)
-
-
-def get_bronze_by_url(url: str) -> dict | None:
+def get_unprocessed_rss_links(limit: int = 50) -> List[dict]:
+    """Fetch RSS links not yet crawled (is_extracted=False)."""
     try:
-        return bronze_collection.find_one({"url": url})
-    except Exception:
-        return None
-
-
-def get_bronze_by_id(pk: str) -> dict | None:
-    try:
-        return bronze_collection.find_one({"_id": ObjectId(pk)})
-    except Exception:
-        return None
-
-
-def get_unprocessed_bronze_docs() -> list[dict]:
-    try:
-        processed_bronze_ids = set(
-            silver_collection.distinct("bronze_id")
-        )
-        rejected_bronze_ids = set(
-            pipeline_logs_collection.distinct("document_id", {"stage": "silver", "status": "rejected"})
-        )
-        exclude_ids = [ObjectId(bid) for bid in (processed_bronze_ids | rejected_bronze_ids) if ObjectId.is_valid(bid)]
-        cursor = bronze_collection.find({"_id": {"$nin": exclude_ids}}).sort("crawled_at", 1)
+        cursor = rss_links_collection.find({"is_extracted": False}).limit(limit)
         docs = []
         for d in cursor:
             d["_str_id"] = str(d["_id"])
             docs.append(d)
         return docs
-    except Exception:
+    except Exception as e:
+        logger.error(f"[crud] get_unprocessed_rss_links failed: {e}")
         return []
 
 
-def save_silver_doc(doc: dict) -> str:
-    res = silver_collection.insert_one(doc)
-    return str(res.inserted_id)
-
-
-def get_silver_by_bronze_id(bronze_id: str) -> dict | None:
+def mark_rss_link_extracted(link: str) -> bool:
+    """Mark an RSS link as crawled."""
     try:
-        return silver_collection.find_one({"bronze_id": bronze_id})
-    except Exception:
-        return None
-
-
-def get_silver_by_id(pk: str) -> dict | None:
-    try:
-        return silver_collection.find_one({"_id": ObjectId(pk)})
-    except Exception:
-        return None
-
-
-def get_unprocessed_silver_docs() -> list[dict]:
-    from .connection import db
-    try:
-        gold_homepage = db["gold_homepage_articles"]
-        processed_silver_ids = set(
-            gold_homepage.distinct("silver_id")
+        result = rss_links_collection.update_one(
+            {"link": link}, {"$set": {"is_extracted": True}}
         )
-        exclude_ids = [ObjectId(sid) for sid in processed_silver_ids if ObjectId.is_valid(sid)]
-        cursor = silver_collection.find({"_id": {"$nin": exclude_ids}}).sort("cleaned_at", 1)
-        docs = []
-        for d in cursor:
-            d["_str_id"] = str(d["_id"])
-            docs.append(d)
-        return docs
-    except Exception:
-        return []
-
-
-def insert_gold_doc(doc: dict) -> str:
-    res = gold_collection.insert_one(doc)
-    return str(res.inserted_id)
-
-
-def update_gold_doc(gold_id: str, update_data: dict) -> bool:
-    try:
-        res = gold_collection.update_one({"_id": ObjectId(gold_id)}, {"$set": update_data})
-        return res.modified_count > 0
-    except Exception:
+        return result.modified_count > 0
+    except Exception as e:
+        logger.error(f"[crud] mark_rss_link_extracted failed for {link}: {e}")
         return False
 
 
-def get_unprocessed_gold_docs() -> list[dict]:
-    from .connection import paraphrases_collection
-    try:
-        processed_gold_ids = set(
-            paraphrases_collection.distinct("article_id")
-        )
-        exclude_ids = [ObjectId(gid) for gid in processed_gold_ids if ObjectId.is_valid(gid)]
-        # We only want to process gold docs that actually have a summary generated
-        query = {
-            "_id": {"$nin": exclude_ids},
-            "status": "completed", 
-            "analysis.core.summary": {"$exists": True}
-        }
-        cursor = gold_collection.find(query).sort("created_at", 1)
-        docs = []
-        for d in cursor:
-            d["_str_id"] = str(d["_id"])
-            docs.append(d)
-        return docs
-    except Exception:
-        return []
-
+# ── Pipeline Logs ─────────────────────────────────────────────────────────────
 
 def insert_pipeline_log(
     stage: str,
     status: str,
     message: str = "",
-    document_id: str | None = None,
-    url: str | None = None,
+    document_id: Optional[str] = None,
+    url: Optional[str] = None,
 ) -> str:
     log_doc = {
         "stage": stage,
@@ -319,130 +241,47 @@ def insert_pipeline_log(
         "created_at": datetime.now(timezone.utc),
     }
     try:
-        res = pipeline_logs_collection.insert_one(log_doc)
-        return str(res.inserted_id)
-    except Exception:
-        return ""
-
-def insert_paraphrase(doc: dict) -> str:
-    from .connection import paraphrases_collection
-    res = paraphrases_collection.insert_one(doc)
-    return str(res.inserted_id)
-
-def get_paraphrase_demo() -> dict | None:
-    from .connection import paraphrases_collection
-    try:
-        # Get the latest generated paraphrase
-        doc = paraphrases_collection.find_one({}, sort=[("_id", -1)])
-        if doc:
-            doc["id"] = str(doc["_id"])
-            if "_id" in doc:
-                del doc["_id"]
-            return doc
-    except Exception:
-        pass
-        
-    # Fallback mock data if DB is empty or fails
-    return {
-        "original_summary": "The quick brown fox jumps over the lazy dog in the dense forest.",
-        "phrases": [
-            {
-                "id": "p1",
-                "original_text": "quick brown fox",
-                "alternatives": ["swift auburn canine", "fast colored fox", "speedy brown fox"]
-            },
-            {
-                "id": "p2",
-                "original_text": "lazy dog",
-                "alternatives": ["sleepy hound", "tired puppy", "sluggish dog"]
-            }
-        ]
-    }
-
-
-def upsert_rss_link(data: dict) -> str:
-    from .connection import rss_links_collection
-    link = data.get("link")
-    pubdate = data.get("pubDate")
-    try:
-        result = rss_links_collection.update_one(
-            {"link": link, "pubDate": pubdate},
-            {"$set": data},
-            upsert=True
-        )
-        if result.upserted_id:
-            return str(result.upserted_id)
-        return "updated"
-    except Exception:
-        return ""
-
-
-def filter_existing_rss_links(links: list[str]) -> set[str]:
-    """Filters against existing links within the last 30 days using an $in query."""
-    from .connection import rss_links_collection
-    from datetime import datetime, timedelta, timezone
-    
-    if not links:
-        return set()
-        
-    thirty_days_ago = datetime.now(timezone.utc) - timedelta(days=30)
-    try:
-        # Check against links inserted within the last 30 days
-        # We assume url hashing was applied or we just use the raw links for now.
-        cursor = rss_links_collection.find(
-            {
-                "link": {"$in": links},
-                "insert_date": {"$gte": thirty_days_ago}
-            },
-            {"link": 1}
-        )
-        return {doc["link"] for doc in cursor if "link" in doc}
-    except Exception:
-        return set()
-
-def batch_insert_rss_links(docs: list[dict]) -> int:
-    """Inserts a batch of new RSS links."""
-    from .connection import rss_links_collection
-    if not docs:
-        return 0
-    try:
-        result = rss_links_collection.insert_many(docs, ordered=False)
-        return len(result.inserted_ids)
+        result = pipeline_logs_collection.insert_one(log_doc)
+        return str(result.inserted_id)
     except Exception as e:
-        # If ordered=False, duplicate key errors will just be ignored for successful ones
-        # but we can check result or simply return 0 on complete failure.
-        return 0
+        logger.error(f"[crud] insert_pipeline_log failed: {e}")
+        return ""
 
 
-def get_unprocessed_rss_links(limit: int = 50) -> list[dict]:
-    from .connection import rss_links_collection
+# ── Exam Attempts ─────────────────────────────────────────────────────────────
+
+def save_exam_attempt(data: dict) -> str:
     try:
-        cursor = rss_links_collection.find({"is_extracted": False}).limit(limit)
-        docs = []
-        for d in cursor:
-            d["_str_id"] = str(d["_id"])
-            docs.append(d)
-        return docs
-    except Exception:
-        return []
+        result = attempts_collection.insert_one(data)
+        return str(result.inserted_id)
+    except Exception as e:
+        logger.error(f"[crud] save_exam_attempt failed: {e}")
+        return ""
 
 
-def mark_rss_link_extracted(link: str) -> bool:
-    from .connection import rss_links_collection
+def get_user_attempted_article_ids(user_id: int) -> set:
+    """Return a set of article_id strings for which user has at least one attempt."""
+    if not user_id:
+        return set()
     try:
-        res = rss_links_collection.update_one({"link": link}, {"$set": {"is_extracted": True}})
-        return res.modified_count > 0
-    except Exception:
-        return False
-def find_exact_paraphrase(article_id: str, paragraph_hash: str, user_start_index: int, user_end_index: int) -> dict | None:
-    from .connection import smart_paraphrase_collection
+        cursor = attempts_collection.find({"user_id": user_id}, {"article_id": 1})
+        return {str(doc["article_id"]) for doc in cursor if "article_id" in doc}
+    except Exception as e:
+        logger.error(f"[crud] get_user_attempted_article_ids failed: {e}")
+        return set()
+
+
+# ── Smart Paraphrase Cache ────────────────────────────────────────────────────
+
+def find_exact_paraphrase(
+    article_id: str, paragraph_hash: str, user_start_index: int, user_end_index: int
+) -> Optional[dict]:
     try:
-        # We find a paraphrase where the user's highlight bounds exactly match the ones saved
         query = {
             "article_id": article_id,
             "paragraph_hash": paragraph_hash,
             "user_start_index": user_start_index,
-            "user_end_index": user_end_index
+            "user_end_index": user_end_index,
         }
         doc = smart_paraphrase_collection.find_one(query)
         if doc:
@@ -450,13 +289,15 @@ def find_exact_paraphrase(article_id: str, paragraph_hash: str, user_start_index
             del doc["_id"]
             return doc
         return None
-    except Exception:
+    except Exception as e:
+        logger.error(f"[crud] find_exact_paraphrase failed: {e}")
         return None
 
+
 def save_smart_paraphrase(data: dict) -> str:
-    from .connection import smart_paraphrase_collection
     try:
-        res = smart_paraphrase_collection.insert_one(data)
-        return str(res.inserted_id)
-    except Exception:
+        result = smart_paraphrase_collection.insert_one(data)
+        return str(result.inserted_id)
+    except Exception as e:
+        logger.error(f"[crud] save_smart_paraphrase failed: {e}")
         return ""

@@ -55,7 +55,7 @@ INSTALLED_APPS = [
     "django.contrib.messages",
     "django.contrib.staticfiles",
     "accounts",
-    "pipeline",
+    "service",
     "homepage",
     "readspace",
 ]
@@ -166,6 +166,18 @@ MONGO_URI = os.getenv(
     "MONGO_URI", "mongodb://admin:changeme@mongo:27017/articlesDB?authSource=admin"
 )
 MONGO_DB_NAME = os.getenv("MONGO_DB_NAME", "articlesDB")
+
+# ── MinIO Data Lake & Vector Database Settings ────────────────────────────────
+MINIO_ENDPOINT = os.getenv("MINIO_ENDPOINT", "minio:9000")
+MINIO_ACCESS_KEY = os.getenv("MINIO_ACCESS_KEY", "minioadmin")
+MINIO_SECRET_KEY = os.getenv("MINIO_SECRET_KEY", "minioadmin")
+MINIO_SECURE = os.getenv("MINIO_SECURE", "false").lower() == "true"
+MINIO_BRONZE_BUCKET = os.getenv("MINIO_BRONZE_BUCKET", "bronze")
+MINIO_SILVER_BUCKET = os.getenv("MINIO_SILVER_BUCKET", "silver")
+
+CHROMA_HOST = os.getenv("CHROMA_HOST", "chromadb")
+CHROMA_PORT = int(os.getenv("CHROMA_PORT", 8000))
+
 
 # ── Email Configuration (Resend API & Legacy SMTP) ───────────────────────────
 RESEND_API_KEY = os.getenv("RESEND_API_KEY", "")

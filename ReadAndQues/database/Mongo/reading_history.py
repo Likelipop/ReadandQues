@@ -1,5 +1,5 @@
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import List, Dict, Any, Optional
 
 from database.Mongo.connection import reading_history_collection
@@ -17,13 +17,13 @@ def log_reading_session(user_id: int, article_id: str, duration_sec: int, comple
             "article_id": str(article_id),
             "read_duration_sec": duration_sec,
             "completion_rate": completion_rate,
-            "last_read_at": datetime.utcnow(),
+            "last_read_at": datetime.now(timezone.utc),
         }
         
         # Upsert: if user already read this article, update duration and last_read_at
         reading_history_collection.update_one(
             {"user_id": user_id, "article_id": str(article_id)},
-            {"$set": doc, "$setOnInsert": {"created_at": datetime.utcnow()}},
+            {"$set": doc, "$setOnInsert": {"created_at": datetime.now(timezone.utc)}},
             upsert=True
         )
         return True

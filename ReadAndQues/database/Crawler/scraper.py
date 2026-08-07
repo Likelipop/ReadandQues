@@ -19,7 +19,7 @@ from .formatter import to_markdown
 logger = logging.getLogger(__name__)
 
 TRAFILATURA_CONFIG = use_config()
-config_file = getattr(settings, "TRAFILATURA_CONFIG_FILE", None)
+config_file = getattr(settings, "TRAFILATURA_CONFIG_FILE", None) if settings.configured else None
 if config_file:
     TRAFILATURA_CONFIG.read(str(config_file))
 

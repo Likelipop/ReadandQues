@@ -794,4 +794,312 @@
             });
         }
     {% endif %}
+
+    /* --- AI Question Tickets Frontend Controller --- */
+    const ARTICLE_ID = "{{ article.id|default:article.pk|default:'' }}";
+
+    function getArticleTicketsKey() {
+        return `ai_tickets_${ARTICLE_ID || 'global'}`;
+    }
+
+    function loadSavedArticleTickets() {
+        try {
+            const raw = localStorage.getItem(getArticleTicketsKey());
+            return raw ? JSON.parse(raw) : [];
+        } catch (e) {
+            console.error("Failed to load tickets from localStorage:", e);
+            return [];
+        }
+    }
+
+    function saveArticleTickets(tickets) {
+        try {
+            localStorage.setItem(getArticleTicketsKey(), JSON.stringify(tickets));
+            updateTicketCountBadge(tickets.length);
+        } catch (e) {
+            console.error("Failed to save tickets to localStorage:", e);
+        }
+    }
+
+    function updateTicketCountBadge(count) {
+        const badge = document.getElementById("ticket-count-badge");
+        if (badge) {
+            badge.textContent = `${count} Ticket${count !== 1 ? 's' : ''}`;
+        }
+    }
+
+    function clearArticleTickets() {
+        if (confirm("Are you sure you want to clear all AI Question Tickets for this article?")) {
+            localStorage.removeItem(getArticleTicketsKey());
+            renderTicketsFeed([]);
+        }
+    }
+
+    function usePresetTicket(presetText) {
+        const input = document.getElementById("ticket-question-input");
+        if (input) {
+            input.value = presetText;
+            input.focus();
+        }
+    }
+
+    function toggleTicketsPanel() {
+        const rightCol = document.getElementById("right-column");
+        if (rightCol) {
+            rightCol.classList.toggle("hidden");
+        }
+    }
+
+    function escapeHtml(text) {
+        if (!text) return "";
+        return text
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            .replace(/"/g, "&quot;")
+            .replace(/'/g, "&#039;");
+    }
+
+    function renderTicketsFeed(tickets) {
+        const feed = document.getElementById("tickets-feed");
+        const emptyState = document.getElementById("tickets-empty-state");
+        if (!feed) return;
+
+        if (!tickets || tickets.length === 0) {
+            feed.innerHTML = `
+                <div id="tickets-empty-state" class="flex flex-col items-center justify-center py-10 text-center px-4">
+                    <div class="w-12 h-12 rounded-full bg-indigo-50 text-indigo-500 flex items-center justify-center text-2xl mb-3 shadow-inner">
+                        📩
+                    </div>
+                    <h4 class="text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">No Tickets Yet</h4>
+                    <p class="text-xs text-slate-500 max-w-xs leading-relaxed">
+                        Submit a question ticket above. AI will analyze the article excerpts and attach direct quotes as evidence.
+                    </p>
+                </div>
+            `;
+            updateTicketCountBadge(0);
+            return;
+        }
+
+        updateTicketCountBadge(tickets.length);
+        let html = "";
+
+        tickets.forEach(ticket => {
+            const isResolved = ticket.status === "RESOLVED";
+            const isProcessing = ticket.status === "PROCESSING";
+            const statusBadgeClass = isResolved
+                ? "bg-emerald-100 text-emerald-700 border-emerald-300"
+                : isProcessing
+                ? "bg-amber-100 text-amber-700 border-amber-300 animate-pulse"
+                : "bg-rose-100 text-rose-700 border-rose-300";
+            
+            const statusText = isResolved ? "[RESOLVED]" : isProcessing ? "[PROCESSING...]" : "[NOT FOUND]";
+
+            html += `
+                <div class="ticket-card bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden transition-all duration-200 hover:shadow-md">
+                    <!-- User Question Ticket Header -->
+                    <div class="p-3 bg-slate-50 border-b border-slate-100 flex justify-between items-start gap-2">
+                        <div class="flex items-center gap-2">
+                            <span class="text-base">👤</span>
+                            <div>
+                                <span class="font-mono text-[10px] text-slate-400 font-semibold">${ticket.ticket_id || 'TKT-00000'}</span>
+                                <p class="text-xs font-bold text-slate-800 leading-snug">${escapeHtml(ticket.question)}</p>
+                            </div>
+                        </div>
+                        <span class="text-[10px] font-bold px-2 py-0.5 rounded-full border ${statusBadgeClass} shrink-0">
+                            ${statusText}
+                        </span>
+                    </div>
+
+                    <!-- AI Response Body -->
+                    <div class="p-3 text-xs text-slate-700 space-y-2">
+            `;
+
+            if (isProcessing) {
+                html += `
+                        <div class="flex items-center gap-2 text-amber-600 py-2">
+                            <svg class="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                            </svg>
+                            <span class="font-medium text-xs">AI analyzing article excerpts...</span>
+                        </div>
+                `;
+            } else {
+                html += `
+                        <div class="flex items-start gap-2">
+                            <span class="text-sm">🤖</span>
+                            <div class="leading-relaxed font-normal">${escapeHtml(ticket.answer)}</div>
+                        </div>
+                `;
+
+                if (ticket.citation_quote) {
+                    html += `
+                        <div class="mt-2.5 p-2.5 bg-indigo-50/60 border-l-4 border-indigo-500 rounded-r-lg">
+                            <div class="text-[10px] font-bold text-indigo-700 uppercase tracking-wider mb-1 flex items-center gap-1">
+                                💬 Evidence Citation
+                            </div>
+                            <blockquote class="text-[11px] italic text-indigo-900 leading-snug font-serif">
+                                "${escapeHtml(ticket.citation_quote)}"
+                            </blockquote>
+                        </div>
+                    `;
+                }
+            }
+
+            html += `
+                        <div class="mt-2 pt-2 border-t border-slate-100 flex justify-between items-center text-[10px] text-slate-400">
+                            <span>ReadAndQues Grounded AI</span>
+                            <span>${ticket.timestamp || ''}</span>
+                        </div>
+                    </div>
+                </div>
+            `;
+        });
+
+        feed.innerHTML = html;
+        feed.scrollTop = 0;
+    }
+
+    async function submitQuestionTicket(event) {
+        event.preventDefault();
+        const input = document.getElementById("ticket-question-input");
+        const submitBtn = document.getElementById("submit-ticket-btn");
+        const btnText = document.getElementById("btn-text");
+        const btnSpinner = document.getElementById("btn-spinner");
+
+        if (!input || !input.value.trim()) return;
+
+        const question = input.value.trim();
+        input.value = "";
+
+        // Extract article text from DOM
+        const articleContainer = document.getElementById("reading-container") || document.body;
+        const articleText = articleContainer.innerText || articleContainer.textContent || "";
+
+        // Create temporary pending ticket
+        const pendingTicket = {
+            ticket_id: `TKT-${Math.floor(10000 + Math.random() * 90000)}`,
+            question: question,
+            answer: "",
+            citation_quote: "",
+            status: "PROCESSING",
+            timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        };
+
+        const existingTickets = loadSavedArticleTickets();
+        const updatedTickets = [pendingTicket, ...existingTickets];
+        saveArticleTickets(updatedTickets);
+        renderTicketsFeed(updatedTickets);
+
+        // UI Loading state
+        if (submitBtn) submitBtn.disabled = true;
+        if (btnText) btnText.classList.add("hidden");
+        if (btnSpinner) btnSpinner.classList.remove("hidden");
+
+        try {
+            const response = await fetch("/readspace/api/ai-tool/", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "X-CSRFToken": getCookie('csrftoken') || '',
+                },
+                body: JSON.stringify({
+                    tool_name: "ask_article",
+                    version: "1.0.0",
+                    input_data: {
+                        article_text: articleText,
+                        question: question
+                    }
+                })
+            });
+
+            const data = await response.json();
+            
+            let finalTicket;
+            if (data.status === "completed" && data.output) {
+                finalTicket = {
+                    ticket_id: data.output.ticket_id || pendingTicket.ticket_id,
+                    question: question,
+                    answer: data.output.answer || "Answer processed.",
+                    citation_quote: data.output.citation_quote || "",
+                    status: data.output.status || "RESOLVED",
+                    timestamp: data.output.timestamp || pendingTicket.timestamp,
+                };
+            } else {
+                finalTicket = {
+                    ticket_id: pendingTicket.ticket_id,
+                    question: question,
+                    answer: data.error || "Failed to process ticket.",
+                    citation_quote: "",
+                    status: "ERROR",
+                    timestamp: pendingTicket.timestamp,
+                };
+            }
+
+            // Replace pending ticket with final result
+            const currentTickets = loadSavedArticleTickets();
+            const idx = currentTickets.findIndex(t => t.ticket_id === pendingTicket.ticket_id);
+            if (idx !== -1) {
+                currentTickets[idx] = finalTicket;
+            } else {
+                currentTickets.unshift(finalTicket);
+            }
+            saveArticleTickets(currentTickets);
+            renderTicketsFeed(currentTickets);
+
+        } catch (err) {
+            console.error("Error submitting ticket:", err);
+            const currentTickets = loadSavedArticleTickets();
+            const idx = currentTickets.findIndex(t => t.ticket_id === pendingTicket.ticket_id);
+            const errTicket = {
+                ticket_id: pendingTicket.ticket_id,
+                question: question,
+                answer: "Network error submitting ticket.",
+                citation_quote: "",
+                status: "ERROR",
+                timestamp: pendingTicket.timestamp,
+            };
+            if (idx !== -1) currentTickets[idx] = errTicket;
+            saveArticleTickets(currentTickets);
+            renderTicketsFeed(currentTickets);
+        } finally {
+            if (submitBtn) submitBtn.disabled = false;
+            if (btnText) btnText.classList.remove("hidden");
+            if (btnSpinner) btnSpinner.classList.add("hidden");
+        }
+    }
+
+    // Helper to read CSRF Cookie
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+
+    // Bind Ctrl+Enter shortcut and load initial tickets on page load
+    document.addEventListener("DOMContentLoaded", () => {
+        const input = document.getElementById("ticket-question-input");
+        if (input) {
+            input.addEventListener("keydown", (e) => {
+                if ((e.ctrlKey || e.metaKey) && e.key === "Enter") {
+                    e.preventDefault();
+                    submitQuestionTicket(e);
+                }
+            });
+        }
+
+        const savedTickets = loadSavedArticleTickets();
+        renderTicketsFeed(savedTickets);
+    });
 </script>
+

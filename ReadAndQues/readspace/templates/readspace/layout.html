@@ -56,10 +56,11 @@
             
         </section>
 
-        <!-- Right Column (Future Use / Secondary info) -->
-        <aside id="right-column" class="hidden lg:block w-1/5 bg-white border-l border-slate-100 p-4 transition-all duration-300">
-            <!-- Reserved for AI Chat, Quick Dictionary, etc. -->
+        <!-- Right Column (AI Question Tickets Panel) -->
+        <aside id="right-column" class="hidden lg:block w-[350px] xl:w-[400px] shrink-0 bg-slate-50 border-l border-slate-200 p-3 h-[calc(100vh-65px)] sticky top-[65px] transition-all duration-300 z-10">
+            {% include 'readspace/includes/_ask_ai_tickets.html' %}
         </aside>
+
 
         <!-- AI Quiz Panel (Hidden by default) -->
         <aside id="quiz-panel" class="hidden w-full lg:w-2/5 bg-white border-l border-slate-200 flex-col h-[calc(100vh-65px)] sticky top-[65px] transition-all duration-300 shadow-xl lg:shadow-none z-10">
