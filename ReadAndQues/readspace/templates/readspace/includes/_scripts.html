@@ -169,7 +169,7 @@
     }
 
     function getArticleId() {
-        return '{{ article.id|default:request.resolver_match.kwargs.pk }}';
+        return '{{ article.id|default:"" }}';
     }
 
     function saveHighlightsToStorage() {
@@ -796,7 +796,7 @@
     {% endif %}
 
     /* --- AI Question Tickets Frontend Controller --- */
-    const ARTICLE_ID = "{{ article.id|default:article.pk|default:'' }}";
+    const ARTICLE_ID = "{{ article.id|default:'' }}";
 
     function getArticleTicketsKey() {
         return `ai_tickets_${ARTICLE_ID || 'global'}`;

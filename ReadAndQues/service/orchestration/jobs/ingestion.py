@@ -14,16 +14,9 @@ from typing import Any, Dict
 
 import feedparser
 
-from database.Crawler.scraper import crawl_article_content
-from database.Minio.crud import save_bronze_html, save_bronze_meta
-from database.Mongo.article_index import create_article_index
-from database.Mongo.crud import (
-    batch_insert_rss_links,
-    filter_existing_rss_links,
-    get_unprocessed_rss_links,
-    insert_pipeline_log,
-    mark_rss_link_extracted,
-)
+from service.crawler.scraper import crawl_article_content
+from service.repositories.content_repository import ContentRepository
+from service.repositories.pipeline_repository import PipelineRepository
 from service.domain.contracts import generate_article_id
 from service.orchestration.configuration import job
 from service.orchestration.configuration.config import BATCH_SIZE, MAX_RETRIES, RSS_FEEDS_FILE
@@ -91,11 +84,12 @@ def fetch_rss_links(rss_sources: list):
 @job("filter_new_links", inputs=["raw_links_dict"], outputs=["new_links_dict"])
 def filter_new_links(raw_links_dict: list):
     """Deduplicate RSS links against MongoDB tracker. Batch insert new ones."""
+    pipeline_repo = PipelineRepository()
     if not raw_links_dict:
         return {"new_links_dict": []}
 
     links_to_check = [d.get("link") for d in raw_links_dict if d.get("link")]
-    existing_links = filter_existing_rss_links(links_to_check)
+    existing_links = pipeline_repo.filter_existing_rss_links(links_to_check)
 
     new_links_dict = []
     docs_to_insert = []
@@ -112,7 +106,7 @@ def filter_new_links(raw_links_dict: list):
             existing_links.add(link)
 
     if docs_to_insert:
-        inserted_count = batch_insert_rss_links(docs_to_insert)
+        inserted_count = pipeline_repo.batch_insert_rss_links(docs_to_insert)
         logger.info(f"[ingestion] Batch inserted {inserted_count} new RSS links.")
 
     logger.info(f"[ingestion] Found {len(new_links_dict)} new links after filtering.")
@@ -125,7 +119,10 @@ def ingest_to_bronze(max_links: int = BATCH_SIZE):
     Crawl unprocessed RSS links and save raw data to MinIO bronze.
     Creates article_index entries for each successfully ingested article.
     """
-    unprocessed = get_unprocessed_rss_links(limit=max_links)
+    pipeline_repo = PipelineRepository()
+    content_repo = ContentRepository()
+    
+    unprocessed = pipeline_repo.get_unprocessed_rss_links(limit=max_links)
     if not unprocessed:
         logger.info("[ingestion] No unprocessed RSS links found.")
         return {"ingested_ids": []}
@@ -153,8 +150,8 @@ def ingest_to_bronze(max_links: int = BATCH_SIZE):
         if not crawl_res or not crawl_res.get("success"):
             error_msg = (crawl_res.get("error", "Unknown error") if crawl_res else "Failed after retries")
             logger.error(f"[ingestion] Crawl failed for {url}: {error_msg}")
-            insert_pipeline_log(stage="ingest_bronze", status="failed", message=error_msg, url=url)
-            mark_rss_link_extracted(url)
+            pipeline_repo.insert_pipeline_log(stage="ingest_bronze", status="failed", message=error_msg, url=url)
+            pipeline_repo.mark_rss_link_extracted(url)
             continue
 
         # Build bronze metadata
@@ -177,11 +174,14 @@ def ingest_to_bronze(max_links: int = BATCH_SIZE):
 
         try:
             # Save to MinIO bronze
-            save_bronze_html(article_id, crawl_res.get("html_content") or crawl_res.get("raw_text", ""))
-            save_bronze_meta(article_id, bronze_meta)
+            html_saved = content_repo.save_bronze_html(article_id, crawl_res.get("html_content") or crawl_res.get("raw_text", ""))
+            meta_saved = content_repo.save_bronze_meta(article_id, bronze_meta)
+            
+            if not html_saved or not meta_saved:
+                raise Exception("Failed to save data to MinIO")
 
             # Create article_index entry (stage=BRONZE)
-            create_article_index(
+            pipeline_repo.create_article_index(
                 article_id=article_id,
                 url=url,
                 title=bronze_meta["title"],
@@ -190,7 +190,7 @@ def ingest_to_bronze(max_links: int = BATCH_SIZE):
                 published_at=crawl_res.get("published_at"),
             )
 
-            mark_rss_link_extracted(url)
+            pipeline_repo.mark_rss_link_extracted(url)
             success_count += 1
             ingested_ids.append(article_id)
             logger.info(f"[ingestion] ✅ Ingested {url} → bronze/{article_id}")
@@ -199,3 +199,53 @@ def ingest_to_bronze(max_links: int = BATCH_SIZE):
 
     logger.info(f"[ingestion] Done. Success: {success_count}/{len(unprocessed)}")
     return {"ingested_ids": ingested_ids}
+
+
+@job("ingest_single_to_bronze", inputs=["article_id", "url"], outputs=["bronze_docs", "bronze_ids"])
+def ingest_single_to_bronze(article_id: str, url: str):
+    """
+    Atomic Job: Crawl a single user-submitted URL and save raw HTML/meta to MinIO bronze.
+    Creates article_index entry if not already present.
+    """
+    pipeline_repo = PipelineRepository()
+    content_repo = ContentRepository()
+    from service.domain.models import Status
+
+    logger.info(f"[ingestion] Single crawl starting: {url} → {article_id}")
+
+    crawl_res = crawl_article_content(url)
+    if not crawl_res or not crawl_res.get("success"):
+        error_msg = crawl_res.get("error", "Crawl failed") if crawl_res else "Crawl failed"
+        logger.error(f"[ingestion] Single crawl failed for {url}: {error_msg}")
+        pipeline_repo.update_ai_status(article_id, Status.FAILED, error_msg)
+        pipeline_repo.insert_log(stage="ingest_bronze", status="failed", message=error_msg, url=url)
+        return {"bronze_docs": [], "bronze_ids": []}
+
+    bronze_meta: Dict[str, Any] = {
+        "article_id": article_id,
+        "url": url,
+        "title": crawl_res.get("title", ""),
+        "source_name": crawl_res.get("source_name", "Unknown"),
+        "image_url": crawl_res.get("image_url"),
+        "image_urls": crawl_res.get("image_urls", []),
+        "crawled_at": datetime.now(timezone.utc).isoformat(),
+        "raw_text": crawl_res.get("raw_text", ""),
+        "html_content": crawl_res.get("html_content", ""),
+        "word_count": crawl_res.get("word_count", 0),
+        "language": crawl_res.get("language", "en"),
+        "author": crawl_res.get("author", ""),
+        "canonical_url": crawl_res.get("canonical_url", ""),
+        "published_at": str(crawl_res.get("published_at") or ""),
+    }
+
+    try:
+        content_repo.save_bronze_html(article_id, crawl_res.get("html_content") or crawl_res.get("raw_text", ""))
+        content_repo.save_bronze_meta(article_id, bronze_meta)
+        pipeline_repo.update_article_title(article_id, bronze_meta["title"])
+        logger.info(f"[ingestion] ✅ Single bronze saved: {article_id}")
+        return {"bronze_docs": [bronze_meta], "bronze_ids": [article_id]}
+    except Exception as e:
+        logger.error(f"[ingestion] Failed saving single bronze for {article_id}: {e}")
+        pipeline_repo.update_ai_status(article_id, Status.FAILED, str(e))
+        return {"bronze_docs": [], "bronze_ids": []}
+

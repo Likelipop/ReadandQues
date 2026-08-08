@@ -62,16 +62,19 @@ def import_article_view(request):
     with consume_user_star(request.user):
         inserted_id, is_reused = import_article(url, user_id)
 
-    if is_reused and request.user.is_authenticated:
+    if request.user.is_authenticated:
         from .utils import UserProfile
         from django.db import transaction
         try:
             with transaction.atomic():
                 profile = UserProfile.objects.select_for_update().get(user=request.user)
-                profile.stars += 1
+                if is_reused:
+                    profile.stars += 1
+                else:
+                    profile.total_articles_imported += 1
                 profile.save()
         except Exception as e:
-            logger.error(f"Error refunding star on reuse: {e}")
+            logger.error(f"Error updating user stats on import: {e}")
 
     if request.headers.get("x-requested-with") == "XMLHttpRequest":
         return JsonResponse({"status": "started", "id": inserted_id})

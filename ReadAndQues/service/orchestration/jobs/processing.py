@@ -15,13 +15,8 @@ import logging
 from datetime import datetime, timezone
 from typing import Any, Dict, Optional, Tuple
 
-from database.Minio.crud import read_bronze_meta, save_silver_clean
-from database.Mongo.article_index import (
-    list_by_stage,
-    update_article_stage,
-    update_ai_status,
-)
-from database.Mongo.crud import insert_pipeline_log
+from service.repositories.content_repository import ContentRepository
+from service.repositories.pipeline_repository import PipelineRepository
 from service.domain.enums import AIStatus, ArticleStage
 from service.orchestration.configuration import job
 
@@ -70,8 +65,9 @@ def fetch_unprocessed_bronze(**kwargs):
     List article_ids currently at the BRONZE stage.
     Uses article_index stage flag — no distinct+$nin anti-pattern.
     """
+    pipeline_repo = PipelineRepository()
     max_docs = kwargs.get("max_docs", 50)
-    index_docs = list_by_stage(ArticleStage.BRONZE, limit=max_docs)
+    index_docs = pipeline_repo.list_by_stage(ArticleStage.BRONZE, limit=max_docs)
     bronze_ids = [doc["_id"] for doc in index_docs]
     logger.info(f"[processing] Found {len(bronze_ids)} unprocessed bronze articles.")
     return {"bronze_ids": bronze_ids}
@@ -83,10 +79,11 @@ def extract_bronze(bronze_ids: list):
     Read bronze meta.json from MinIO for each article_id.
     Skips articles where MinIO read fails (logs warning).
     """
+    content_repo = ContentRepository()
     bronze_docs = []
 
     for article_id in bronze_ids:
-        meta = read_bronze_meta(article_id)
+        meta = content_repo.read_bronze_meta(article_id)
         if meta:
             meta["article_id"] = article_id
             bronze_docs.append(meta)
@@ -130,30 +127,32 @@ def validate_and_clean(bronze_docs: list):
     return {"clean_docs": clean_docs, "rejected_logs": rejected_logs}
 
 
-@job("save_to_silver", inputs=["clean_docs", "rejected_logs"])
+@job("save_to_silver", inputs=["clean_docs", "rejected_logs"], outputs=["saved_silver", "silver_items"])
 def save_to_silver(clean_docs: list, rejected_logs: list):
     """
     Save each clean doc to MinIO silver/{article_id}/clean.json.
     Advance article_index stage to SILVER.
     Log all rejected docs to pipeline_logs.
     """
+    pipeline_repo = PipelineRepository()
+    content_repo = ContentRepository()
     success_count = 0
 
     for doc in clean_docs:
         article_id = doc.get("article_id")
         try:
-            save_silver_clean(article_id, doc)
-            update_article_stage(article_id, ArticleStage.SILVER)
+            content_repo.save_silver_clean(article_id, doc)
+            pipeline_repo.update_article_stage(article_id, ArticleStage.SILVER)
             success_count += 1
         except Exception as e:
             logger.error(f"[processing] Failed saving silver for {article_id}: {e}")
 
     for log in rejected_logs:
-        insert_pipeline_log(**log)
+        pipeline_repo.insert_log(**log)
         # Mark rejected articles so they are not retried indefinitely
         doc_id = log.get("document_id")
         if doc_id:
-            update_ai_status(doc_id, AIStatus.FAILED, log.get("message", "Validation rejected"))
+            pipeline_repo.update_ai_status(doc_id, AIStatus.FAILED, log.get("message", "Validation rejected"))
 
     logger.info(f"[processing] Saved {success_count} silver docs. Logged {len(rejected_logs)} rejections.")
-    return {"saved_silver": success_count, "failed_validation": len(rejected_logs)}
+    return {"saved_silver": success_count, "failed_validation": len(rejected_logs), "silver_items": clean_docs}

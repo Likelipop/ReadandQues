@@ -10,33 +10,41 @@ _articles_collection = None
 
 
 def get_chroma_client():
+    """
+    Initialize ChromaDB client.
+    - Production (DJANGO_ENV=production): fail fast if HttpClient unavailable.
+    - Development: fall back to PersistentClient for local dev convenience.
+    """
     global _chroma_client, _articles_collection
     if _chroma_client is not None:
         return _chroma_client, _articles_collection
 
     host = os.getenv("CHROMA_HOST", "chromadb")
     port = int(os.getenv("CHROMA_PORT", 8000))
+    env = os.getenv("DJANGO_ENV", "development")
 
     try:
         socket.gethostbyname(host)
-    except socket.gaierror:
-        host = "localhost"
-        port = 8002
-
-    try:
         _chroma_client = chromadb.HttpClient(host=host, port=port)
         _articles_collection = _chroma_client.get_or_create_collection(name="articles")
         logger.info(f"ChromaDB client initialized successfully on {host}:{port}.")
     except Exception as e:
-        logger.warning(f"HttpClient ChromaDB fail ({e}), attempting PersistentClient fallback...")
-        try:
-            storage_path = os.getenv("CHROMA_PERSISTENT_DIR", os.path.join(os.path.dirname(__file__), "chroma_data"))
-            _chroma_client = chromadb.PersistentClient(path=storage_path)
-            _articles_collection = _chroma_client.get_or_create_collection(name="articles")
-            logger.info(f"ChromaDB PersistentClient initialized at {storage_path}.")
-        except Exception as pe:
-            logger.error(f"Failed to initialize ChromaDB PersistentClient: {pe}")
-            _chroma_client, _articles_collection = None, None
+        if env == "production":
+            logger.error(f"ChromaDB unavailable in production: {e}")
+            raise RuntimeError(f"ChromaDB connection failed in production: {e}")
+        else:
+            logger.warning(f"ChromaDB HttpClient unavailable ({e}), using PersistentClient for dev.")
+            try:
+                storage_path = os.getenv(
+                    "CHROMA_PERSISTENT_DIR",
+                    os.path.join(os.path.dirname(__file__), "chroma_data"),
+                )
+                _chroma_client = chromadb.PersistentClient(path=storage_path)
+                _articles_collection = _chroma_client.get_or_create_collection(name="articles")
+                logger.info(f"ChromaDB PersistentClient initialized at {storage_path}.")
+            except Exception as pe:
+                logger.error(f"Failed to initialize ChromaDB PersistentClient: {pe}")
+                _chroma_client, _articles_collection = None, None
 
     return _chroma_client, _articles_collection
 
@@ -79,4 +87,3 @@ class LazyNewsChunksCollection:
 chroma_client = LazyChromaClient()
 articles_collection = LazyChromaCollection()
 news_chunks_collection = LazyNewsChunksCollection()
-

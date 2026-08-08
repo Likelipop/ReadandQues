@@ -1,4 +1,3 @@
-from database.Mongo.crud import get_paraphrase_demo
 from service.repositories.article_repository import ArticleRepository
 from service.repositories.attempt_repository import AttemptRepository
 
@@ -40,12 +39,22 @@ def get_user_attempted_ids(user_id):
 
 
 def get_demo_paraphrase():
-    return get_paraphrase_demo()
+    return {
+        "original_summary": "The quick brown fox jumps over the lazy dog in the dense forest.",
+        "phrases": [
+            {
+                "id": "p1",
+                "original_text": "quick brown fox",
+                "alternatives": ["swift auburn canine", "fast colored fox", "speedy brown fox"]
+            }
+        ]
+    }
 
 
 def update_user_imported_articles_count(user):
-    from database.Mongo.crud import get_articles_by_user
-    user_articles = get_articles_by_user(user.id)
-    profile = user.profile
-    profile.total_articles_imported = len(user_articles)
-    profile.save()
+    # Articles are now globally deduplicated, so we track imported count directly on the user profile.
+    # We no longer query MongoDB for this.
+    try:
+        return user.profile.total_articles_imported
+    except Exception:
+        return 0

@@ -9,7 +9,7 @@ Jobs:
 
 import logging
 
-from database.Mongo.crud import find_exact_paraphrase, save_smart_paraphrase
+from service.repositories.content_repository import ContentRepository
 from service.orchestration.configuration import job
 
 logger = logging.getLogger(__name__)
@@ -24,7 +24,8 @@ def find_cached_paraphrase(
     article_id: str, paragraph_hash: str, start_idx: int, end_idx: int
 ):
     """Check MongoDB smart_paraphrase_cache for an exact match."""
-    doc = find_exact_paraphrase(article_id, paragraph_hash, start_idx, end_idx)
+    content_repo = ContentRepository()
+    doc = content_repo.find_paraphrase(article_id, paragraph_hash, start_idx, end_idx)
     return {"cached_paraphrase": doc}
 
 
@@ -96,6 +97,7 @@ def run_paraphrase_llm(
 @job("save_paraphrase", inputs=["paraphrase_data"])
 def save_paraphrase(paraphrase_data: dict):
     """Persist new paraphrase to cache (skip if it already has an _id)."""
+    content_repo = ContentRepository()
     if paraphrase_data and "_id" not in paraphrase_data and "id" not in paraphrase_data:
-        save_smart_paraphrase(paraphrase_data)
+        content_repo.save_paraphrase(paraphrase_data)
     return {}

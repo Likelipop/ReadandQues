@@ -3,8 +3,7 @@ import random
 import re
 import time
 
-from database.Mongo.crud import (get_articles_by_user, get_completed_articles,
-                                 get_user_attempted_article_ids, get_paraphrase_demo)
+# Removed unused imports from database.Mongo.crud
 from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth import (authenticate, login, logout,
@@ -297,8 +296,8 @@ def logout_view(request):
 @login_required(login_url="login")
 def profile_view(request):
     profile = request.user.profile
-    articles = get_articles_by_user(request.user.id)
-    total_articles = len(articles)
+    
+    total_articles = profile.total_articles_imported
 
     if request.method == "POST":
         password_form = PasswordChangeForm(request.user, request.POST)

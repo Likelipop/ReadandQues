@@ -7,7 +7,7 @@ import os
 from typing import Dict, List, Optional
 from openai import OpenAI
 
-from database.Chroma.rag_operations import hybrid_search_chunks
+from service.repositories.search_repository import SearchRepository
 from service.rag_prompts import NEWS_RAG_SYSTEM_PROMPT, NEWS_RAG_USER_TEMPLATE
 
 logger = logging.getLogger(__name__)
@@ -82,7 +82,8 @@ def query_news_rag(
         }
 
     # 1. Retrieve Chunks
-    retrieved_chunks = hybrid_search_chunks(query, top_k=top_k, where_filter=filters)
+    search_repo = SearchRepository()
+    retrieved_chunks = search_repo.search_hybrid(query, top_k=top_k, where_filter=filters)
 
     if not retrieved_chunks:
         return {

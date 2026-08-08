@@ -1,7 +1,6 @@
 from unittest import TestCase
 from service.domain.contracts import ArticleContract, ExamAttemptContract, generate_article_id
 from service.domain.enums import ArticleStatus, AIStatus
-from service.repositories.article_repository import LegacyArticleReadAdapter
 
 
 class DataIntegrityContractsTests(TestCase):
@@ -19,16 +18,3 @@ class DataIntegrityContractsTests(TestCase):
         )
         self.assertEqual(contract.status, ArticleStatus.CRAWLING)
         self.assertEqual(contract.ai_status, AIStatus.PENDING_GENERATION)
-
-    def test_legacy_read_adapter_normalizes_raw_dict(self):
-        legacy_doc = {
-            "_id": "507f1f77bcf86cd799439011",
-            "url": "https://example.com/legacy",
-            "title": "Legacy Title",
-            "status": "completed",
-            "ai_status": "completed",
-        }
-        contract = LegacyArticleReadAdapter.to_contract(legacy_doc)
-        self.assertEqual(contract.article_id, "507f1f77bcf86cd799439011")
-        self.assertEqual(contract.status, ArticleStatus.COMPLETED)
-        self.assertEqual(contract.ai_status, AIStatus.COMPLETED)

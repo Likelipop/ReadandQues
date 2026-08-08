@@ -5,24 +5,12 @@ readspace/services.py — Application Services for Reading Space domain.
 from datetime import datetime, timezone
 import logging
 
-from database.BM25.operations import search_bm25
-from database.BM25.text_preprocessing import process_text_to_tokens
-from database.Chroma.operations import search_by_text
-from database.Mongo.article_index import (
-    create_article_index,
-    get_article_index,
-    get_article_index_by_url,
-)
-from database.Mongo.crud import (
-    get_article_document_by_id,
-    get_article_document_by_url,
-    update_article_document,
-)
-from service.domain.contracts import ExamAttemptContract, generate_article_id
+from service.domain.models import ExamAttempt, generate_article_id
 from service.domain.enums import AIStatus, ArticleStage
 from service.orchestrator import run_ai_only_pipeline_async, run_article_pipeline_async
-from service.repositories.article_repository import ArticleRepository
-from service.repositories.attempt_repository import AttemptRepository
+from service.repositories import ArticleRepository, AttemptRepository
+from service.repositories.search_repository import SearchRepository
+from service.repositories.pipeline_repository import PipelineRepository
 
 logger = logging.getLogger(__name__)
 
@@ -36,12 +24,26 @@ def get_article_detail(pk: str):
     doc = article.model_dump(mode="json")
     doc["id"] = article.article_id
 
+    # Fetch text content from repository
+    text_content = repo.get_text_content(pk)
+    if text_content:
+        doc["original_text"] = text_content.get("original_text", "")
+        doc["cleaned_text"] = text_content.get("cleaned_text", text_content.get("original_text", ""))
+    else:
+        doc["original_text"] = ""
+        doc["cleaned_text"] = ""
+
     doc.setdefault("exams", [{"quizzes": []}])
 
     related_list = repo.list_completed(limit=6)
-    related_articles = [
-        r.model_dump(mode="json") for r in related_list if r.article_id != article.article_id
-    ][:5]
+    related_articles = []
+    for r in related_list:
+        if r.article_id != article.article_id:
+            r_dump = r.model_dump(mode="json")
+            r_dump["id"] = r.article_id
+            related_articles.append(r_dump)
+    
+    related_articles = related_articles[:5]
 
     return doc, related_articles
 
@@ -51,23 +53,19 @@ def import_article(url: str, user_id: int):
     Import a new article. Uses article_index for dedup check.
     Creates article_index entry in BRONZE stage and triggers async pipeline.
     """
+    pipeline_repo = PipelineRepository()
+    
     # Dedup check — prefer new article_index
-    existing = get_article_index_by_url(url)
+    existing = pipeline_repo.get_article_index_by_url(url)
     if existing and existing.get("ai_status") in (
         AIStatus.IN_PROGRESS.value,
         AIStatus.COMPLETED.value,
     ):
         return str(existing["_id"]), True
 
-    # Fallback legacy check
-    if not existing:
-        legacy = get_article_document_by_url(url)
-        if legacy and legacy.get("status") in ("crawling", "processing", "completed"):
-            return str(legacy.get("id") or legacy.get("_id")), True
-
     # New article — create index entry and trigger pipeline
     article_id = generate_article_id(url)
-    create_article_index(
+    pipeline_repo.create_article_index(
         article_id=article_id,
         url=url,
         title="Loading title...",
@@ -78,29 +76,19 @@ def import_article(url: str, user_id: int):
 
 
 def trigger_article_quiz(pk: str):
-    doc = get_article_document_by_id(pk)
+    article_repo = ArticleRepository()
+    pipeline_repo = PipelineRepository()
+    doc = article_repo.get_by_id(pk)
     if not doc:
         return False
-    update_article_document(pk, {"ai_status": AIStatus.PENDING_GENERATION.value})
+    pipeline_repo.update_ai_status(pk, AIStatus.PENDING_GENERATION)
     run_ai_only_pipeline_async(pk)
     return True
 
 
 def get_article_status_payload(pk: str):
-    doc = get_article_document_by_id(pk)
-    if not doc:
-        return None
-
-    status = doc.get("ai_status", doc.get("status", "pending"))
-    payload = {
-        "status": status,
-        "message": doc.get("error_message", ""),
-        "title": doc.get("title", ""),
-    }
-
-    if status == "completed":
-        payload["exams"] = doc.get("exams", [])
-
+    article_repo = ArticleRepository()
+    payload = article_repo.get_status_payload(pk)
     return payload
 
 
@@ -112,7 +100,11 @@ def get_all_tests(theme: str = "All", genre: str = "All", user_id: int = None):
     filtered_genre = genre if genre != "All" else None
 
     completed_articles = article_repo.list_completed(theme=filtered_theme, genre=filtered_genre, limit=100)
-    articles_list = [a.model_dump(mode="json") for a in completed_articles]
+    articles_list = []
+    for a in completed_articles:
+        a_dump = a.model_dump(mode="json")
+        a_dump["id"] = a.article_id  # Ensure id is always present
+        articles_list.append(a_dump)
 
     attempted_ids = attempt_repo.get_user_attempted_article_ids(user_id) if user_id else set()
 
@@ -127,13 +119,18 @@ def save_attempt(model_data: dict, article_id: str, highlighted_markdown: str):
     attempt_repo = AttemptRepository()
     article_repo = ArticleRepository()
 
-    contract = ExamAttemptContract.model_validate(model_data)
-    inserted_id = attempt_repo.save_attempt(contract)
+    attempt = ExamAttempt.model_validate(model_data)
+    inserted_id = attempt_repo.save_attempt(attempt)
 
     related = []
     if highlighted_markdown:
         related_list = article_repo.list_completed(limit=6)
-        related = [r.model_dump(mode="json") for r in related_list if r.article_id != article_id][:5]
+        for r in related_list:
+            if r.article_id != article_id:
+                r_dump = r.model_dump(mode="json")
+                r_dump["id"] = r.article_id
+                related.append(r_dump)
+        related = related[:5]
 
     return inserted_id, related
 
@@ -153,48 +150,31 @@ def get_smart_paraphrase(pk: str, paragraph_hash: str, highlighted_text: str, pa
 
 
 def search_bm25_articles(query: str):
-    tokens = process_text_to_tokens(query)
-    bm25_results = search_bm25(tokens, n=10)
-    bm25_ids = [r["id"] for r in bm25_results]
-
-    results = []
-    for article_id in bm25_ids:
-        try:
-            doc = get_article_index(article_id)
-            if doc:
-                results.append({
-                    "id": str(doc["_id"]),
-                    "title": doc.get("title", "No Title"),
-                    "source": doc.get("source_name", "Unknown"),
-                    "snippet": "",  # title-based BM25 — no snippet
-                    "date": doc.get("published_at", doc.get("created_at", "")).strftime("%Y-%m-%d")
-                    if hasattr(doc.get("published_at", ""), "strftime") else "",
-                })
-        except Exception:
-            continue
-    return results
+    search_repo = SearchRepository()
+    results = search_repo.search_keyword(query, limit=10)
+    return [
+        {
+            "id": r.article_id,
+            "title": r.title,
+            "source": r.source,
+            "snippet": "",
+            "date": r.date,
+        }
+        for r in results
+    ]
 
 
 def search_semantic_articles(query: str):
-    hits = search_by_text(query, limit=5)
-    results = []
-    for hit in hits:
-        try:
-            article_id = hit["id"]
-            doc = get_article_index(article_id)
-            if doc:
-                distance = float(hit.get("distance", 0.0))
-                similarity = max(0, min(100, int((1.0 - distance / 2.0) * 100)))
-                metadata = hit.get("metadata", {})
-                results.append({
-                    "id": str(doc["_id"]),
-                    "title": doc.get("title", metadata.get("title", "No Title")),
-                    "source": doc.get("source_name", "Unknown"),
-                    "snippet": "",
-                    "date": doc.get("published_at", doc.get("created_at", "")).strftime("%Y-%m-%d")
-                    if hasattr(doc.get("published_at", ""), "strftime") else "",
-                    "similarity": similarity,
-                })
-        except Exception:
-            continue
-    return results
+    search_repo = SearchRepository()
+    results = search_repo.search_semantic(query, limit=5)
+    return [
+        {
+            "id": r.article_id,
+            "title": r.title,
+            "source": r.source,
+            "snippet": "",
+            "date": r.date,
+            "similarity": r.similarity,
+        }
+        for r in results
+    ]

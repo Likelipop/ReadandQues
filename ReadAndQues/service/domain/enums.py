@@ -1,38 +1,22 @@
-from enum import Enum
+"""
+service/domain/enums.py — Domain Enums.
+Clean ZEN re-exports from service.domain.models.
+"""
 
+from service.domain.models import Stage, Status, ThemeCategory
 
-class ArticleStatus(str, Enum):
-    CRAWLING = "crawling"
-    PROCESSING = "processing"
-    COMPLETED = "completed"
-    FAILED = "failed"
+# Backward compatibility aliases
+ArticleStage = Stage
+MedallionStage = Stage
+ArticleStatus = Status
+AIStatus = Status
 
-
-class AIStatus(str, Enum):
-    PENDING_GENERATION = "pending_generation"
-    IN_PROGRESS = "in_progress"
-    COMPLETED = "completed"
-    FAILED = "failed"
-
-
-class ArticleStage(str, Enum):
-    """Tracks which Medallion layer an article has been written to in MinIO."""
-    BRONZE = "bronze"
-    SILVER = "silver"
-    GOLD = "gold"
-
-
-# Backward-compat alias — will be removed after full migration
-MedallionStage = ArticleStage
-
-
-class ThemeCategory(str, Enum):
-    GENERAL = "General"
-    ECONOMY = "Economy"
-    SOCIETY = "Society"
-    EDUCATION = "Education"
-    TECHNOLOGY = "Technology"
-    SCIENCE = "Science"
-    ENVIRONMENT = "Environment"
-    CULTURE = "Culture"
-    HEALTH = "Health"
+__all__ = [
+    "Stage",
+    "Status",
+    "ThemeCategory",
+    "ArticleStage",
+    "MedallionStage",
+    "ArticleStatus",
+    "AIStatus",
+]

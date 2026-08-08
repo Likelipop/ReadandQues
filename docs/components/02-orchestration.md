@@ -1,6 +1,6 @@
 # Component Guide: Orchestration Engine & Pipelines
 
-This document describes the typed pipeline orchestration engine, job domain modules, background executors, and `OrchestrationFacade`.
+This document describes the typed pipeline orchestration engine, ZEN atomic job domain modules, `BackgroundRunner`, and `OrchestrationFacade`.
 
 ---
 
@@ -9,7 +9,7 @@ This document describes the typed pipeline orchestration engine, job domain modu
 The Orchestration Engine in [service/orchestration/](file:///home/likelipop/Project/ReadandQues/ReadAndQues/service/orchestration/) manages multi-step batch processing and background pipelines ([ADR-0002](file:///home/likelipop/Project/ReadandQues/docs/refactor/adr/0002-application-orchestration-boundary.md)):
 
 - Single-step query operations (e.g., fetching an article by ID) use direct repository calls and do **not** use pipelines.
-- Multi-step workflows (e.g., scrape web page -> extract text -> save Bronze -> enrich Silver -> generate Gold -> trigger AI quiz -> build vector index) run through typed orchestration `Pipe`s.
+- Multi-step workflows (e.g., crawl web page -> ingest Bronze -> extract Silver -> AI enrich Gold -> vector index) run through atomic orchestration `Pipe`s composed in [service/orchestration/pipes.py](file:///home/likelipop/Project/ReadandQues/ReadAndQues/service/orchestration/pipes.py).
 
 ---
 
@@ -29,44 +29,33 @@ Structured Exceptions ([service/orchestration/exceptions.py](file:///home/likeli
 
 ---
 
-## 3. Executors & Background Execution
+## 3. Background Runner & Facade
 
-Pipelines can run synchronously or asynchronously using executors in [service/orchestration/executors.py](file:///home/likelipop/Project/ReadandQues/ReadAndQues/service/orchestration/executors.py):
+Pipelines can run synchronously or asynchronously using `BackgroundRunner` and `OrchestrationFacade` in [service/orchestrator.py](file:///home/likelipop/Project/ReadandQues/ReadAndQues/service/orchestrator.py):
 
-- **`InlineExecutor`**: Executes pipeline jobs sequentially in the caller's thread (useful for synchronous request flows and unit testing).
-- **`ThreadedBackgroundExecutor`**: Submits pipeline execution to a background daemon thread pool, returning immediately while jobs complete asynchronously.
+- **`BackgroundRunner`**: Clean, lightweight thread daemon runner that dispatches pipelines asynchronously without duplicate code paths.
+- **`OrchestrationFacade`**: Thin facade exposing clean methods for views and background workers.
+
+```python
+from service.orchestrator import OrchestrationFacade
+
+# Run full single article pipeline synchronously
+result = OrchestrationFacade.execute_article_task(article_id="art_123", url="https://example.com/article")
+
+# Run AI generation in background thread
+OrchestrationFacade.run_ai_only_pipeline_async(article_id="art_123")
+```
 
 ---
 
 ## 4. Domain Job Packages
 
-Pipeline jobs are grouped by domain responsibility inside [service/orchestration/jobs/](file:///home/likelipop/Project/ReadandQues/ReadAndQues/service/orchestration/jobs/):
+Pipeline jobs are atomic, single-responsibility steps inside [service/orchestration/jobs/](file:///home/likelipop/Project/ReadandQues/ReadAndQues/service/orchestration/jobs/):
 
-- **`ingestion_jobs.py`**: Web scraping, raw HTML parsing, and MinIO Bronze object persistence.
-- **`article_jobs.py`**: Text cleaning, paragraph segmentation, and MongoDB canonical Gold article saving.
-- **`ai_jobs.py`**: Interfacing with versioned AI tools (`smart_paraphrase`, `quiz_generator`, `batch_paraphrase`).
-- **`search_jobs.py`**: Updating ChromaDB vector embeddings and BM25 lexical search indices.
-- **`maintenance_jobs.py`**: Data auditing and projection reindexing jobs.
+- **`ingestion.py`**: Web scraping via `service/crawler`, raw HTML parsing, and MinIO Bronze object persistence (`ingest_single_to_bronze`).
+- **`processing.py`**: Text cleaning, validation, paragraph segmentation, and MinIO Silver persistence (`fetch_single_silver`).
+- **`enrichment.py`**: Core AI processing via LangGraph. Persists results to MinIO Gold, MongoDB Exams, and ChromaDB Vectors.
+- **`paraphrase.py`**: Interfaces with the versioned AI tool for Smart Ink paraphrasing of highlights.
+- **`maintenance.py`**: Index initialization and cache refresh jobs.
 
-Each job function uses `@register_job(name="...")` and defines explicit input parameters.
-
----
-
-## 5. Orchestration Facade
-
-Application services and Django views invoke pipelines exclusively through `OrchestrationFacade` in [service/orchestrator.py](file:///home/likelipop/Project/ReadandQues/ReadAndQues/service/orchestrator.py):
-
-```python
-from service.orchestrator import OrchestrationFacade
-
-facade = OrchestrationFacade()
-
-# Run full single article ingestion synchronously
-result = facade.run_single_article_pipeline(url="https://example.com/article")
-
-# Run AI generation in background thread
-thread_id = facade.run_ai_only_pipeline_async(article_id="art_123")
-
-# Run daily batch pipeline with truthful stage failure reporting
-daily_res = facade.run_daily_pipeline()
-```
+Each job function uses `@job(name="...", inputs=[...], outputs=[...])` and defines explicit parameters. Atomic jobs are composed into pipelines in `pipes.py` (`single_article_pipe`, `ai_only_pipe`, `smart_ink_pipe`).

@@ -39,12 +39,11 @@ def rebuild_index() -> None:
     logger.info("[BM25] Rebuilding index from article_index...")
 
     try:
-        from database.Mongo.connection import article_index_collection
-        from service.domain.enums import AIStatus
+        from database.Mongo.connection import get_collection
 
         docs = list(
-            article_index_collection.find(
-                {"ai_status": AIStatus.COMPLETED.value},
+            get_collection("article_index").find(
+                {"ai_status": "completed"},
                 {"_id": 1, "title": 1},
             )
         )

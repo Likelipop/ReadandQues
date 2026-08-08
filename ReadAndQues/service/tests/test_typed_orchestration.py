@@ -13,7 +13,6 @@ from service.orchestration.exceptions import (
 from service.orchestration.executors import InlineExecutor, ThreadedBackgroundExecutor
 from service.orchestration.pipes import (
     bronze_to_silver_pipe,
-    generate_questions_pipe,
     ingest_bronze_pipe,
     init_pipe,
     silver_to_gold_pipe,

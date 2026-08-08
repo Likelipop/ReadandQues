@@ -1,7 +1,6 @@
 from django.core.management.base import BaseCommand
-from database.BM25.connection import rebuild_index
-from database.Chroma.operations import add_article_vector
-from service.repositories.article_repository import ArticleRepository
+from service.repositories import ArticleRepository
+from service.repositories.search_repository import SearchRepository
 
 
 class Command(BaseCommand):
@@ -9,19 +8,21 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
         self.stdout.write(self.style.SUCCESS("Rebuilding projections..."))
-        repo = ArticleRepository()
-        completed_articles = repo.list_completed(limit=1000)
+        article_repo = ArticleRepository()
+        search_repo = SearchRepository()
+
+        completed_articles = article_repo.list_completed(limit=1000)
 
         self.stdout.write(self.style.SUCCESS(f"Rebuilding BM25 index from {len(completed_articles)} completed articles..."))
-        rebuild_index()
+        search_repo.rebuild_keyword_index()
 
         self.stdout.write(self.style.SUCCESS(f"Rebuilding Chroma vector embeddings..."))
         rebuilt_chroma = 0
         for article in completed_articles:
             if article.summary:
                 try:
-                    add_article_vector(
-                        gold_id=article.article_id,
+                    search_repo.index_article_vector(
+                        article_id=article.article_id,
                         summary=article.summary,
                         title=article.title,
                         url=article.url,

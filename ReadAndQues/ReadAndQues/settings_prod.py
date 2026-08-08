@@ -158,7 +158,7 @@ SESSION_COOKIE_AGE = 86400  # 24 hours
 SESSION_SAVE_EVERY_REQUEST = True
 
 # Crawler & Article word count limits
-ARTICLE_MIN_WORDS = int(os.getenv("ARTICLE_MIN_WORDS", 500))
+ARTICLE_MIN_WORDS = int(os.getenv("ARTICLE_MIN_WORDS", 150))
 ARTICLE_MAX_WORDS = int(os.getenv("ARTICLE_MAX_WORDS", 4000))
 ARTICLE_MAX_IMAGES = int(os.getenv("ARTICLE_MAX_IMAGES", 10))
 

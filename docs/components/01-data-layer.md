@@ -1,6 +1,6 @@
 # Component Guide: Data Layer & Datastores
 
-This document details the data layer architecture, datastore ownership rules, Pydantic contracts, repositories, lazy connections, and non-SQL migration system.
+This document details the data layer architecture, datastore ownership rules, ZEN Pydantic models, repositories with `@db_safe` error boundaries, native PyMongo connection management, and non-SQL migration system.
 
 ---
 
@@ -14,47 +14,59 @@ According to [ADR-0001](file:///home/likelipop/Project/ReadandQues/docs/refactor
 +-------------------+-------------------------------------------------------------------+
 | PostgreSQL        | Transactional ledgers (AIRunLog, ArticleImportRequest,            |
 |                   | ExamAttemptLog) and user account management.                      |
-| MongoDB           | Canonical article documents (gold_articles collection).           |
-| MinIO (S3)        | Raw Bronze JSON source scrapes + SHA-256 integrity manifests.     |
-| ChromaDB          | Vector embeddings (Silver/Gold chunks) for semantic search.       |
+| MongoDB           | 1. Metadata Routing & Indexing (article_index collection).        |
+|                   | 2. AI Feature Data & Exams (exams collection).                    |
+| MinIO (S3)        | Primary Data Lake (Medallion Architecture):                       |
+|                   | - Bronze: Raw HTML & Source Metadata                              |
+|                   | - Silver: Cleaned & Validated text                                |
+|                   | - Gold: AI-enriched analysis and final state                      |
+| ChromaDB          | Vector embeddings (Gold chunks) for semantic search.              |
 | BM25              | In-memory lexical index for fast keyword matching.                |
 +-------------------+-------------------------------------------------------------------+
 ```
 
 ---
 
-## 2. Canonical Pydantic Data Contracts
+## 2. Canonical ZEN Pydantic Data Models
 
-All data passing through the system is validated against typed Pydantic v2 data contracts defined in [service/domain/contracts.py](file:///home/likelipop/Project/ReadandQues/ReadAndQues/service/domain/contracts.py):
+All data passing through the system is validated against clean, unified Pydantic v2 domain models defined in [service/domain/models.py](file:///home/likelipop/Project/ReadandQues/ReadAndQues/service/domain/models.py):
 
-- **`ArticleContract`**: Canonical article structure (`article_id`, `title`, `content`, `url`, `status`, `created_at`, `quizzes`).
-- **`ExamContract`**: Examination structure containing comprehension questions, options, and explanations.
-- **`ExamAttemptContract`**: User test attempt recording `user_id`, `score`, `total_questions`, `answers`, `highlighted_markdown`.
-- **`RawSourceManifestContract`**: MinIO raw Bronze object metadata (`object_key`, `sha256_hash`, `source_url`, `scraped_at`).
+- **`Article`**: Core article entity (`article_id`, `title`, `url`, `source_name`, `stage`, `status`, `summary`, `theme`, `genre`, `exams`).
+- **`Exam`**, **`Question`**, **`Option`**: Streamlined quiz examination structures.
+- **`ExamAttempt`**: User test attempt recording `user_id`, `article_id`, `score`, `total_questions`, `answers`, `elapsed_time`.
+- **`RawSourceManifest`**: MinIO raw Bronze object metadata (`article_id`, `url`, `sha256_hash`, `raw_size_bytes`, `stage`).
+- **`Stage`** (`BRONZE`, `SILVER`, `GOLD`) & **`Status`** (`PENDING`, `PROCESSING`, `COMPLETED`, `FAILED`): Clean Medallion enums.
 
-Deterministic Article ID Generation:
-```python
-from service.domain import generate_article_id
-
-article_id = generate_article_id(url="https://example.com/news/1")
-# Returns deterministic ID e.g. "art_a1b2c3d4e5f67890"
-```
+> Note: Legacy imports from `service.domain.contracts` and `service.domain.enums` are maintained as backward-compatibility proxies.
 
 ---
 
-## 3. Lazy Side-Effect Free Connections
+## 3. Pure Atomic Database Layer & Native Connection Management
 
-To prevent network I/O or connection failures at Python import time, datastore drivers use lazy proxies:
+To prevent eager side-effect network I/O at Python import time and maximize IDE autocomplete support:
 
-- **`LazyMongoCollection`** in [database/Mongo/connection.py](file:///home/likelipop/Project/ReadandQues/ReadAndQues/database/Mongo/connection.py)
-- **`LazyMinioClient`** in [database/Minio/connection.py](file:///home/likelipop/Project/ReadandQues/ReadAndQues/database/Minio/connection.py)
-- **`LazyChromaClient`** in [database/Chroma/connection.py](file:///home/likelipop/Project/ReadandQues/ReadAndQues/database/Chroma/connection.py)
-
-Connections are established on-demand upon first database query, allowing unit tests and offline management tools to run cleanly without live database infrastructure.
+- **`database/Mongo/connection.py`**: Uses native PyMongo `MongoClient(..., connect=False)` with a clean `get_collection(name: str) -> Collection` helper function. Zero custom proxy classes.
+- **Pure Atomic I/O**: Lower-level functions in `database/Mongo/`, `database/Minio/`, and `database/Chroma/` contain **zero domain imports** (`from service.domain...`). They accept primitive types (`str`, `dict`, `bytes`) and fail-fast without silent `try-except` catch-alls.
 
 ---
 
-## 4. Non-SQL Versioned Migrations
+## 4. Repositories & `@db_safe` Error Boundary
+
+All application database access must pass through the Repository layer in [service/repositories/](file:///home/likelipop/Project/ReadandQues/ReadAndQues/service/repositories/):
+
+- **`ArticleRepository`**: Handles canonical article tracking and lifecycle state.
+- **`AttemptRepository`**: Handles saving exam attempt logs to PostgreSQL `ExamAttemptLog`.
+- **`PipelineRepository`**: Manages article stage progression, AI status updates, RSS tracking, and pipeline execution logs.
+- **`ContentRepository`**: Manages Medallion storage (MinIO), RawSourceManifest generation, paraphrase cache, and homepage section cache.
+- **`SearchRepository`**: Unified search gateway combining BM25 keyword search, ChromaDB vector search, text chunking, and Reciprocal Rank Fusion (RRF).
+- **`UserActivityRepository`**: Handles user reading history, highlights, and vocabulary tracking.
+
+### Error Boundary (`@db_safe`)
+All repository methods are protected by the `@db_safe` decorator ([service/repositories/utils.py](file:///home/likelipop/Project/ReadandQues/ReadAndQues/service/repositories/utils.py)). Upon database or network infrastructure failures, `@db_safe` logs the full Python traceback (`exc_info=True`) and returns a safe fallback value (`None`, `False`, `[]`, or `{}`).
+
+---
+
+## 5. Non-SQL Versioned Migrations
 
 MongoDB validators and indexes are managed through a locked, checksummed migration runner in [service/migrations_nonsql/runner.py](file:///home/likelipop/Project/ReadandQues/ReadAndQues/service/migrations_nonsql/runner.py).
 
@@ -63,30 +75,11 @@ To apply non-SQL migrations:
 .venv/bin/python ReadAndQues/manage.py migrate_non_sql
 ```
 
-Migration scripts live in [service/migrations_nonsql/versions/](file:///home/likelipop/Project/ReadandQues/ReadAndQues/service/migrations_nonsql/versions/). Each script must define an `apply(db)` function and is checksummed in the MongoDB `_migrations` collection to detect drift.
-
----
-
-## 5. Repositories
-
-Database operations are abstracted through repositories in [service/repositories/](file:///home/likelipop/Project/ReadandQues/ReadAndQues/service/repositories/):
-
-- **`ArticleRepository`**: Handles canonical article reading/writing in MongoDB (`gold_articles`). Includes `LegacyArticleReadAdapter` for backward compatibility with older document structures.
-- **`AttemptRepository`**: Handles saving exam attempt logs to PostgreSQL `ExamAttemptLog` with fallback querying from MongoDB.
-
-Example usage:
-```python
-from service.repositories import ArticleRepository
-
-repo = ArticleRepository()
-article = repo.get_by_id("art_a1b2c3d4e5f67890")
-```
-
 ---
 
 ## 6. Management Commands Reference
 
-- **`python manage.py audit_data`**: Scans MongoDB articles and validates schema compliance against `ArticleContract`.
-- **`python manage.py rebuild_projections`**: Rebuilds ChromaDB vector embeddings and BM25 index from MongoDB.
-- **`python manage.py archive_legacy_collections`**: Safely archives legacy Gold collections into `archived_legacy_articles` without deleting raw data.
+- **`python manage.py audit_data`**: Scans `article_index` records and validates model compliance against `ArticleRepository`.
+- **`python manage.py rebuild_projections`**: Rebuilds ChromaDB vector embeddings and BM25 index using `SearchRepository`.
+- **`python manage.py archive_legacy_collections`**: Safely archives legacy collections into `archived_legacy_articles` without deleting raw data.
 - **`python manage.py check_deployment_health`**: Verifies PostgreSQL, MongoDB, MinIO, BM25, and ChromaDB connectivity and readiness.
