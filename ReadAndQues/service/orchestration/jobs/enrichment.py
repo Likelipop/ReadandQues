@@ -200,3 +200,27 @@ def process_single_article(article_id: str, url: str):
         return {"status": "completed", "article_id": article_id}
     return {"status": "failed", "error": res.get("error", "Failed")}
 
+
+def update_article_stage(*args, **kwargs):
+    return PipelineRepository().update_article_stage(*args, **kwargs)
+
+
+def update_ai_status(*args, **kwargs):
+    return PipelineRepository().update_ai_status(*args, **kwargs)
+
+
+def update_article_title(*args, **kwargs):
+    return PipelineRepository().update_article_title(*args, **kwargs)
+
+
+def save_gold_enriched(*args, **kwargs):
+    return ContentRepository().save_gold_enriched(*args, **kwargs)
+
+
+def save_exam(*args, **kwargs):
+    return PipelineRepository().save_exam(*args, **kwargs)
+
+
+def add_article_vector(*args, **kwargs):
+    return SearchRepository().index_article_vector(*args, **kwargs)
+

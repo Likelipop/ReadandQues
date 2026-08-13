@@ -147,6 +147,10 @@ class Article(BaseModel):
         if not self.id and self.article_id:
             self.id = self.article_id
 
+    @property
+    def ai_status(self) -> Status:
+        return self.status
+
 
 # ── 5. User Interaction Models ────────────────────────────────────────────────
 

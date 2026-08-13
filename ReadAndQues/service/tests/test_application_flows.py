@@ -3,6 +3,7 @@
 from unittest import TestCase
 from unittest.mock import Mock, patch
 
+import service.orchestration.pipes  # noqa: F401
 from service.domain.enums import AIStatus, ArticleStage
 from service.orchestration.jobs.enrichment import process_single_article
 from service.orchestration.jobs.paraphrase import run_paraphrase_llm
@@ -10,7 +11,7 @@ from service.orchestrator import OrchestrationFacade
 
 
 class SingleArticleWorkflowTests(TestCase):
-    @patch("service.orchestration.jobs.enrichment.crawl_article_content")
+    @patch("service.orchestration.jobs.ingestion.crawl_article_content")
     @patch("database.Minio.crud.save_bronze_html")
     @patch("database.Minio.crud.save_bronze_meta")
     @patch("service.orchestration.jobs.processing._clean_and_validate")
@@ -57,7 +58,7 @@ class SingleArticleWorkflowTests(TestCase):
             genre="scientific",
         )
 
-    @patch("service.orchestration.jobs.enrichment.crawl_article_content")
+    @patch("service.orchestration.jobs.ingestion.crawl_article_content")
     @patch("service.orchestration.jobs.enrichment.update_ai_status")
     def test_crawl_failure_stops_workflow(self, mock_update_ai, mock_crawl):
         mock_crawl.return_value = {"success": False, "error": "unreachable"}
@@ -73,10 +74,7 @@ class OrchestratorTests(TestCase):
     @patch("service.orchestrator.get_pipe")
     def test_article_task_delegates_to_registered_single_article_pipe(self, mock_get_pipe):
         pipe = Mock()
-        pipe.invoke.return_value = {
-            "status": "completed",
-            "results": {"process_single_article": {"status": "completed"}},
-        }
+        pipe.invoke.return_value = {"status": "completed"}
         mock_get_pipe.return_value = pipe
 
         result = OrchestrationFacade.execute_article_task("article-3", "https://example.com/c")
