@@ -1,0 +1,87 @@
+{% load static %}
+<!-- AI Question Tickets Container -->
+<div id="ai-tickets-panel" class="flex flex-col h-full bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+    
+    <!-- Ticket Panel Header -->
+    <div class="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-white p-4 flex justify-between items-center border-b border-indigo-900/50">
+        <div class="flex items-center gap-2.5">
+            <div class="w-8 h-8 rounded-lg bg-indigo-600/30 border border-indigo-400/30 flex items-center justify-center text-lg">
+                🎫
+            </div>
+            <div>
+                <h3 class="font-bold text-sm text-white tracking-wide flex items-center gap-2">
+                    AI Question Tickets
+                    <span id="ticket-count-badge" class="bg-indigo-500/30 text-indigo-200 border border-indigo-400/30 text-[10px] font-semibold px-2 py-0.5 rounded-full">0 Tickets</span>
+                </h3>
+                <p class="text-[11px] text-slate-400">Ask questions & receive grounded AI ticket responses</p>
+            </div>
+        </div>
+        <button id="clear-tickets-btn" onclick="clearArticleTickets()" title="Clear Ticket History" class="text-slate-400 hover:text-red-400 text-xs transition p-1.5 rounded-md hover:bg-white/5">
+            🗑️ Clear
+        </button>
+    </div>
+
+    <!-- Ticket Submission Form -->
+    <div class="p-4 bg-slate-50 border-b border-slate-200">
+        <form id="ask-ticket-form" onsubmit="submitQuestionTicket(event)" class="flex flex-col gap-2.5">
+            <div class="relative">
+                <textarea 
+                    id="ticket-question-input" 
+                    rows="3" 
+                    placeholder="Ask any question about this article..." 
+                    class="w-full text-xs md:text-sm p-3 rounded-lg border border-slate-300 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-white text-slate-800 placeholder-slate-400 shadow-inner resize-none transition"
+                    required
+                ></textarea>
+                <div class="absolute bottom-2 right-2.5 text-[10px] text-slate-400 font-medium select-none pointer-events-none">
+                    Ctrl + Enter
+                </div>
+            </div>
+
+            <!-- Quick Preset Question Chips -->
+            <div class="flex flex-wrap gap-1.5">
+                <button type="button" onclick="usePresetTicket('Summarize the main findings of this article.')" class="text-[11px] bg-white border border-slate-200 hover:border-indigo-400 hover:bg-indigo-50 text-slate-600 px-2.5 py-1 rounded-full transition shadow-2xs flex items-center gap-1">
+                    💡 Main Findings
+                </button>
+                <button type="button" onclick="usePresetTicket('What are the key arguments & evidence presented?')" class="text-[11px] bg-white border border-slate-200 hover:border-indigo-400 hover:bg-indigo-50 text-slate-600 px-2.5 py-1 rounded-full transition shadow-2xs flex items-center gap-1">
+                    📊 Arguments
+                </button>
+                <button type="button" onclick="usePresetTicket('Explain difficult vocabulary and concepts in this text.')" class="text-[11px] bg-white border border-slate-200 hover:border-indigo-400 hover:bg-indigo-50 text-slate-600 px-2.5 py-1 rounded-full transition shadow-2xs flex items-center gap-1">
+                    📖 Vocabulary
+                </button>
+            </div>
+
+            <!-- Submit Button -->
+            <button 
+                type="submit" 
+                id="submit-ticket-btn" 
+                class="w-full py-2.5 px-4 bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-700 hover:to-blue-700 text-white font-semibold text-xs rounded-lg shadow-md hover:shadow-lg transition flex items-center justify-center gap-2 group active:scale-[0.99]"
+            >
+                <span id="btn-text" class="flex items-center gap-1.5">
+                    🚀 Submit Question Ticket
+                </span>
+                <span id="btn-spinner" class="hidden">
+                    <svg class="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                </span>
+            </button>
+        </form>
+    </div>
+
+    <!-- Tickets History Feed -->
+    <div id="tickets-feed" class="flex-grow overflow-y-auto p-4 space-y-4 custom-scrollbar bg-slate-100/50">
+        
+        <!-- Empty State Placeholder -->
+        <div id="tickets-empty-state" class="flex flex-col items-center justify-center py-10 text-center px-4">
+            <div class="w-12 h-12 rounded-full bg-indigo-50 text-indigo-500 flex items-center justify-center text-2xl mb-3 shadow-inner">
+                📩
+            </div>
+            <h4 class="text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">No Tickets Yet</h4>
+            <p class="text-xs text-slate-500 max-w-xs leading-relaxed">
+                Submit a question ticket above. AI will analyze the article excerpts and attach direct quotes as evidence.
+            </p>
+        </div>
+
+    </div>
+</div>

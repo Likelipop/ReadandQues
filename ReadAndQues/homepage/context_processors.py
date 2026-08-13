@@ -1,5 +1,5 @@
-from pipeline.ai_core.graphs.question_generator.schemas import ThemeCategory
-from database.Mongo.connection import article_collection
+from service.ai_core.graphs.question_generator.schemas import ThemeCategory
+from service.repositories import ArticleRepository
 from django.core.cache import cache
 
 def global_news_context(request):
@@ -18,18 +18,13 @@ def global_news_context(request):
     trending_topics = cache.get("global_trending_topics")
     if not trending_topics:
         try:
-            # Get 3 most recently created articles as "trending" for now.
-            # In a real scenario, this could be based on views or stars.
-            cursor = article_collection.find(
-                {"status": "completed"}, 
-                {"title": 1, "_id": 1}
-            ).sort("created_at", -1).limit(3)
-            
+            repo = ArticleRepository()
+            articles = repo.list_completed(limit=3)
             trending_topics = [
-                {"id": str(doc["_id"]), "title": doc.get("title", "No Title")}
-                for doc in cursor
+                {"id": a.article_id, "title": a.title}
+                for a in articles
             ]
-            
+
             # Cache for 15 minutes
             cache.set("global_trending_topics", trending_topics, 60 * 15)
         except Exception:

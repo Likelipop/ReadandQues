@@ -1,33 +1,38 @@
 import logging
 from typing import Dict, List
 
-from bson import ObjectId
-from database.Mongo.connection import article_collection
-
 from .connection import articles_collection
 
 logger = logging.getLogger(__name__)
 
 
-def add_article_vector(gold_id: str, summary: str, title: str, url: str, theme: str = "General", genre: str = "general") -> bool:
+
+def add_article_vector(
+    gold_id: str, summary: str, title: str, url: str, theme: str = "General", genre: str = "general"
+) -> bool:
     """
-    Insert or update an article summary embedding in ChromaDB vector store.
+    Upsert an article summary embedding in ChromaDB vector store.
+    Deletes existing entry before adding to avoid DuplicateIDError on retries.
     """
     if not articles_collection or not summary:
         return False
 
     try:
+        # Delete existing embedding if present (idempotent upsert)
+        try:
+            articles_collection.delete(ids=[str(gold_id)])
+        except Exception:
+            pass  # no-op if not found
+
         articles_collection.add(
             documents=[summary],
             metadatas=[{"title": title, "url": url, "theme": theme, "genre": genre}],
             ids=[str(gold_id)],
         )
-        logger.info(f"Successfully added vector embedding for gold_id: {gold_id}")
+        logger.info(f"[Chroma] Upserted vector for {gold_id}")
         return True
     except Exception as e:
-        logger.error(
-            f"Failed to add article vector to ChromaDB for gold_id {gold_id}: {e}"
-        )
+        logger.error(f"[Chroma] Failed to upsert vector for {gold_id}: {e}")
         return False
 
 

@@ -1,4 +1,4 @@
-.PHONY: help run dev docker-up docker-down docker-build docker-logs migrate makemigrations test shell clean
+.PHONY: help run dev docker-up docker-down docker-build docker-logs migrate makemigrations test test-unit check-refactor check-refactor-full shell clean
 
 PYTHON := .venv/bin/python
 
@@ -14,6 +14,9 @@ help:
 	@echo "  make migrate       : Apply Django database migrations"
 	@echo "  make makemigrations: Generate new Django database migrations"
 	@echo "  make test          : Run Django automated tests"
+	@echo "  make test-unit     : Run infrastructure-free characterization tests"
+	@echo "  make check-refactor: Run the offline refactor quality gate"
+	@echo "  make check-refactor-full: Run Django, migration, and import checks too"
 	@echo "  make shell         : Open Django interactive shell"
 	@echo "  make clean         : Remove Python byte code & cache files"
 	@echo "  make init-db       : Initialize database (Mongo indexes, migrations, BM25)"
@@ -60,7 +63,16 @@ seed-db: docker-up
 
 test: docker-up
 	@echo "🧪 Running Django test suite..."
-	cd ReadAndQues && ../$(PYTHON) manage.py test articles
+	cd ReadAndQues && ../$(PYTHON) manage.py test accounts homepage readspace service
+
+test-unit:
+	cd ReadAndQues && ../$(PYTHON) -m unittest service.tests.test_pipeline_engine service.tests.test_application_flows service.tests.test_data_integrity service.tests.test_typed_orchestration service.tests.test_ai_platform service.tests.test_grounded_question_ticket service.tests.test_operations_cutover
+
+check-refactor:
+	$(PYTHON) scripts/refactor_quality_gate.py
+
+check-refactor-full:
+	$(PYTHON) scripts/refactor_quality_gate.py --full
 
 shell: docker-up
 	@echo "💻 Opening Django shell..."

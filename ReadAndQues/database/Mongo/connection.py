@@ -1,51 +1,45 @@
-from django.conf import settings
-from pymongo import MongoClient
-from pymongo.server_api import ServerApi
+"""
+database/Mongo/connection.py — Pure & Minimalist MongoDB Connection.
+
+Design:
+  - Natively relies on PyMongo's built-in `connect=False` lazy connection mechanism.
+  - Zero custom proxy classes. Zero network I/O at import time.
+  - Full IDE autocomplete & type hinting support via PyMongo Collection return type.
+"""
 
 import os
-import socket
+import logging
+from django.conf import settings
+from pymongo import MongoClient
+from pymongo.collection import Collection
 
-# Determine Mongo URI from settings / environment. Fall back to a local docker-compose mapping.
-mongo_uri = getattr(settings, "MONGO_URI", None)
-if not mongo_uri or mongo_uri.startswith("******"):
-    mongo_uri = os.getenv(
-        "MONGO_URI",
-        "mongodb://admin:changeme@localhost:27017/articlesDB?authSource=admin",
-    )
+logger = logging.getLogger(__name__)
 
-if "@mongo:" in mongo_uri:
-    try:
-        socket.gethostbyname("mongo")
-    except socket.gaierror:
-        mongo_uri = mongo_uri.replace("@mongo:", "@localhost:")
-
+_mongo_client: MongoClient | None = None
 
 
 def get_mongo_client() -> MongoClient:
-    client = MongoClient(
-        mongo_uri,
-        server_api=ServerApi("1"),
-        serverSelectionTimeoutMS=5000,
-        connect=False,
-    )
-    return client
+    """Return singleton MongoClient with connect=False lazy initialization."""
+    global _mongo_client
+    if _mongo_client is None:
+        uri = getattr(
+            settings,
+            "MONGO_URI",
+            os.getenv(
+                "MONGO_URI",
+                "mongodb://admin:changeme@localhost:27017/articlesDB?authSource=admin",
+            ),
+        )
+        _mongo_client = MongoClient(uri, serverSelectionTimeoutMS=5000, connect=False)
+    return _mongo_client
 
 
-client = get_mongo_client()
-DB_NAME = getattr(settings, "MONGO_DB_NAME", "articlesDB")
-db = client[DB_NAME]
-article_collection = db["gold_articles"]  # Legacy
-gold_collection = db["gold_articles"]  # Legacy
-gold_homepage_collection = db["gold_homepage_articles"]
-gold_ai_collection = db["gold_ai_articles"]
-silver_collection = db["silver_articles"]
-bronze_collection = db["bronze_articles"]
-pipeline_logs_collection = db["pipeline_logs"]
-attempts_collection = db["attempts"]
-paraphrases_collection = db["paraphrases"]
-smart_paraphrase_collection = db["smart_paraphrase_cache"]
-rss_links_collection = db["rss_links"]
-reading_history_collection = db["reading_history"]
-user_highlights_collection = db["user_highlights"]
-homepage_sections_collection = db["homepage_sections"]
-vocab_tracking_collection = db["vocab_tracking"]
+def get_mongo_db():
+    """Return default MongoDB database instance."""
+    db_name = getattr(settings, "MONGO_DB_NAME", os.getenv("MONGO_DB_NAME", "articlesDB"))
+    return get_mongo_client()[db_name]
+
+
+def get_collection(name: str) -> Collection:
+    """Return native PyMongo Collection instance with full IDE autocomplete."""
+    return get_mongo_db()[name]

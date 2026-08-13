@@ -49,7 +49,7 @@ services:
     volumes:
       - chroma_data:/chroma/chroma
     healthcheck:
-      test: ["CMD-SHELL", "bash -c 'cat < /dev/null > /dev/tcp/localhost/8000' || exit 1"]
+      test: ["CMD-SHELL", "perl -e 'use Socket; socket(S, PF_INET, SOCK_STREAM, getprotobyname(\"tcp\")); connect(S, sockaddr_in(8000, inet_aton(\"127.0.0.1\"))) or exit(1);'"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -70,10 +70,10 @@ services:
     volumes:
       - minio_data:/data
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
-      interval: 30s
-      timeout: 20s
-      retries: 3
+      test: ["CMD-SHELL", "curl -f http://localhost:9000/minio/health/live || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   web:
     build:
@@ -81,7 +81,7 @@ services:
       dockerfile: Dockerfile
     container_name: gunicorn
     restart: unless-stopped
-    dns:           
+    dns:
       - 8.8.8.8
       - 1.1.1.1
     env_file:
@@ -100,10 +100,11 @@ services:
         condition: service_healthy
     command: >
       sh -c "python3 ReadAndQues/manage.py migrate &&
+             python3 ReadAndQues/manage.py migrate_non_sql &&
              python3 ReadAndQues/manage.py collectstatic --noinput &&
              gunicorn --config /app/gunicorn.conf.py --chdir /app/ReadAndQues ReadAndQues.wsgi:application"
     healthcheck:
-      test: ["CMD-SHELL", "python3 -c \"import urllib.request; urllib.request.urlopen('http://localhost:8000/')\" || exit 1"]
+      test: ["CMD-SHELL", "curl -f http://localhost:8000/ || exit 1"]
       interval: 10s
       timeout: 5s
       retries: 5
