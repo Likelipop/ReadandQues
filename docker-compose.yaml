@@ -104,7 +104,7 @@ services:
              python3 ReadAndQues/manage.py collectstatic --noinput &&
              gunicorn --config /app/gunicorn.conf.py --chdir /app/ReadAndQues ReadAndQues.wsgi:application"
     healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:8000/ || exit 1"]
+      test: ["CMD-SHELL", "python3 -c \"import urllib.request; urllib.request.urlopen('http://localhost:8000/')\" || exit 1"]
       interval: 10s
       timeout: 5s
       retries: 5
