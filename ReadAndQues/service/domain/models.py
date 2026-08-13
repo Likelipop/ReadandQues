@@ -54,6 +54,7 @@ class Status(str, Enum):
     FAILED = "failed"
 
     # Backward compatibility aliases
+    CRAWLING = "pending"
     IN_PROGRESS = "processing"
     PENDING_GENERATION = "pending"
 
