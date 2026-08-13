@@ -70,6 +70,8 @@ def check_merge_markers() -> None:
 
 
 def isolated_tests() -> None:
+    environment = os.environ.copy()
+    environment.setdefault("DJANGO_SETTINGS_MODULE", "ReadAndQues.settings")
     run(
         "legacy characterization tests",
         [
@@ -85,6 +87,7 @@ def isolated_tests() -> None:
             "service.tests.test_operations_cutover",
         ],
         cwd=DJANGO_ROOT,
+        env=environment,
     )
 
 
