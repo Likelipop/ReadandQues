@@ -53,6 +53,10 @@ class Status(str, Enum):
     COMPLETED = "completed"
     FAILED = "failed"
 
+    # Backward compatibility aliases
+    IN_PROGRESS = "processing"
+    PENDING_GENERATION = "pending"
+
 
 class ThemeCategory(str, Enum):
     GENERAL = "General"
