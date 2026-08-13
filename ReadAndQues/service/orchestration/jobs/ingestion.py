@@ -219,7 +219,7 @@ def ingest_single_to_bronze(article_id: str, url: str):
         logger.error(f"[ingestion] Single crawl failed for {url}: {error_msg}")
         pipeline_repo.update_ai_status(article_id, Status.FAILED, error_msg)
         pipeline_repo.insert_log(stage="ingest_bronze", status="failed", message=error_msg, url=url)
-        return {"bronze_docs": [], "bronze_ids": []}
+        return {"bronze_docs": [], "bronze_ids": [], "status": "failed", "error": error_msg}
 
     bronze_meta: Dict[str, Any] = {
         "article_id": article_id,

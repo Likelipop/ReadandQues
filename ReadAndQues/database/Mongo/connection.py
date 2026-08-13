@@ -22,21 +22,26 @@ def get_mongo_client() -> MongoClient:
     """Return singleton MongoClient with connect=False lazy initialization."""
     global _mongo_client
     if _mongo_client is None:
-        uri = getattr(
-            settings,
-            "MONGO_URI",
-            os.getenv(
+        try:
+            uri = settings.MONGO_URI if settings.configured else os.getenv(
                 "MONGO_URI",
                 "mongodb://admin:changeme@localhost:27017/articlesDB?authSource=admin",
-            ),
-        )
+            )
+        except Exception:
+            uri = os.getenv(
+                "MONGO_URI",
+                "mongodb://admin:changeme@localhost:27017/articlesDB?authSource=admin",
+            )
         _mongo_client = MongoClient(uri, serverSelectionTimeoutMS=5000, connect=False)
     return _mongo_client
 
 
 def get_mongo_db():
     """Return default MongoDB database instance."""
-    db_name = getattr(settings, "MONGO_DB_NAME", os.getenv("MONGO_DB_NAME", "articlesDB"))
+    try:
+        db_name = settings.MONGO_DB_NAME if settings.configured else os.getenv("MONGO_DB_NAME", "articlesDB")
+    except Exception:
+        db_name = os.getenv("MONGO_DB_NAME", "articlesDB")
     return get_mongo_client()[db_name]
 
 
