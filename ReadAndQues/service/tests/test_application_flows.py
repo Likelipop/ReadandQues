@@ -3,6 +3,7 @@
 from unittest import TestCase
 from unittest.mock import Mock, patch
 
+import service.orchestration.pipes  # noqa: F401
 from service.domain.enums import AIStatus, ArticleStage
 from service.orchestration.jobs.enrichment import process_single_article
 from service.orchestration.jobs.paraphrase import run_paraphrase_llm
@@ -10,18 +11,18 @@ from service.orchestrator import OrchestrationFacade
 
 
 class SingleArticleWorkflowTests(TestCase):
-    @patch("service.orchestration.jobs.enrichment.crawl_article_content")
-    @patch("database.Minio.crud.save_bronze_html")
-    @patch("database.Minio.crud.save_bronze_meta")
+    @patch("service.orchestration.jobs.ingestion.crawl_article_content")
+    @patch("service.repositories.content_repository.ContentRepository.save_bronze_html")
+    @patch("service.repositories.content_repository.ContentRepository.save_bronze_meta")
     @patch("service.orchestration.jobs.processing._clean_and_validate")
-    @patch("database.Minio.crud.save_silver_clean")
-    @patch("service.orchestration.jobs.enrichment.update_article_stage")
-    @patch("service.orchestration.jobs.enrichment.update_ai_status")
-    @patch("service.orchestration.jobs.enrichment.update_article_title")
+    @patch("service.repositories.content_repository.ContentRepository.save_silver_clean")
+    @patch("service.repositories.pipeline_repository.PipelineRepository.update_article_stage")
+    @patch("service.repositories.pipeline_repository.PipelineRepository.update_ai_status")
+    @patch("service.repositories.pipeline_repository.PipelineRepository.update_article_title")
     @patch("service.orchestration.jobs.enrichment._run_question_generator")
-    @patch("service.orchestration.jobs.enrichment.save_gold_enriched")
-    @patch("service.orchestration.jobs.enrichment.save_exam")
-    @patch("service.orchestration.jobs.enrichment.add_article_vector")
+    @patch("service.repositories.content_repository.ContentRepository.save_gold_enriched")
+    @patch("service.repositories.pipeline_repository.PipelineRepository.save_exam")
+    @patch("service.repositories.search_repository.SearchRepository.index_article_vector")
     def test_successful_workflow(
         self, mock_add_vector, mock_save_exam, mock_save_gold, mock_run_ai,
         mock_update_title, mock_update_ai, mock_update_stage, mock_save_silver,
@@ -57,8 +58,8 @@ class SingleArticleWorkflowTests(TestCase):
             genre="scientific",
         )
 
-    @patch("service.orchestration.jobs.enrichment.crawl_article_content")
-    @patch("service.orchestration.jobs.enrichment.update_ai_status")
+    @patch("service.orchestration.jobs.ingestion.crawl_article_content")
+    @patch("service.repositories.pipeline_repository.PipelineRepository.update_ai_status")
     def test_crawl_failure_stops_workflow(self, mock_update_ai, mock_crawl):
         mock_crawl.return_value = {"success": False, "error": "unreachable"}
 
@@ -73,10 +74,7 @@ class OrchestratorTests(TestCase):
     @patch("service.orchestrator.get_pipe")
     def test_article_task_delegates_to_registered_single_article_pipe(self, mock_get_pipe):
         pipe = Mock()
-        pipe.invoke.return_value = {
-            "status": "completed",
-            "results": {"process_single_article": {"status": "completed"}},
-        }
+        pipe.invoke.return_value = {"status": "completed"}
         mock_get_pipe.return_value = pipe
 
         result = OrchestrationFacade.execute_article_task("article-3", "https://example.com/c")
@@ -87,20 +85,20 @@ class OrchestratorTests(TestCase):
         )
         self.assertEqual(result, {"status": "completed"})
 
-    @patch("service.orchestrator.get_article_document_by_id")
-    @patch("database.Minio.crud.read_silver_clean")
+    @patch("service.repositories.pipeline_repository.PipelineRepository.get_article_index")
+    @patch("service.repositories.content_repository.ContentRepository.read_silver_clean")
     @patch("service.ai_core.graphs.question_generator.graph.app.invoke")
-    @patch("database.Minio.crud.save_gold_enriched")
-    @patch("database.Mongo.exams.save_exam")
-    @patch("database.Mongo.article_index.update_article_stage")
-    @patch("service.orchestrator.update_ai_status")
-    @patch("database.Chroma.operations.add_article_vector")
+    @patch("service.repositories.content_repository.ContentRepository.save_gold_enriched")
+    @patch("service.repositories.pipeline_repository.PipelineRepository.save_exam")
+    @patch("service.repositories.pipeline_repository.PipelineRepository.update_article_stage")
+    @patch("service.repositories.pipeline_repository.PipelineRepository.update_ai_status")
+    @patch("service.repositories.search_repository.SearchRepository.index_article_vector")
     def test_ai_only_task_updates_article_and_vector_index(
         self, mock_add_vector, mock_update_ai, mock_update_stage, mock_save_exam,
         mock_save_gold, mock_invoke, mock_read_silver, mock_get_article
     ):
         mock_get_article.return_value = {"title": "Title", "url": "https://url.com"}
-        mock_read_silver.return_value = {"original_text": "Original text"}
+        mock_read_silver.return_value = {"original_text": "Original text", "title": "Title", "url": "https://url.com"}
         mock_invoke.return_value = {
             "semantic_analysis": {
                 "theme": "Culture",

@@ -244,14 +244,16 @@ class SearchRepository:
     @db_safe(default_return=False)
     def index_article_vector(
         self,
-        article_id: str,
-        summary: str,
-        title: str,
+        article_id: str = "",
+        summary: str = "",
+        title: str = "",
         url: str = "",
         theme: str = "General",
         genre: str = "general",
+        gold_id: Optional[str] = None,
     ) -> bool:
-        return add_article_vector(article_id, summary, title, url, theme, genre)
+        aid = gold_id or article_id
+        return add_article_vector(aid, summary, title, url, theme, genre)
 
     @db_safe(default_return=False)
     def index_article_chunks(

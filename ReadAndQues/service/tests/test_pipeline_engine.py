@@ -19,6 +19,19 @@ class RegistryCharacterizationTests(TestCase):
     def tearDown(self):
         registry._JOBS.clear()
         registry._PIPES.clear()
+        import importlib
+        import service.orchestration.jobs.ingestion
+        import service.orchestration.jobs.processing
+        import service.orchestration.jobs.enrichment
+        import service.orchestration.jobs.maintenance
+        import service.orchestration.jobs.paraphrase
+        import service.orchestration.pipes
+        importlib.reload(service.orchestration.jobs.ingestion)
+        importlib.reload(service.orchestration.jobs.processing)
+        importlib.reload(service.orchestration.jobs.enrichment)
+        importlib.reload(service.orchestration.jobs.maintenance)
+        importlib.reload(service.orchestration.jobs.paraphrase)
+        importlib.reload(service.orchestration.pipes)
 
     def test_job_decorator_registers_callable_and_metadata(self):
         @registry.job("sum", inputs=["left", "right"], outputs=["total"])

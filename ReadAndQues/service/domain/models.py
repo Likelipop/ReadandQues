@@ -53,6 +53,11 @@ class Status(str, Enum):
     COMPLETED = "completed"
     FAILED = "failed"
 
+    # Backward compatibility aliases
+    CRAWLING = "pending"
+    IN_PROGRESS = "processing"
+    PENDING_GENERATION = "pending"
+
 
 class ThemeCategory(str, Enum):
     GENERAL = "General"
@@ -141,6 +146,10 @@ class Article(BaseModel):
         """Ensure id alias is always populated from article_id."""
         if not self.id and self.article_id:
             self.id = self.article_id
+
+    @property
+    def ai_status(self) -> Status:
+        return self.status
 
 
 # ── 5. User Interaction Models ────────────────────────────────────────────────

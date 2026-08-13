@@ -93,3 +93,13 @@ execute_article_pipeline_task = OrchestrationFacade.execute_article_task
 run_article_pipeline_async = OrchestrationFacade.run_article_pipeline_async
 run_ai_only_pipeline_async = OrchestrationFacade.run_ai_only_pipeline_async
 run_daily_pipeline = OrchestrationFacade.run_daily_pipeline
+
+
+def update_ai_status(*args, **kwargs):
+    from service.repositories.pipeline_repository import PipelineRepository
+    return PipelineRepository().update_ai_status(*args, **kwargs)
+
+
+def get_article_document_by_id(*args, **kwargs):
+    from service.repositories.pipeline_repository import PipelineRepository
+    return PipelineRepository().get_article_index(*args, **kwargs)

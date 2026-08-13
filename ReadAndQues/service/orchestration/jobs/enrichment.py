@@ -191,3 +191,46 @@ def fetch_single_silver(article_id: str):
     logger.info(f"[enrichment] Fetched single silver item: {article_id}")
     return {"silver_items": [item]}
 
+
+def process_single_article(article_id: str, url: str):
+    """Legacy helper function for running single article pipeline."""
+    from service.orchestration.pipes import single_article_pipe
+    from service.repositories.pipeline_repository import PipelineRepository
+    res = single_article_pipe.invoke(article_id=article_id, url=url)
+
+    for job_res in res.get("results", {}).values():
+        if isinstance(job_res, dict) and job_res.get("status") == "failed":
+            return {"status": "failed", "error": job_res.get("error", "Failed"), "article_id": article_id}
+
+    idx = PipelineRepository().get_article_index(article_id) or {}
+    if idx.get("ai_status") == "failed" or idx.get("status") == "failed":
+        return {"status": "failed", "error": idx.get("error_message", "Failed"), "article_id": article_id}
+
+    if res.get("status") == "completed":
+        return {"status": "completed", "article_id": article_id}
+    return {"status": "failed", "error": res.get("error", "Failed")}
+
+
+def update_article_stage(*args, **kwargs):
+    return PipelineRepository().update_article_stage(*args, **kwargs)
+
+
+def update_ai_status(*args, **kwargs):
+    return PipelineRepository().update_ai_status(*args, **kwargs)
+
+
+def update_article_title(*args, **kwargs):
+    return PipelineRepository().update_article_title(*args, **kwargs)
+
+
+def save_gold_enriched(*args, **kwargs):
+    return ContentRepository().save_gold_enriched(*args, **kwargs)
+
+
+def save_exam(*args, **kwargs):
+    return PipelineRepository().save_exam(*args, **kwargs)
+
+
+def add_article_vector(*args, **kwargs):
+    return SearchRepository().index_article_vector(*args, **kwargs)
+
