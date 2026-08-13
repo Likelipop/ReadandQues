@@ -36,7 +36,8 @@ class OperationsCutoverTests(TestCase):
         self.assertEqual(attempt.score, 8)
         self.assertEqual(attempt.article_id, "art_456")
 
-    def test_attempt_repository_save(self):
+    @patch("service.models.ExamAttemptLog.objects.create")
+    def test_attempt_repository_save(self, mock_create):
         repo = AttemptRepository()
         contract = ExamAttemptContract(
             user_id=1,
@@ -44,7 +45,8 @@ class OperationsCutoverTests(TestCase):
             score=5,
             total_questions=5,
         )
-        with patch.object(repo.coll, "insert_one") as mock_insert:
-            mock_insert.return_value = Mock(inserted_id="507f1f77bcf86cd799439011")
-            inserted = repo.save_attempt(contract)
-            self.assertEqual(inserted, "507f1f77bcf86cd799439011")
+        mock_log = Mock()
+        mock_log.attempt_id = "att_100"
+        mock_create.return_value = mock_log
+        inserted = repo.save_attempt(contract)
+        self.assertTrue(inserted.startswith("att_"))

@@ -191,3 +191,12 @@ def fetch_single_silver(article_id: str):
     logger.info(f"[enrichment] Fetched single silver item: {article_id}")
     return {"silver_items": [item]}
 
+
+def process_single_article(article_id: str, url: str):
+    """Legacy helper function for running single article pipeline."""
+    from service.orchestration.pipes import single_article_pipe
+    res = single_article_pipe.invoke(article_id=article_id, url=url)
+    if res.get("status") == "completed":
+        return {"status": "completed", "article_id": article_id}
+    return {"status": "failed", "error": res.get("error", "Failed")}
+
