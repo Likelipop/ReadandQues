@@ -20,5 +20,6 @@ dependencies = [
     "newspaper3k>=0.2.8",
     "resend>=2.0.0",
     "minio>=7.2.14",
+    "pypdf>=6.16.0",
 ]
 
