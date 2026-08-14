@@ -1,0 +1,118 @@
+{% extends "homepage/base.html" %}
+
+{% block title %}All Reading Tests - ReadAndQues{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto px-4 py-8">
+    <!-- Header & Search Info -->
+    <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8 border-b border-slate-200 pb-6">
+        <div>
+            <h1 class="text-2xl md:text-3xl font-black text-slate-900 tracking-tight">
+                {% if search_query %}
+                    Search Results for "<span class="text-blue-600">{{ search_query }}</span>"
+                {% else %}
+                    Explore Reading Tests
+                {% endif %}
+            </h1>
+            <p class="text-sm text-slate-500 mt-1">
+                Select an article below to start your IELTS-style reading practice and quiz.
+            </p>
+        </div>
+
+        {% if search_query %}
+            <a href="{% url 'readspace:all_tests' %}" class="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-lg transition shrink-0">
+                <span>✕</span> Clear Search
+            </a>
+        {% endif %}
+    </div>
+
+    <!-- Category Filter Tabs -->
+    <div class="flex flex-wrap items-center gap-2 mb-8 bg-slate-50 p-3 rounded-2xl border border-slate-200">
+        <span class="text-xs font-bold text-slate-500 uppercase px-2">Theme:</span>
+        {% for theme in themes %}
+            <a href="?theme={{ theme }}{% if selected_genre != 'All' %}&genre={{ selected_genre }}{% endif %}{% if search_query %}&q={{ search_query }}{% endif %}" 
+               class="px-3 py-1.5 rounded-full text-xs font-bold transition {% if selected_theme == theme %}bg-blue-600 text-white shadow-sm{% else %}bg-white text-slate-600 hover:bg-slate-200/70{% endif %}">
+                {{ theme }}
+            </a>
+        {% endfor %}
+    </div>
+
+    <!-- Article Cards Grid -->
+    {% if page_obj %}
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-12">
+            {% for item in page_obj %}
+                <div class="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm hover:shadow-md transition flex flex-col justify-between group">
+                    <div class="p-6">
+                        <div class="flex items-center justify-between gap-2 text-xs mb-3">
+                            <span class="bg-blue-50 text-blue-700 px-2.5 py-1 rounded-md font-bold uppercase tracking-wider text-[10px]">
+                                {{ item.source_name|default:"Article" }}
+                            </span>
+                            {% if item.has_attempted %}
+                                <span class="bg-green-100 text-green-700 px-2 py-0.5 rounded-full text-[10px] font-bold">Completed</span>
+                            {% endif %}
+                        </div>
+
+                        <h3 class="font-bold text-lg text-slate-900 group-hover:text-blue-600 transition line-clamp-2 mb-2">
+                            {{ item.title }}
+                        </h3>
+
+                        <p class="text-xs text-slate-500 line-clamp-3 mb-4 leading-relaxed">
+                            {{ item.summary|default:"No summary available yet."|truncatewords:25 }}
+                        </p>
+                    </div>
+
+                    <div class="p-6 pt-0 border-t border-slate-100 mt-auto flex items-center justify-between">
+                        <span class="text-xs text-slate-400 font-medium">
+                            {{ item.word_count|default:"---" }} words
+                        </span>
+
+                        <a href="{% url 'readspace:readspace_detail' item.id %}" 
+                           class="inline-flex items-center gap-1.5 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs px-4 py-2 rounded-xl transition shadow-sm">
+                            <span>Start Test</span>
+                            <span>→</span>
+                        </a>
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+
+        <!-- Pagination -->
+        {% if page_obj.has_other_pages %}
+            <div class="flex items-center justify-center gap-2 mt-8">
+                {% if page_obj.has_previous %}
+                    <a href="?page={{ page_obj.previous_page_number }}{% if selected_theme != 'All' %}&theme={{ selected_theme }}{% endif %}{% if search_query %}&q={{ search_query }}{% endif %}" 
+                       class="px-4 py-2 rounded-lg bg-white border border-slate-200 text-slate-700 text-xs font-bold hover:bg-slate-50 transition">
+                        Previous
+                    </a>
+                {% endif %}
+
+                <span class="text-xs font-medium text-slate-500 px-3">
+                    Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}
+                </span>
+
+                {% if page_obj.has_next %}
+                    <a href="?page={{ page_obj.next_page_number }}{% if selected_theme != 'All' %}&theme={{ selected_theme }}{% endif %}{% if search_query %}&q={{ search_query }}{% endif %}" 
+                       class="px-4 py-2 rounded-lg bg-white border border-slate-200 text-slate-700 text-xs font-bold hover:bg-slate-50 transition">
+                        Next
+                    </a>
+                {% endif %}
+            </div>
+        {% endif %}
+    {% else %}
+        <div class="bg-slate-50 rounded-2xl border border-slate-200 p-12 text-center max-w-lg mx-auto my-12">
+            <span class="text-4xl mb-3 block">🔎</span>
+            <h3 class="font-bold text-slate-800 text-lg mb-1">No Tests Found</h3>
+            <p class="text-xs text-slate-500 mb-6">
+                {% if search_query %}
+                    We couldn't find any reading tests matching "{{ search_query }}". Try searching another topic or paste a news URL directly into the top search bar!
+                {% else %}
+                    No reading tests available in this category yet.
+                {% endif %}
+            </p>
+            <a href="{% url 'home' %}" class="inline-flex items-center gap-1 bg-blue-600 text-white font-bold text-xs px-5 py-2.5 rounded-xl hover:bg-blue-700 transition">
+                Return Home
+            </a>
+        </div>
+    {% endif %}
+</div>
+{% endblock %}

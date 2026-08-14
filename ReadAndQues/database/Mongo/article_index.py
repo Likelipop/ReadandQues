@@ -108,3 +108,26 @@ def list_completed_articles(limit: int = 100) -> List[dict]:
         .limit(limit)
     )
     return list(cursor)
+
+
+def search_article_index_by_text(query: str, limit: int = 10) -> List[dict]:
+    """Search completed articles in article_index by title, source_name, or url using regex."""
+    import re
+    query_str = (query or "").strip()
+    if not query_str:
+        return []
+    regex = re.compile(re.escape(query_str), re.IGNORECASE)
+    cursor = (
+        _coll()
+        .find({
+            "ai_status": "completed",
+            "$or": [
+                {"title": regex},
+                {"source_name": regex},
+                {"url": regex},
+            ]
+        })
+        .sort("created_at", DESCENDING)
+        .limit(limit)
+    )
+    return list(cursor)

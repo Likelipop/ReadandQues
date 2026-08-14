@@ -9,126 +9,161 @@ document.addEventListener('DOMContentLoaded', function() {
     const btnBm25 = document.getElementById('btn-mode-bm25');
     const btnAi = document.getElementById('btn-mode-ai');
     const icon = document.getElementById('omni-icon');
+    const form = document.getElementById('omni-search-form');
 
     if (!input) return;
+
+    // Intercept native form submit — JS handles all search/import logic
+    if (form) {
+        form.addEventListener('submit', function(e) {
+            e.preventDefault();
+            const text = input.value.trim();
+            if (!text) return;
+            if (isUrl(text)) {
+                performImport(text);
+            } else {
+                // Navigate to all-tests with keyword search query
+                const action = form.getAttribute('action') || '/readspace/all-tests/';
+                window.location.href = `${action}?q=${encodeURIComponent(text)}`;
+            }
+        });
+    }
 
     // State
     let searchMode = 'bm25'; // 'bm25' or 'ai'
     let typingTimer;
-    const typingInterval = 500;
-    
-    // Regex for URL matching
-    const urlPattern = /^(https?:\/\/)?([\w.-]+)(:\d+)?(\/[\w\.-]*)*\/?(\?.*)?(#.*)?$/i;
+    const typingInterval = 400;
 
     function isUrl(text) {
-        // Basic check if it looks like a URL. 
-        // We ensure it starts with http or has a domain-like structure
         return /^(https?:\/\/)/i.test(text) || /^www\./i.test(text);
     }
 
     // Toggle logic
     function setMode(mode) {
         searchMode = mode;
-        if (mode === 'bm25') {
-            btnBm25.className = 'px-2 py-0.5 text-[10px] font-bold rounded-full bg-blue-100 text-blue-700 transition';
-            btnAi.className = 'px-2 py-0.5 text-[10px] font-bold rounded-full bg-transparent text-slate-500 hover:bg-slate-100 transition';
-        } else {
-            btnAi.className = 'px-2 py-0.5 text-[10px] font-bold rounded-full bg-indigo-100 text-indigo-700 transition';
-            btnBm25.className = 'px-2 py-0.5 text-[10px] font-bold rounded-full bg-transparent text-slate-500 hover:bg-slate-100 transition';
+        if (btnBm25 && btnAi) {
+            if (mode === 'bm25') {
+                btnBm25.className = 'px-2 py-0.5 text-[10px] font-bold rounded-full bg-blue-100 text-blue-700 transition';
+                btnAi.className = 'px-2 py-0.5 text-[10px] font-bold rounded-full bg-transparent text-slate-500 hover:bg-slate-100 transition';
+            } else {
+                btnAi.className = 'px-2 py-0.5 text-[10px] font-bold rounded-full bg-indigo-100 text-indigo-700 transition';
+                btnBm25.className = 'px-2 py-0.5 text-[10px] font-bold rounded-full bg-transparent text-slate-500 hover:bg-slate-100 transition';
+            }
         }
         if (input.value.trim() && !isUrl(input.value.trim())) {
-            performSearch(input.value.trim());
+            performSearch(input.value.trim(), false);
         }
     }
 
-    btnBm25.addEventListener('click', (e) => { e.preventDefault(); setMode('bm25'); });
-    btnAi.addEventListener('click', (e) => { e.preventDefault(); setMode('ai'); });
+    if (btnBm25) btnBm25.addEventListener('click', (e) => { e.preventDefault(); setMode('bm25'); });
+    if (btnAi) btnAi.addEventListener('click', (e) => { e.preventDefault(); setMode('ai'); });
 
     // Show toast
     function showToast(message, isError = true) {
+        if (!toast) return;
         toast.textContent = message;
         toast.className = `absolute top-full mt-2 left-0 right-0 z-50 text-xs font-semibold px-3 py-2 rounded-lg border shadow-lg ${isError ? 'bg-red-50 text-red-600 border-red-200' : 'bg-green-50 text-green-600 border-green-200'}`;
         toast.classList.remove('hidden');
         setTimeout(() => toast.classList.add('hidden'), 5000);
     }
 
-    // Input handler (Debounced)
+    // Input handler (Debounced live search dropdown)
     input.addEventListener('input', function(e) {
         clearTimeout(typingTimer);
         const text = input.value.trim();
-        toast.classList.add('hidden');
+        if (toast) toast.classList.add('hidden');
         
         if (!text) {
-            dropdown.classList.add('hidden');
-            toggleContainer.classList.add('hidden');
-            icon.textContent = '🔍';
+            if (dropdown) dropdown.classList.add('hidden');
+            if (toggleContainer) toggleContainer.classList.add('hidden');
+            if (icon) icon.textContent = '🔍';
             return;
         }
 
         if (isUrl(text)) {
             // URL Mode (Import)
-            icon.textContent = '🔗';
-            toggleContainer.classList.add('hidden');
-            dropdown.classList.add('hidden');
+            if (icon) icon.textContent = '🔗';
+            if (toggleContainer) toggleContainer.classList.add('hidden');
+            if (dropdown) dropdown.classList.add('hidden');
         } else {
             // Text Mode (Search)
-            icon.textContent = '🔎';
-            toggleContainer.classList.remove('hidden');
-            typingTimer = setTimeout(() => performSearch(text), typingInterval);
+            if (icon) icon.textContent = '🔎';
+            if (toggleContainer) toggleContainer.classList.remove('hidden');
+            typingTimer = setTimeout(() => performSearch(text, false), typingInterval);
         }
     });
 
-    // Enter Key Handler (For Import)
-    input.addEventListener('keypress', function(e) {
+    // Keydown Enter Handler (Immediate action on Enter key)
+    input.addEventListener('keydown', function(e) {
         if (e.key === 'Enter') {
             e.preventDefault();
+            clearTimeout(typingTimer);
             const text = input.value.trim();
+            if (!text) return;
+
             if (isUrl(text)) {
                 performImport(text);
+            } else {
+                // If results are already loaded in dropdown and dropdown is open, navigate to top result
+                const firstResult = resultsList ? resultsList.querySelector('a') : null;
+                if (firstResult && dropdown && !dropdown.classList.contains('hidden')) {
+                    window.location.href = firstResult.href;
+                } else {
+                    // Otherwise execute search immediately and auto-navigate to best match
+                    performSearch(text, true);
+                }
             }
         }
     });
 
-    // Search function
-    function performSearch(query) {
-        spinner.classList.remove('hidden');
+    // Search function with optional auto-navigate on Enter
+    function performSearch(query, autoNavigate = false) {
+        if (spinner) spinner.classList.remove('hidden');
         const endpoint = searchMode === 'bm25' ? '/readspace/api/search/keyword/' : '/readspace/api/search/semantic/';
         
         fetch(`${endpoint}?q=${encodeURIComponent(query)}`)
             .then(r => r.json())
             .then(data => {
-                spinner.classList.add('hidden');
+                if (spinner) spinner.classList.add('hidden');
                 if (data.status === 'success') {
-                    renderResults(data.results);
+                    if (autoNavigate && data.results && data.results.length > 0) {
+                        window.location.href = `/readspace/${data.results[0].id}/`;
+                    } else {
+                        renderResults(data.results, query);
+                    }
                 } else {
                     showToast(data.message || 'Error searching', true);
                 }
             })
             .catch(err => {
-                spinner.classList.add('hidden');
+                if (spinner) spinner.classList.add('hidden');
                 showToast('Network error while searching.', true);
             });
     }
 
-    function renderResults(results) {
+    function renderResults(results, query) {
+        if (!resultsList || !dropdown) return;
         resultsList.innerHTML = '';
+
         if (results.length === 0) {
-            resultsList.innerHTML = '<div class="p-4 text-center text-sm text-slate-500">No results found.</div>';
+            resultsList.innerHTML = `<div class="p-4 text-center text-sm text-slate-500">No articles found matching "${query}".</div>`;
         } else {
             results.forEach(res => {
                 const a = document.createElement('a');
                 a.href = `/readspace/${res.id}/`;
-                a.className = 'block p-3 border-b border-slate-100 hover:bg-slate-50 transition';
+                a.className = 'block p-3 border-b border-slate-100 hover:bg-blue-50 transition group';
                 
                 const titleDiv = document.createElement('div');
-                titleDiv.className = 'font-bold text-slate-800 text-sm mb-1 line-clamp-1';
+                titleDiv.className = 'font-bold text-slate-800 text-sm mb-1 line-clamp-1 group-hover:text-blue-600';
                 titleDiv.textContent = res.title;
                 
                 const metaDiv = document.createElement('div');
                 metaDiv.className = 'flex items-center gap-2 text-xs text-slate-400 mb-1';
                 
                 let metaHtml = `<span class="bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded uppercase font-bold text-[10px]">${res.source}</span>`;
-                metaHtml += `<span>${res.date}</span>`;
+                if (res.date) {
+                    metaHtml += `<span>${res.date}</span>`;
+                }
                 if (res.similarity !== undefined) {
                     metaHtml += `<span class="text-indigo-500 font-semibold flex items-center gap-0.5"><svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>${res.similarity}%</span>`;
                 }
@@ -136,11 +171,11 @@ document.addEventListener('DOMContentLoaded', function() {
 
                 const snippetDiv = document.createElement('div');
                 snippetDiv.className = 'text-xs text-slate-500 line-clamp-2';
-                snippetDiv.textContent = res.snippet;
+                snippetDiv.textContent = res.snippet || '';
                 
                 a.appendChild(titleDiv);
                 a.appendChild(metaDiv);
-                a.appendChild(snippetDiv);
+                if (res.snippet) a.appendChild(snippetDiv);
                 resultsList.appendChild(a);
             });
         }
@@ -150,11 +185,11 @@ document.addEventListener('DOMContentLoaded', function() {
     // Import function
     function performImport(url) {
         input.disabled = true;
-        spinner.classList.remove('hidden');
-        dropdown.classList.add('hidden');
+        if (spinner) spinner.classList.remove('hidden');
+        if (dropdown) dropdown.classList.add('hidden');
 
-        // Need CSRF
-        const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+        const csrfTokenEl = document.querySelector('[name=csrfmiddlewaretoken]');
+        const csrfToken = csrfTokenEl ? csrfTokenEl.value : '';
         const formData = new URLSearchParams();
         formData.append('url', url);
 
@@ -174,19 +209,19 @@ document.addEventListener('DOMContentLoaded', function() {
             } else {
                 showToast(data.message || 'Error importing article', true);
                 input.disabled = false;
-                spinner.classList.add('hidden');
+                if (spinner) spinner.classList.add('hidden');
             }
         })
         .catch(err => {
             showToast('Network error. Please try again.', true);
             input.disabled = false;
-            spinner.classList.add('hidden');
+            if (spinner) spinner.classList.add('hidden');
         });
     }
 
     // Close dropdown on click outside
     document.addEventListener('click', (e) => {
-        if (!omniContainer.contains(e.target)) {
+        if (omniContainer && !omniContainer.contains(e.target) && dropdown) {
             dropdown.classList.add('hidden');
         }
     });

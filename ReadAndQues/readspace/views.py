@@ -83,6 +83,7 @@ def import_article_view(request):
 
 
 @require_POST
+@csrf_exempt
 @api_error_handler
 def trigger_quiz(request, pk):
     success = trigger_article_quiz(pk)
@@ -103,12 +104,19 @@ def article_status(request, pk):
 
 
 @require_GET
+@never_cache
 def all_tests_view(request):
+    """Lists completed tests with category, genre, and search filtering."""
+    query = request.GET.get("q", "").strip()
     selected_theme = request.GET.get("theme", "All")
     selected_genre = request.GET.get("genre", "All")
-
     user_id = request.user.id if request.user.is_authenticated else None
-    articles = get_all_tests(theme=selected_theme, genre=selected_genre, user_id=user_id)
+
+    try:
+        articles = get_all_tests(theme=selected_theme, genre=selected_genre, user_id=user_id, search_query=query)
+    except Exception as exc:
+        logger.exception("Error loading tests in all_tests_view: %s", exc)
+        articles = []
 
     themes = ["All", "Economy", "Society", "Education", "Technology", "Science", "Environment", "Culture", "Health", "General"]
     genres = ["All", "scientific", "narrative", "persuasive", "poetry", "general"]
@@ -123,6 +131,7 @@ def all_tests_view(request):
         "genres": genres,
         "selected_theme": selected_theme,
         "selected_genre": selected_genre,
+        "search_query": query,
     }
     return render(request, "readspace/all_tests.html", context)
 

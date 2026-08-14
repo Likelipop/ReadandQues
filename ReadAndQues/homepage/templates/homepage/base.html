@@ -57,8 +57,8 @@
             
             <!-- Global Omni Search Bar -->
             <div id="omni-search-container" class="w-full md:max-w-xl relative">
-                {% csrf_token %}
-                <div class="relative flex items-center">
+                <form id="omni-search-form" action="{% url 'readspace:all_tests' %}" method="GET" class="relative flex items-center w-full">
+                    {% csrf_token %}
                     <span id="omni-icon" class="absolute left-4 text-slate-400 text-lg">🔍</span>
                     <input type="text" name="q" id="omni-input" autocomplete="off"
                            placeholder="Paste URL to import, or type to search..." 
@@ -74,7 +74,7 @@
                     <div id="omni-spinner" class="absolute right-4 hidden">
                         <div class="h-5 w-5 rounded-full border-2 border-blue-600 border-t-transparent animate-spin"></div>
                     </div>
-                </div>
+                </form>
                 
                 <!-- Search Results Dropdown -->
                 <div id="omni-dropdown" class="absolute top-full mt-2 left-0 right-0 z-50 bg-white rounded-xl border border-slate-200 shadow-xl hidden flex-col overflow-hidden max-h-[400px] overflow-y-auto custom-scrollbar">
@@ -200,7 +200,7 @@
         </div>
     </footer>
 
-    <!-- Global Omni Search JS -->
-    <script src="/static/js/omni_search.js"></script>
+    <!-- Global Omni Search JS (Version 2.5) -->
+    <script src="/static/js/omni_search.js?v=2.5"></script>
 </body>
 </html>

@@ -43,7 +43,7 @@ def rebuild_index() -> None:
 
         docs = list(
             get_collection("article_index").find(
-                {"ai_status": "completed"},
+                {"title": {"$ne": ""}},
                 {"_id": 1, "title": 1},
             )
         )

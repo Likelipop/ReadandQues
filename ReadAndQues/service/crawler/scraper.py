@@ -312,15 +312,22 @@ def _extract_article(
 def crawl_article_content(url: str) -> dict[str, Any]:
     requested_url = url.strip()
     try:
-        _validate_public_http_url(requested_url)
+        from .pdf_parser import is_pdf_url_or_content, parse_pdf_bytes, resolve_arxiv_pdf_url
+
+        target_url = resolve_arxiv_pdf_url(requested_url) or requested_url
+
+        _validate_public_http_url(target_url)
+
+        is_pdf_path = (target_url.lower().split("?")[0]).endswith(".pdf") or "arxiv.org/pdf" in target_url.lower()
+
         response = fetch_response(
-            requested_url,
-            decode=True,
-            with_headers=True,  # To extract HTTP headers
+            target_url,
+            decode=not is_pdf_path,
+            with_headers=True,
             config=TRAFILATURA_CONFIG,
         )  
         if response is None:
-            raise CrawlError("DOWNLOAD_FAILED", "Could not download this article.")
+            raise CrawlError("DOWNLOAD_FAILED", "Could not download content from this URL.")
         status = int(response.status or 0)
         if status < 200 or status >= 300:
             raise CrawlError(
@@ -330,11 +337,10 @@ def crawl_article_content(url: str) -> dict[str, Any]:
         if response.url:
             from urllib.parse import urljoin
 
-            final_url = urljoin(requested_url, response.url)
+            final_url = urljoin(target_url, response.url)
         else:
-            final_url = requested_url
+            final_url = target_url
 
-        # Validate again after redirect
         _validate_public_http_url(final_url)
 
         headers = response.headers or {}
@@ -342,13 +348,29 @@ def crawl_article_content(url: str) -> dict[str, Any]:
             headers.get("content-type") or headers.get("Content-Type") or ""
         )
 
+        # Handle PDF documents (arXiv, paper PDFs, direct PDF links)
+        if is_pdf_url_or_content(final_url, content_type) or is_pdf_path:
+            raw_pdf_bytes = getattr(response, "data", None)
+            if not raw_pdf_bytes and hasattr(response, "html"):
+                raw_pdf_bytes = response.html.encode("utf-8") if isinstance(response.html, str) else response.html
+
+            if not raw_pdf_bytes:
+                raise CrawlError("DOWNLOAD_FAILED", "PDF paper content was empty.")
+
+            return parse_pdf_bytes(
+                pdf_bytes=raw_pdf_bytes,
+                requested_url=requested_url,
+                final_url=final_url,
+                http_status=status,
+            )
+
         if content_type and not any(
             allowed in content_type.lower()
             for allowed in ("text/html", "application/xhtml+xml")
         ):
             raise CrawlError(
                 "UNSUPPORTED_CONTENT",
-                "The URL did not return an HTML page.",
+                "The URL did not return an HTML page or PDF paper.",
             )
         html_content = response.html if response.html is not None else response.data
         if not html_content:

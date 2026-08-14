@@ -150,17 +150,23 @@ def save_to_gold(enriched_items: list):
             pipeline_repo.update_article_stage(article_id, ArticleStage.GOLD)
             pipeline_repo.update_ai_status(article_id, AIStatus.COMPLETED)
 
-            # 4. ChromaDB embedding
+            # 4. ChromaDB embedding (async non-blocking)
             summary = gold_doc["summary"] or gold_doc["title"]
             if summary:
-                search_repo.index_article_vector(
-                    gold_id=article_id,
-                    summary=summary,
-                    title=gold_doc["title"],
-                    url=gold_doc["url"],
-                    theme=gold_doc["theme"],
-                    genre=gold_doc["genre"],
-                )
+                import threading
+                def _index_vector():
+                    try:
+                        search_repo.index_article_vector(
+                            gold_id=article_id,
+                            summary=summary,
+                            title=gold_doc["title"],
+                            url=gold_doc["url"],
+                            theme=gold_doc["theme"],
+                            genre=gold_doc["genre"],
+                        )
+                    except Exception as ve:
+                        logger.warning(f"[enrichment] Vector indexing failed for {article_id}: {ve}")
+                threading.Thread(target=_index_vector, name=f"ChromaIndex-{article_id}", daemon=True).start()
 
             success_count += 1
             logger.info(f"[enrichment] Saved gold for {article_id}")

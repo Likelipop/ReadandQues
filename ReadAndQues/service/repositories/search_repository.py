@@ -101,25 +101,45 @@ class SearchRepository:
 
     @db_safe(default_return=[])
     def search_keyword(self, query: str, limit: int = 10) -> List[SearchResult]:
-        tokens = process_text_to_tokens(query)
-        if not tokens:
-            return []
-
-        bm25_hits = search_bm25(tokens, n=limit)
         results = []
-        for hit in bm25_hits:
-            article_id = hit["id"]
-            doc = get_article_index(article_id)
-            if doc:
-                date_val = doc.get("published_at", doc.get("created_at", ""))
-                date_str = date_val.strftime("%Y-%m-%d") if hasattr(date_val, "strftime") else ""
-                results.append(SearchResult(
-                    article_id=str(doc["_id"]),
-                    title=doc.get("title", "No Title"),
-                    source=doc.get("source_name", "Unknown"),
-                    date=date_str,
-                    score=hit.get("score", 0.0),
-                ))
+        seen_ids = set()
+
+        tokens = process_text_to_tokens(query)
+        if tokens:
+            bm25_hits = search_bm25(tokens, n=limit)
+            for hit in bm25_hits:
+                article_id = hit["id"]
+                doc = get_article_index(article_id)
+                if doc:
+                    date_val = doc.get("published_at", doc.get("created_at", ""))
+                    date_str = date_val.strftime("%Y-%m-%d") if hasattr(date_val, "strftime") else ""
+                    results.append(SearchResult(
+                        article_id=str(doc["_id"]),
+                        title=doc.get("title", "No Title"),
+                        source=doc.get("source_name", "Unknown"),
+                        date=date_str,
+                        score=hit.get("score", 0.0),
+                    ))
+                    seen_ids.add(str(doc["_id"]))
+
+        # Fallback / supplementary MongoDB regex search for partial matches
+        if len(results) < limit:
+            from database.Mongo.article_index import search_article_index_by_text
+            mongo_docs = search_article_index_by_text(query, limit=limit - len(results))
+            for doc in mongo_docs:
+                aid = str(doc["_id"])
+                if aid not in seen_ids:
+                    date_val = doc.get("published_at", doc.get("created_at", ""))
+                    date_str = date_val.strftime("%Y-%m-%d") if hasattr(date_val, "strftime") else ""
+                    results.append(SearchResult(
+                        article_id=aid,
+                        title=doc.get("title", "No Title"),
+                        source=doc.get("source_name", "Unknown"),
+                        date=date_str,
+                        score=0.5,
+                    ))
+                    seen_ids.add(aid)
+
         return results
 
     # ── Semantic Search ───────────────────────────────────────────────────
@@ -145,6 +165,10 @@ class SearchRepository:
                     similarity=similarity,
                     score=1.0 - distance / 2.0,
                 ))
+
+        if not results:
+            return self.search_keyword(query, limit=limit)
+
         return results
 
     # ── Hybrid Search (Reciprocal Rank Fusion) ────────────────────────────
