@@ -102,16 +102,45 @@ def article_status(request, pk):
     return JsonResponse(payload)
 
 
+def is_valid_url(text: str) -> bool:
+    if not text:
+        return False
+    t = text.strip()
+    return (
+        t.startswith("http://")
+        or t.startswith("https://")
+        or t.startswith("www.")
+        or ("." in t and "/" in t and not t.startswith(" "))
+    )
+
+
 @require_GET
 @never_cache
 def all_tests_view(request):
     """Lists completed tests with category, genre, and search filtering."""
-    selected_theme = request.GET.get("theme", "All")
-    selected_genre = request.GET.get("genre", "All")
     query = request.GET.get("q", "").strip()
 
+    # If user pasted a news/paper URL into search bar, import and redirect to Reading Space!
+    if query and is_valid_url(query):
+        url = query if (query.startswith("http://") or query.startswith("https://")) else f"https://{query}"
+        user_id = request.user.id if request.user.is_authenticated else 0
+        try:
+            article_id, _ = import_article(url, user_id=user_id)
+            if article_id:
+                return redirect("readspace:readspace_detail", pk=article_id)
+        except Exception as exc:
+            logger.error(f"Failed to auto-import URL from search bar: {exc}")
+            messages.error(request, f"Could not import article from URL: {url}")
+
+    selected_theme = request.GET.get("theme", "All")
+    selected_genre = request.GET.get("genre", "All")
     user_id = request.user.id if request.user.is_authenticated else None
-    articles = get_all_tests(theme=selected_theme, genre=selected_genre, user_id=user_id, search_query=query)
+
+    try:
+        articles = get_all_tests(theme=selected_theme, genre=selected_genre, user_id=user_id, search_query=query)
+    except Exception as exc:
+        logger.exception("Error loading tests in all_tests_view: %s", exc)
+        articles = []
 
     themes = ["All", "Economy", "Society", "Education", "Technology", "Science", "Environment", "Culture", "Health", "General"]
     genres = ["All", "scientific", "narrative", "persuasive", "poetry", "general"]

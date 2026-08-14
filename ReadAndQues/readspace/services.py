@@ -99,24 +99,26 @@ def get_all_tests(theme: str = "All", genre: str = "All", user_id: int = None, s
     if search_query and search_query.strip():
         from service.repositories.search_repository import SearchRepository
         search_repo = SearchRepository()
-        hits = search_repo.search_keyword(search_query.strip(), limit=50)
+        hits = search_repo.search_keyword(search_query.strip(), limit=50) or []
         articles_list = []
         for h in hits:
-            art = article_repo.get_by_id(h.article_id)
-            if art:
-                a_dump = art.model_dump(mode="json")
-                a_dump["id"] = art.article_id
-                articles_list.append(a_dump)
+            if h and hasattr(h, "article_id"):
+                art = article_repo.get_by_id(h.article_id)
+                if art:
+                    a_dump = art.model_dump(mode="json")
+                    a_dump["id"] = art.article_id
+                    articles_list.append(a_dump)
     else:
         filtered_theme = theme if theme != "All" else None
         filtered_genre = genre if genre != "All" else None
 
-        completed_articles = article_repo.list_completed(theme=filtered_theme, genre=filtered_genre, limit=100)
+        completed_articles = article_repo.list_completed(theme=filtered_theme, genre=filtered_genre, limit=100) or []
         articles_list = []
         for a in completed_articles:
-            a_dump = a.model_dump(mode="json")
-            a_dump["id"] = a.article_id  # Ensure id is always present
-            articles_list.append(a_dump)
+            if a:
+                a_dump = a.model_dump(mode="json")
+                a_dump["id"] = a.article_id  # Ensure id is always present
+                articles_list.append(a_dump)
 
     attempted_ids = attempt_repo.get_user_attempted_article_ids(user_id) if user_id else set()
 
@@ -163,30 +165,30 @@ def get_smart_paraphrase(pk: str, paragraph_hash: str, highlighted_text: str, pa
 
 def search_bm25_articles(query: str):
     search_repo = SearchRepository()
-    results = search_repo.search_keyword(query, limit=10)
+    results = search_repo.search_keyword(query, limit=10) or []
     return [
         {
             "id": r.article_id,
-            "title": r.title,
-            "source": r.source,
-            "snippet": "",
-            "date": r.date,
+            "title": r.title or "No Title",
+            "source": r.source or "Unknown",
+            "snippet": getattr(r, "snippet", "") or "",
+            "date": r.date or "",
         }
-        for r in results
+        for r in results if r and hasattr(r, "article_id")
     ]
 
 
 def search_semantic_articles(query: str):
     search_repo = SearchRepository()
-    results = search_repo.search_semantic(query, limit=5)
+    results = search_repo.search_semantic(query, limit=5) or []
     return [
         {
             "id": r.article_id,
-            "title": r.title,
-            "source": r.source,
-            "snippet": "",
-            "date": r.date,
-            "similarity": r.similarity,
+            "title": r.title or "No Title",
+            "source": r.source or "Unknown",
+            "snippet": getattr(r, "snippet", "") or "",
+            "date": r.date or "",
+            "similarity": getattr(r, "similarity", None),
         }
-        for r in results
+        for r in results if r and hasattr(r, "article_id")
     ]
