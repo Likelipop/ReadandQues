@@ -9,8 +9,25 @@ document.addEventListener('DOMContentLoaded', function() {
     const btnBm25 = document.getElementById('btn-mode-bm25');
     const btnAi = document.getElementById('btn-mode-ai');
     const icon = document.getElementById('omni-icon');
+    const form = document.getElementById('omni-search-form');
 
     if (!input) return;
+
+    // Intercept native form submit — JS handles all search/import logic
+    if (form) {
+        form.addEventListener('submit', function(e) {
+            e.preventDefault();
+            const text = input.value.trim();
+            if (!text) return;
+            if (isUrl(text)) {
+                performImport(text);
+            } else {
+                // Navigate to all-tests with keyword search query
+                const action = form.getAttribute('action') || '/readspace/all-tests/';
+                window.location.href = `${action}?q=${encodeURIComponent(text)}`;
+            }
+        });
+    }
 
     // State
     let searchMode = 'bm25'; // 'bm25' or 'ai'

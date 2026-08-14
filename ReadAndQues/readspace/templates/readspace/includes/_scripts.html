@@ -35,13 +35,7 @@
         }
     })();
 
-    document.addEventListener('DOMContentLoaded', () => {
-        const urlParams = new URLSearchParams(window.location.search);
-        if (urlParams.get('ai_quiz') === '1') {
-            const btnAiQuiz = document.getElementById('tool-ai-quiz');
-            if (btnAiQuiz) btnAiQuiz.click();
-        }
-    });
+
 
     // ── Toolbox Logic (Marker & Eraser) ──
     let activeTool = null;
@@ -473,10 +467,14 @@
                 
                 if (timerDisplay) timerDisplay.classList.remove('hidden');
 
-                // Start Polling if not completed
-                const aiStatus = '{{ article.ai_status|default:"none" }}';
-                if (aiStatus !== 'completed') {
-                    if (aiStatus === 'none' || aiStatus === 'failed' || aiStatus === 'error') {
+                // Clear any previous reload lock when user explicitly triggers quiz
+                sessionStorage.removeItem(`quiz_reloaded_${getArticleId()}`);
+
+                const hasQuiz = {{ article.has_quiz|yesno:"true,false" }};
+                const quizStatus = '{{ article.quiz_status|default:"none" }}';
+
+                if (!hasQuiz) {
+                    if (quizStatus !== 'processing' && quizStatus !== 'pending') {
                         fetch(`/readspace/trigger-quiz/${getArticleId()}/`, {
                             method: 'POST',
                             headers: {
@@ -486,14 +484,14 @@
                         .then(res => {
                             if (!res.ok) throw new Error("Trigger failed");
                             localStorage.removeItem(`readspace_exam_state_${getArticleId()}`);
-                            startPolling();
+                            startQuizPolling();
                         })
                         .catch(err => {
                             console.warn("AI Quiz generation currently unavailable:", err);
                         });
-                    } else if (aiStatus === 'pending_generation' || aiStatus === 'active') {
-                        // Already generating from a previous click/session, just poll
-                        startPolling();
+                    } else {
+                        // Generation already in progress, poll for completion
+                        startQuizPolling();
                     }
                 }
 
@@ -519,63 +517,156 @@
     }
 
     // ── Render FIB paragraphs: replace [1]...[5] with inline <input> blanks ──
-    document.querySelectorAll('.fib-paragraph').forEach((container, pIdx) => {
-        const raw = container.getAttribute('data-raw-question');
-        if (!raw) return;
-        // Split by [1], [ 1 ], (1), etc.
-        const parts = raw.split(/(?:\[|\()\s*(\d+)\s*(?:\]|\))/);
-        container.innerHTML = '';
-        for (let i = 0; i < parts.length; i++) {
-            if (i % 2 === 0) {
-                container.appendChild(document.createTextNode(parts[i]));
-            } else {
-                const input = document.createElement('input');
-                input.type = 'text';
-                input.className = 'fib-blank px-2 py-1 border-b-2 border-blue-500 bg-blue-50 text-blue-800 font-semibold focus:outline-none focus:border-blue-700 mx-1 rounded-sm text-center w-24';
-                input.placeholder = parts[i];
-                input.setAttribute('data-blank-index', parts[i]);
-                input.setAttribute('data-cache-id', `fib_${pIdx}_${parts[i]}`);
-                container.appendChild(input);
+    function initFIBParagraphs() {
+        document.querySelectorAll('.fib-paragraph').forEach((container, pIdx) => {
+            const raw = container.getAttribute('data-raw-question');
+            if (!raw || container.querySelector('.fib-blank')) return;
+            const parts = raw.split(/(?:\[|\()\s*(\d+)\s*(?:\]|\))/);
+            container.innerHTML = '';
+            for (let i = 0; i < parts.length; i++) {
+                if (i % 2 === 0) {
+                    container.appendChild(document.createTextNode(parts[i]));
+                } else {
+                    const input = document.createElement('input');
+                    input.type = 'text';
+                    input.className = 'fib-blank px-2 py-1 border-b-2 border-blue-500 bg-blue-50 text-blue-800 font-semibold focus:outline-none focus:border-blue-700 mx-1 rounded-sm text-center w-24';
+                    input.placeholder = parts[i];
+                    input.setAttribute('data-blank-index', parts[i]);
+                    input.setAttribute('data-cache-id', `fib_${pIdx}_${parts[i]}`);
+                    container.appendChild(input);
+                }
             }
-        }
-    });
+        });
+    }
+    initFIBParagraphs();
 
-    // ── Polling Logic ──
-    let pollTimeout = null;
-    function startPolling() {
-        if (pollTimeout) return; // Already polling
+    function escapeHtml(str) {
+        if (!str) return '';
+        return String(str)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#039;');
+    }
+
+    function renderQuizzesDynamically(exams) {
+        if (!exams || !exams.length || !exams[0].quizzes) return;
+        const quizzes = exams[0].quizzes;
+        const container = document.getElementById('quiz-container');
+        if (!container) return;
+
+        let html = `
+        <div class="flex items-center justify-between mb-6">
+            <h2 class="text-2xl font-bold text-gray-800 flex items-center gap-2">
+                <svg class="w-6 h-6 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3M12 17h.01M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0z"></path></svg>
+                AI Quiz
+            </h2>
+            <div id="quiz-timer-display" class="font-mono text-lg font-semibold bg-slate-100 px-3 py-1 rounded-md text-slate-700 shadow-sm border border-slate-200">00:00</div>
+        </div>
+        <div id="quiz-items-wrapper">`;
+
+        quizzes.forEach((quiz, index) => {
+            const qNum = index + 1;
+            html += `<div class="quiz-item bg-white p-6 rounded-lg shadow-sm border border-gray-200 mb-6" data-answer="${escapeHtml(quiz.correct_answer)}" data-quiz-type="${escapeHtml(quiz.quiz_type)}">`;
+            
+            if (quiz.quiz_type === 'yes_no_notgiven' || quiz.quiz_type === 'multiple_choice') {
+                const subtitle = quiz.quiz_type === 'yes_no_notgiven' ? 'Yes / No / Not Given' : '';
+                html += `
+                    <p class="font-semibold text-lg mb-1 text-gray-800">
+                        <span class="mr-2 text-blue-600">${qNum}.</span>${escapeHtml(quiz.question)}
+                    </p>
+                    ${subtitle ? `<p class="text-xs text-gray-400 mb-4 italic">${subtitle}</p>` : ''}
+                    <div class="space-y-3 options-container">`;
+                (quiz.options || []).forEach(opt => {
+                    html += `
+                        <label class="flex items-center p-3 border rounded cursor-pointer hover:bg-gray-50 transition-colors option-label">
+                            <input type="radio" name="question_${qNum}" value="${escapeHtml(opt)}" class="w-5 h-5 text-blue-600 border-gray-300 focus:ring-blue-500 mr-3">
+                            <span class="text-gray-700">${escapeHtml(opt)}</span>
+                        </label>`;
+                });
+                html += `</div>`;
+            } else if (quiz.quiz_type === 'fill_in_blank') {
+                html += `
+                    <p class="font-semibold text-lg mb-1 text-gray-800">
+                        <span class="mr-2 text-blue-600">${qNum}.</span>Summary Completion
+                    </p>
+                    <p class="text-xs text-gray-400 mb-4 italic">Fill each blank with a word or short phrase from the passage.</p>
+                    <div class="fib-paragraph text-gray-700 leading-loose options-container" data-raw-question="${escapeHtml(quiz.question)}">
+                    </div>`;
+            }
+
+            html += `
+                <div class="explanation hidden mt-4 p-4 bg-blue-50 border-l-4 border-blue-500 text-sm text-gray-700 rounded-r">
+                    <strong class="text-blue-800">Correct Answer:</strong> ${escapeHtml(quiz.correct_answer)} <br>
+                    <strong class="text-blue-800 mt-2 block">Explanation:</strong> ${escapeHtml(quiz.explanation)}
+                </div>
+            </div>`;
+        });
+
+        html += `
+            <button id="submit-btn" class="w-full mt-6 bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-4 rounded-lg transition-colors text-lg shadow-md">
+                Submit Exam
+            </button>
+        </div>`;
+
+        container.innerHTML = html;
+        initFIBParagraphs();
+        if (typeof initExamHandlers === 'function') {
+            initExamHandlers();
+        }
+    }
+
+    // ── Quiz Generation Polling Logic (Dynamic SPA update, ZERO Page Reloads) ──
+    let quizPollTimeout = null;
+    let quizPollDone = false;
+
+    function startQuizPolling() {
+        if (quizPollTimeout || quizPollDone) return;
         
         function poll() {
             fetch(`/readspace/status/${getArticleId()}/?t=${Date.now()}`)
                 .then(r => r.json())
                 .then(data => {
-                    if (data.status === 'completed' || (data.title && data.title !== 'Loading title...')) {
-                        // Reload to show the extracted article title, content, and reading workspace
-                        window.location.reload();
-                    } else if (data.status === 'failed' || data.status === 'error') {
-                        window.location.reload();
+                    if (data.has_quiz === true && data.exams && data.exams.length > 0) {
+                        // Quiz ready — dynamically render quizzes into DOM (NO PAGE RELOAD)
+                        quizPollDone = true;
+                        quizPollTimeout = null;
+                        renderQuizzesDynamically(data.exams);
+                    } else if (data.quiz_status === 'failed') {
+                        quizPollDone = true;
+                        quizPollTimeout = null;
+                        const proc = document.getElementById('processing-right');
+                        if (proc) {
+                            proc.innerHTML = `
+                                <div class="h-12 w-12 mx-auto rounded-full bg-red-100 flex items-center justify-center mb-4">
+                                    <svg class="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                                </div>
+                                <p class="text-red-600 font-semibold">Failed to generate quizzes. Please try again later.</p>
+                                <p class="text-sm text-gray-500 mt-2">You can still read the text on the left.</p>`;
+                        }
                     } else {
-                        pollTimeout = setTimeout(poll, 2500);
+                        quizPollTimeout = setTimeout(poll, 3000);
                     }
                 })
                 .catch(() => {
-                    pollTimeout = setTimeout(poll, 4000);
+                    quizPollTimeout = setTimeout(poll, 4000);
                 });
         }
         poll();
     }
 
-    // Auto-start polling on page load if title is "Loading title..." or ai_status is pending/processing
-    (function checkInitialIngestionStatus() {
-        const articleTitle = '{{ article.title|escapejs }}';
-        const currentAiStatus = '{{ article.ai_status|default:"none" }}';
-        if (articleTitle === 'Loading title...' || (currentAiStatus !== 'completed' && currentAiStatus !== 'failed' && currentAiStatus !== 'error')) {
-            startPolling();
+    // Auto-start quiz polling on page load if generation is in progress
+    (function checkQuizGenerationStatus() {
+        const hasQuiz = {{ article.has_quiz|yesno:"true,false" }};
+        const quizStatus = '{{ article.quiz_status|default:"none" }}';
+        if (!hasQuiz && (quizStatus === 'pending' || quizStatus === 'processing')) {
+            startQuizPolling();
         }
     })();
 
     // ── Quiz State & Timer & Submit ──
-    {% if article.exams and article.exams.0.quizzes %}
+    function initExamHandlers() {
         const storageKey = `readspace_exam_state_${getArticleId()}`;
         
         let examState = { elapsedTime: 0, answers: {}, submitted: false };
@@ -589,10 +680,10 @@
         }
 
         // Timer
-        window.examTimerInterval = null;
-        if (timerDisplay) {
+        const timerDisplay = document.getElementById('quiz-timer-display');
+        if (timerDisplay && !window.examTimerInterval) {
             function updateTimer() {
-                if (!examState.submitted && isQuizActive) {
+                if (!examState.submitted && typeof isQuizActive !== 'undefined' && isQuizActive) {
                     examState.elapsedTime++;
                     saveState();
                 }
@@ -610,10 +701,10 @@
             if (examState.answers[cacheId]) {
                 input.value = examState.answers[cacheId];
             }
-            input.addEventListener('input', (e) => {
+            input.oninput = (e) => {
                 examState.answers[cacheId] = e.target.value;
                 saveState();
-            });
+            };
         });
 
         document.querySelectorAll('input[type="radio"]').forEach(input => {
@@ -621,12 +712,12 @@
             if (examState.answers[cacheId] === input.value) {
                 input.checked = true;
             }
-            input.addEventListener('change', (e) => {
+            input.onchange = (e) => {
                 if (e.target.checked) {
                     examState.answers[cacheId] = e.target.value;
                     saveState();
                 }
-            });
+            };
         });
         
         // Evaluate Visually
@@ -732,7 +823,7 @@
                 submitBtn.className = 'w-full mt-6 bg-gray-400 text-white font-bold py-3 px-4 rounded-lg text-lg shadow-md cursor-not-allowed';
             }
 
-            submitBtn.addEventListener('click', function() {
+            submitBtn.onclick = function() {
                 if (examState.submitted) return;
 
                 let allAnswered = true;
@@ -755,7 +846,7 @@
 
                 const { correctCount, totalQuestions } = evaluateVisually();
 
-                const highlightedMarkdown = getHighlightedMarkdown();
+                const highlightedMarkdown = typeof getHighlightedMarkdown === 'function' ? getHighlightedMarkdown() : '';
                 const elapsedTime = examState.elapsedTime;
                 
                 fetch(`/readspace/${getArticleId()}/submit/`, {
@@ -768,35 +859,39 @@
                         score: correctCount,
                         total_questions: totalQuestions,
                         answers: examState.answers,
-                        highlighted_markdown: highlightedMarkdown,
-                        elapsed_time: elapsedTime
+                        time_taken_seconds: elapsedTime,
+                        highlighted_markdown: highlightedMarkdown
                     })
                 })
                 .then(r => r.json())
                 .then(data => {
                     if (data.status === 'success') {
                         examState.submitted = true;
-                        examState.related_articles = data.related_articles;
+                        examState.related_articles = data.related_articles || [];
                         saveState();
                         
                         evaluateVisually();
                         const chromaSection = document.getElementById('related-articles-section');
                         if (chromaSection) chromaSection.classList.remove('hidden');
-                        renderRelated(examState.related_articles);
+                        renderRelated(data.related_articles);
                         
                         submitBtn.disabled = true;
                         submitBtn.textContent = 'Exam Submitted';
                         submitBtn.className = 'w-full mt-6 bg-gray-400 text-white font-bold py-3 px-4 rounded-lg text-lg shadow-md cursor-not-allowed';
                     } else {
-                        alert("Failed to submit exam: " + data.message);
+                        alert("Failed to submit exam: " + (data.message || 'Error'));
                     }
                 })
                 .catch(err => {
                     console.error("Submit error:", err);
                     alert("An error occurred while submitting.");
                 });
-            });
+            };
         }
+    }
+
+    {% if article.exams and article.exams.0.quizzes %}
+        initExamHandlers();
     {% endif %}
 
     /* --- AI Question Tickets Frontend Controller --- */

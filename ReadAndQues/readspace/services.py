@@ -23,6 +23,24 @@ def get_article_detail(pk: str):
 
     doc = article.model_dump(mode="json")
     doc["id"] = article.article_id
+    # Determine quiz existence and quiz status
+    exams = doc.get("exams", [])
+    has_quiz = False
+    if isinstance(exams, list) and len(exams) > 0:
+        quizzes = exams[0].get("quizzes", []) if isinstance(exams[0], dict) else getattr(exams[0], "quizzes", [])
+        if quizzes:
+            has_quiz = True
+
+    doc["has_quiz"] = has_quiz
+    current_status = doc.get("status", "pending")
+    if has_quiz:
+        doc["quiz_status"] = "completed"
+    elif current_status in ("pending", "processing", "failed"):
+        doc["quiz_status"] = current_status
+    else:
+        doc["quiz_status"] = "none"
+
+    doc["ai_status"] = doc["quiz_status"]
 
     # Fetch text content from repository
     text_content = repo.get_text_content(pk)

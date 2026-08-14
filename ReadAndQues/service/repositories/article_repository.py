@@ -21,6 +21,13 @@ from service.repositories.utils import db_safe
 logger = logging.getLogger(__name__)
 
 
+def _safe_datetime(val):
+    """Convert value to datetime or None. Discards unparseable string dates."""
+    if val is None or isinstance(val, datetime):
+        return val
+    return None
+
+
 def _build_article(index_doc: dict, exam_doc: Optional[dict] = None) -> Article:
     article_id = str(index_doc.get("_id", ""))
     exam_doc = exam_doc or {}
@@ -52,7 +59,7 @@ def _build_article(index_doc: dict, exam_doc: Optional[dict] = None) -> Article:
         title=index_doc.get("title", "No Title"),
         source_name=index_doc.get("source_name", "Unknown"),
         image_url=index_doc.get("image_url"),
-        published_at=index_doc.get("published_at"),
+        published_at=_safe_datetime(index_doc.get("published_at")),
         stage=stage_enum,
         status=status_enum,
         summary=exam_doc.get("summary", ""),
@@ -172,14 +179,26 @@ class ArticleRepository:
             return None
 
         exam_doc = get_exam(article_id) or {}
+        exams = exam_doc.get("exams", [])
+        has_quiz = False
+        if isinstance(exams, list) and len(exams) > 0:
+            quizzes = exams[0].get("quizzes", []) if isinstance(exams[0], dict) else []
+            if quizzes:
+                has_quiz = True
+
         status = index_doc.get("ai_status", "pending")
-        payload = {
+        if has_quiz:
+            quiz_status = "completed"
+        elif status in ("pending", "processing", "failed"):
+            quiz_status = status
+        else:
+            quiz_status = "none"
+
+        return {
             "status": status,
+            "has_quiz": has_quiz,
+            "quiz_status": quiz_status,
             "message": index_doc.get("error_message", ""),
             "title": index_doc.get("title", ""),
+            "exams": exams if has_quiz else [],
         }
-
-        if status == Status.COMPLETED.value:
-            payload["exams"] = exam_doc.get("exams", [])
-
-        return payload
