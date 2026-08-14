@@ -18,6 +18,7 @@ urlpatterns = [
     path("api/<str:pk>/smart_paraphrase/", views.smart_paraphrase_api, name="smart_paraphrase"),
     path("api/<str:pk>/save_markers/", views.save_markers_api, name="save_markers"),
     path("api/ai/tool/run/", views.run_ai_tool_api, name="run_ai_tool_api"),
+    path("api/ai-tool/", views.run_ai_tool_api, name="run_ai_tool_alias"),
 
     # Search API
     path("api/search/keyword/", views.search_bm25_api, name="search_bm25_api"),
