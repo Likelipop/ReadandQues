@@ -103,12 +103,15 @@ def article_status(request, pk):
 
 
 @require_GET
+@never_cache
 def all_tests_view(request):
+    """Lists completed tests with category, genre, and search filtering."""
     selected_theme = request.GET.get("theme", "All")
     selected_genre = request.GET.get("genre", "All")
+    query = request.GET.get("q", "").strip()
 
     user_id = request.user.id if request.user.is_authenticated else None
-    articles = get_all_tests(theme=selected_theme, genre=selected_genre, user_id=user_id)
+    articles = get_all_tests(theme=selected_theme, genre=selected_genre, user_id=user_id, search_query=query)
 
     themes = ["All", "Economy", "Society", "Education", "Technology", "Science", "Environment", "Culture", "Health", "General"]
     genres = ["All", "scientific", "narrative", "persuasive", "poetry", "general"]
@@ -123,6 +126,7 @@ def all_tests_view(request):
         "genres": genres,
         "selected_theme": selected_theme,
         "selected_genre": selected_genre,
+        "search_query": query,
     }
     return render(request, "readspace/all_tests.html", context)
 

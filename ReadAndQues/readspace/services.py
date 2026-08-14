@@ -92,19 +92,31 @@ def get_article_status_payload(pk: str):
     return payload
 
 
-def get_all_tests(theme: str = "All", genre: str = "All", user_id: int = None):
+def get_all_tests(theme: str = "All", genre: str = "All", user_id: int = None, search_query: str = None):
     article_repo = ArticleRepository()
     attempt_repo = AttemptRepository()
 
-    filtered_theme = theme if theme != "All" else None
-    filtered_genre = genre if genre != "All" else None
+    if search_query and search_query.strip():
+        from service.repositories.search_repository import SearchRepository
+        search_repo = SearchRepository()
+        hits = search_repo.search_keyword(search_query.strip(), limit=50)
+        articles_list = []
+        for h in hits:
+            art = article_repo.get_by_id(h.article_id)
+            if art:
+                a_dump = art.model_dump(mode="json")
+                a_dump["id"] = art.article_id
+                articles_list.append(a_dump)
+    else:
+        filtered_theme = theme if theme != "All" else None
+        filtered_genre = genre if genre != "All" else None
 
-    completed_articles = article_repo.list_completed(theme=filtered_theme, genre=filtered_genre, limit=100)
-    articles_list = []
-    for a in completed_articles:
-        a_dump = a.model_dump(mode="json")
-        a_dump["id"] = a.article_id  # Ensure id is always present
-        articles_list.append(a_dump)
+        completed_articles = article_repo.list_completed(theme=filtered_theme, genre=filtered_genre, limit=100)
+        articles_list = []
+        for a in completed_articles:
+            a_dump = a.model_dump(mode="json")
+            a_dump["id"] = a.article_id  # Ensure id is always present
+            articles_list.append(a_dump)
 
     attempted_ids = attempt_repo.get_user_attempted_article_ids(user_id) if user_id else set()
 
