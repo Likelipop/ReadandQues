@@ -959,6 +959,51 @@
             .replace(/'/g, "&#039;");
     }
 
+    function formatTicketAnswer(text) {
+        if (!text) return "";
+        
+        // 1. Primary: Use marked.js if loaded
+        if (typeof marked !== 'undefined' && marked.parse) {
+            try {
+                return marked.parse(text, { breaks: true, gfm: true });
+            } catch (e) {
+                console.error("Error parsing marked.js:", e);
+            }
+        }
+
+        // 2. Secondary: Robust Built-in Parser (bold **, italic *, list -)
+        let escaped = escapeHtml(text);
+        escaped = escaped.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+        escaped = escaped.replace(/\*(.*?)\*/g, '<em>$1</em>');
+        
+        const lines = escaped.split('\n');
+        let inList = false;
+        let result = '';
+        
+        lines.forEach(line => {
+            const trimmed = line.trim();
+            if (trimmed.startsWith('- ') || trimmed.startsWith('* ')) {
+                if (!inList) {
+                    result += '<ul class="list-disc pl-4 my-1 space-y-1">';
+                    inList = true;
+                }
+                result += `<li>${trimmed.substring(2)}</li>`;
+            } else {
+                if (inList) {
+                    result += '</ul>';
+                    inList = false;
+                }
+                if (trimmed) {
+                    result += `<p class="mb-1">${line}</p>`;
+                }
+            }
+        });
+        if (inList) {
+            result += '</ul>';
+        }
+        return result;
+    }
+
     function renderTicketsFeed(tickets) {
         const feed = document.getElementById("tickets-feed");
         const emptyState = document.getElementById("tickets-empty-state");
@@ -1027,8 +1072,8 @@
             } else {
                 html += `
                         <div class="flex items-start gap-2">
-                            <span class="text-sm">🤖</span>
-                            <div class="leading-relaxed font-normal">${escapeHtml(ticket.answer)}</div>
+                            <span class="text-sm shrink-0 mt-0.5">🤖</span>
+                            <div class="ticket-answer-body leading-relaxed font-normal text-slate-800 text-xs w-full overflow-hidden space-y-1">${formatTicketAnswer(ticket.answer)}</div>
                         </div>
                 `;
 
@@ -1097,7 +1142,7 @@
         if (btnSpinner) btnSpinner.classList.remove("hidden");
 
         try {
-            const response = await fetch("/readspace/api/ai-tool/", {
+            const response = await fetch("/readspace/api/ai/tool/run/", {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
