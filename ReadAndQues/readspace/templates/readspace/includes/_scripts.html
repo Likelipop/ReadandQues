@@ -489,8 +489,7 @@
                             startPolling();
                         })
                         .catch(err => {
-                            console.error("Failed to trigger AI Quiz:", err);
-                            alert("Failed to start AI Quiz generation. Please try again.");
+                            console.warn("AI Quiz generation currently unavailable:", err);
                         });
                     } else if (aiStatus === 'pending_generation' || aiStatus === 'active') {
                         // Already generating from a previous click/session, just poll
@@ -551,14 +550,10 @@
                 .then(r => r.json())
                 .then(data => {
                     if (data.status === 'completed' || (data.title && data.title !== 'Loading title...')) {
-                        // Reload to show the extracted article title, content, and quiz workspace
-                        const url = new URL(window.location.href);
-                        url.searchParams.set('ai_quiz', '1');
-                        window.location.href = url.toString();
+                        // Reload to show the extracted article title, content, and reading workspace
+                        window.location.reload();
                     } else if (data.status === 'failed' || data.status === 'error') {
-                        const url = new URL(window.location.href);
-                        url.searchParams.set('ai_quiz', '1');
-                        window.location.href = url.toString();
+                        window.location.reload();
                     } else {
                         pollTimeout = setTimeout(poll, 2500);
                     }
