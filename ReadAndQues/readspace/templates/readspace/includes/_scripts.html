@@ -550,8 +550,8 @@
             fetch(`/readspace/status/${getArticleId()}/?t=${Date.now()}`)
                 .then(r => r.json())
                 .then(data => {
-                    if (data.status === 'completed') {
-                        // Reload to show the quiz
+                    if (data.status === 'completed' || (data.title && data.title !== 'Loading title...')) {
+                        // Reload to show the extracted article title, content, and quiz workspace
                         const url = new URL(window.location.href);
                         url.searchParams.set('ai_quiz', '1');
                         window.location.href = url.toString();
@@ -560,15 +560,24 @@
                         url.searchParams.set('ai_quiz', '1');
                         window.location.href = url.toString();
                     } else {
-                        pollTimeout = setTimeout(poll, 3000);
+                        pollTimeout = setTimeout(poll, 2500);
                     }
                 })
                 .catch(() => {
-                    pollTimeout = setTimeout(poll, 5000);
+                    pollTimeout = setTimeout(poll, 4000);
                 });
         }
         poll();
     }
+
+    // Auto-start polling on page load if title is "Loading title..." or ai_status is pending/processing
+    (function checkInitialIngestionStatus() {
+        const articleTitle = '{{ article.title|escapejs }}';
+        const currentAiStatus = '{{ article.ai_status|default:"none" }}';
+        if (articleTitle === 'Loading title...' || (currentAiStatus !== 'completed' && currentAiStatus !== 'failed' && currentAiStatus !== 'error')) {
+            startPolling();
+        }
+    })();
 
     // ── Quiz State & Timer & Submit ──
     {% if article.exams and article.exams.0.quizzes %}
