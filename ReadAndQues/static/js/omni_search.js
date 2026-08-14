@@ -78,13 +78,22 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 
-    // Enter Key Handler (For Import)
+    // Enter Key Handler (For Import & Search)
     input.addEventListener('keypress', function(e) {
         if (e.key === 'Enter') {
             e.preventDefault();
             const text = input.value.trim();
+            if (!text) return;
+
             if (isUrl(text)) {
                 performImport(text);
+            } else {
+                const firstResult = resultsList.querySelector('a');
+                if (firstResult) {
+                    window.location.href = firstResult.href;
+                } else {
+                    performSearch(text);
+                }
             }
         }
     });
