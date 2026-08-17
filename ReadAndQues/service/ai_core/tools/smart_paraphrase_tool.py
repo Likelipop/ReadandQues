@@ -1,5 +1,5 @@
 import logging
-from typing import Any, Dict, Optional
+from typing import Any
 
 from service.ai_core.platform import AITool, AIToolPolicy, AIToolRunResult, register_ai_tool
 
@@ -11,7 +11,7 @@ class SmartParaphraseTool(AITool):
     version = "1.0.0"
     model_profile = "default"
 
-    def run(self, input_data: Dict[str, Any], user_id: Optional[int] = None) -> AIToolRunResult:
+    def run(self, input_data: dict[str, Any], user_id: int | None = None) -> AIToolRunResult:
         def _execute():
             from service.ai_core.graphs.smart_paraphrase import run_smart_paraphrase_llm
             return run_smart_paraphrase_llm(

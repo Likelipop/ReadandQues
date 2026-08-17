@@ -6,15 +6,15 @@ Zen design: Minimalist, clear names, zero redundant suffixes, single source of t
 
 import hashlib
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from enum import Enum
-from typing import Any, Dict, List, Optional
-from pydantic import BaseModel, Field
+from typing import Any
 
+from pydantic import BaseModel, Field
 
 # ── 1. Path & ID Helpers ──────────────────────────────────────────────────────
 
-def generate_article_id(url: Optional[str] = None) -> str:
+def generate_article_id(url: str | None = None) -> str:
     """
     Generates a stable, canonical article identifier.
     If a URL is provided, derives a deterministic ID from SHA-256(url).
@@ -84,23 +84,23 @@ class Question(BaseModel):
     id: str
     question_type: str = "single_choice"
     question: str
-    options: List[Option] = Field(default_factory=list)
+    options: list[Option] = Field(default_factory=list)
     correct_answer: Any = ""
-    explanation: Optional[str] = ""
+    explanation: str | None = ""
 
 
 class Exam(BaseModel):
     """An exam containing a set of quiz questions."""
     exam_id: str = ""
-    title: Optional[str] = ""
-    quizzes: List[Question] = Field(default_factory=list)
+    title: str | None = ""
+    quizzes: list[Question] = Field(default_factory=list)
 
 
 class Paraphrase(BaseModel):
     """Smart paraphrase result."""
     selected_text: str
-    surrounding_context: Optional[str] = ""
-    expanded_text: Optional[str] = ""
+    surrounding_context: str | None = ""
+    expanded_text: str | None = ""
     paraphrased_text: str
     start_index: int = 0
     end_index: int = 0
@@ -118,29 +118,29 @@ class Article(BaseModel):
     url: str
     title: str = "Loading title..."
     source_name: str = "Unknown"
-    image_url: Optional[str] = None
-    published_at: Optional[datetime] = None
+    image_url: str | None = None
+    published_at: datetime | None = None
 
     # Status & Progress
     stage: Stage = Stage.BRONZE
     status: Status = Status.PENDING
-    error_message: Optional[str] = ""
+    error_message: str | None = ""
 
     # AI Enriched Fields
     theme: str = ThemeCategory.GENERAL.value
     genre: str = "general"
     summary: str = ""
     original_text: str = ""
-    cleaned_text: Optional[str] = ""
+    cleaned_text: str | None = ""
     word_count: int = 0
     language: str = "en"
     user_id: int = 0
-    exams: List[Exam] = Field(default_factory=list)
-    smart_paraphrases: List[Paraphrase] = Field(default_factory=list)
+    exams: list[Exam] = Field(default_factory=list)
+    smart_paraphrases: list[Paraphrase] = Field(default_factory=list)
 
     # Timestamps
-    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
-    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
     def model_post_init(self, __context: Any) -> None:
         """Ensure id alias is always populated from article_id."""
@@ -156,15 +156,15 @@ class Article(BaseModel):
 
 class ExamAttempt(BaseModel):
     """User's exam attempt submission."""
-    attempt_id: Optional[str] = None
+    attempt_id: str | None = None
     user_id: int
     article_id: str
     score: int = 0
     total_questions: int = 0
-    answers: Dict[str, Any] = Field(default_factory=dict)
-    highlighted_markdown: Optional[str] = ""
+    answers: dict[str, Any] = Field(default_factory=dict)
+    highlighted_markdown: str | None = ""
     elapsed_time: int = 0
-    submitted_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    submitted_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
 
 class RawSourceManifest(BaseModel):
@@ -175,4 +175,4 @@ class RawSourceManifest(BaseModel):
     sha256_hash: str
     raw_size_bytes: int
     stage: Stage = Stage.BRONZE
-    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))

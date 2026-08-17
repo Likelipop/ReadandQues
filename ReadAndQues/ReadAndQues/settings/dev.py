@@ -3,6 +3,7 @@ Development Django settings for ReadAndQues project.
 """
 
 import os
+
 from .base import *
 
 DEBUG = True

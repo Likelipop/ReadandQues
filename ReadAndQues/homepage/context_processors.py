@@ -1,6 +1,7 @@
-from service.domain.enums import ThemeCategory
-import service.selectors as selectors
 from django.core.cache import cache
+
+import service.selectors as selectors
+from service.domain.enums import ThemeCategory
 
 
 def global_news_context(request):

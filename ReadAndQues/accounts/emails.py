@@ -1,4 +1,5 @@
 import logging
+
 from django.conf import settings
 
 logger = logging.getLogger(__name__)
@@ -89,7 +90,7 @@ def send_verification_email(to_email: str, code: str, is_resend_action: bool = F
         try:
             import resend
             resend.api_key = api_key
-            
+
             response = resend.Emails.send({
                 "from": from_email,
                 "to": to_email,

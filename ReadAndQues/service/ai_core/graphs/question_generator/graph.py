@@ -5,12 +5,11 @@ pipeline/ai_core/graph.py — 4-node LangGraph pipeline for IELTS exam generatio
 import logging
 import uuid
 from datetime import datetime
-from typing import Any, Dict, List
+from typing import Any
 
 from langgraph.graph import END, START, StateGraph
 
 from service.ai_core.connection import get_llm
-from service.ai_core.utils.config import ExamConfig
 from service.ai_core.graphs.question_generator.prompts import (
     build_analysis_prompt,
     build_question_prompt,
@@ -23,13 +22,14 @@ from service.ai_core.graphs.question_generator.schemas import (
     TokenUsageLog,
     VerifierFeedback,
 )
+from service.ai_core.utils.config import ExamConfig
 
 logger = logging.getLogger(__name__)
 
 MAX_RETRIES = 2
 
 
-def _extract_token_usage(raw_message: Any) -> Dict[str, int]:
+def _extract_token_usage(raw_message: Any) -> dict[str, int]:
     usage = getattr(raw_message, "usage_metadata", None) or {}
     return {
         "input_tokens": usage.get("input_tokens", 0),
@@ -38,10 +38,10 @@ def _extract_token_usage(raw_message: Any) -> Dict[str, int]:
 
 
 def _append_token_log(
-    state_log: List[Dict[str, Any]],
+    state_log: list[dict[str, Any]],
     node: str,
     raw_message: Any,
-) -> List[Dict[str, Any]]:
+) -> list[dict[str, Any]]:
     usage = _extract_token_usage(raw_message)
     entry = TokenUsageLog(
         node=node,
@@ -51,7 +51,7 @@ def _append_token_log(
     return state_log + [entry.model_dump()]
 
 
-def node_analyzer(state: GraphState) -> Dict[str, Any]:
+def node_analyzer(state: GraphState) -> dict[str, Any]:
     text = state["original_text"]
     prompt = build_analysis_prompt(text)
 
@@ -75,7 +75,7 @@ def node_analyzer(state: GraphState) -> Dict[str, Any]:
     }
 
 
-def node_text_cleaner(state: GraphState) -> Dict[str, Any]:
+def node_text_cleaner(state: GraphState) -> dict[str, Any]:
     text = state["original_text"]
     analysis = state.get("semantic_analysis", {})
     snippets = analysis.get("irrelevant_snippets", [])
@@ -87,7 +87,7 @@ def node_text_cleaner(state: GraphState) -> Dict[str, Any]:
     return {"original_text": text}
 
 
-def node_question_planner(state: GraphState) -> Dict[str, Any]:
+def node_question_planner(state: GraphState) -> dict[str, Any]:
     text = state["original_text"]
     analysis = state["semantic_analysis"]
     config = ExamConfig(**state["exam_config"])
@@ -127,7 +127,7 @@ def node_question_planner(state: GraphState) -> Dict[str, Any]:
     }
 
 
-def node_verifier(state: GraphState) -> Dict[str, Any]:
+def node_verifier(state: GraphState) -> dict[str, Any]:
     text = state["original_text"]
     quizzes = state.get("raw_quizzes", [])
 
@@ -161,7 +161,7 @@ def node_verifier(state: GraphState) -> Dict[str, Any]:
     }
 
 
-def node_formatter(state: GraphState) -> Dict[str, Any]:
+def node_formatter(state: GraphState) -> dict[str, Any]:
     quizzes = state.get("verified_quizzes", [])
     token_log = state.get("token_log", [])
 

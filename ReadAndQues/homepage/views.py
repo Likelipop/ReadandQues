@@ -1,6 +1,6 @@
-from django.views.generic import TemplateView
-from django.core.paginator import Paginator
 from django.contrib.auth.models import AnonymousUser
+from django.core.paginator import Paginator
+from django.views.generic import TemplateView
 
 import service.selectors as selectors
 

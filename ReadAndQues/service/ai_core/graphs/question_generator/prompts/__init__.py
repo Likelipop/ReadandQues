@@ -14,7 +14,7 @@ def build_analysis_prompt(text: str) -> str:
     return template.format(text=text)
 
 
-def _format_analysis_context(analysis: Dict[str, Any]) -> str:
+def _format_analysis_context(analysis: dict[str, Any]) -> str:
     """Serialize the most exam-relevant parts of SemanticAnalysis for prompt injection."""
     core = analysis.get("core", {})
     lines = [
@@ -48,13 +48,13 @@ def _format_analysis_context(analysis: Dict[str, Any]) -> str:
 
 def build_question_prompt(
     text: str,
-    analysis: Dict[str, Any],
+    analysis: dict[str, Any],
     config: ExamConfig,
 ) -> str:
     analysis_context = _format_analysis_context(analysis)
 
     total = config.total_questions
-    
+
     # Dynamic scaling based on total requested
     if total <= 3:
         ynng_count = 3
@@ -85,9 +85,9 @@ def build_question_prompt(
         breakdown_list.append(f"  • {fib_count}  × Summary Completion (Fill in the Blank)")
     if mcq_count > 0:
         breakdown_list.append(f"  • {mcq_count}  × Multiple Choice")
-    
+
     breakdown_str = "\n".join(breakdown_list)
-    
+
     # Build Quiz Type Instructions
     instructions = []
     if ynng_count > 0:
@@ -133,7 +133,7 @@ correct_answer: the full text of the correct option, e.g. "A. ..."
     )
 
 
-def build_verifier_prompt(text: str, quizzes: List[Dict[str, Any]]) -> str:
+def build_verifier_prompt(text: str, quizzes: list[dict[str, Any]]) -> str:
     quizzes_json = json.dumps(quizzes, ensure_ascii=False, indent=2)
     template = _read_prompt("verifier.md")
     return template.format(text=text, quizzes_json=quizzes_json)

@@ -1,11 +1,10 @@
 import logging
-from typing import Dict, Optional
 
 from service.ai_core.platform.contracts import AITool
 
 logger = logging.getLogger(__name__)
 
-_AI_TOOLS: Dict[str, AITool] = {}
+_AI_TOOLS: dict[str, AITool] = {}
 
 
 def register_ai_tool(tool: AITool) -> None:
@@ -16,7 +15,7 @@ def register_ai_tool(tool: AITool) -> None:
     logger.info(f"Registered AI Tool '{tool.name}' (v{tool.version})")
 
 
-def get_ai_tool(name: str, version: Optional[str] = None) -> AITool:
+def get_ai_tool(name: str, version: str | None = None) -> AITool:
     if version:
         key = f"{name}:{version}"
         if key in _AI_TOOLS:

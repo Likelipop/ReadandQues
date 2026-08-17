@@ -5,14 +5,15 @@ Grounds quiz questions & correct answers to the exact paragraph chunk in ChromaD
 """
 
 import logging
-from typing import Any, Dict, Optional
+from typing import Any
+
 import service.infrastructure.chroma.vector_store as vector_store
 import service.infrastructure.mongo.exam_store as exam_store
 
 logger = logging.getLogger(__name__)
 
 
-def get_passage_proof(article_id: str, question_idx: int) -> Optional[Dict[str, Any]]:
+def get_passage_proof(article_id: str, question_idx: int) -> dict[str, Any] | None:
     """
     Finds verbatim paragraph proof from ChromaDB for a specific quiz question.
     """

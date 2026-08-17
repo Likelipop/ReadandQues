@@ -1,10 +1,10 @@
 from unittest import TestCase
-from unittest.mock import Mock, patch
+from unittest.mock import patch
 
-from service.ai_core.platform import get_ai_tool
-from service.ai_core.grounding import chunk_article_text, retrieve_article_chunks
-from service.ai_core.graphs.ask_article.graph import node_verify_grounding, run_ask_article_flow
 import service.ai_core.tools  # noqa: F401
+from service.ai_core.graphs.ask_article.graph import node_verify_grounding
+from service.ai_core.grounding import chunk_article_text, retrieve_article_chunks
+from service.ai_core.platform import get_ai_tool
 
 
 class GroundedQuestionTicketTests(TestCase):

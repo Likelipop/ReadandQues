@@ -6,7 +6,7 @@ Strategy:
 - Child Chunks: Individual paragraphs within parent
 """
 
-from typing import Any, Dict, List
+from typing import Any
 
 
 def chunk_article_with_hierarchy(
@@ -18,7 +18,7 @@ def chunk_article_with_hierarchy(
     genre: str = "general",
     published_at: str = "",
     target_parent_words: int = 500,
-) -> List[Dict[str, Any]]:
+) -> list[dict[str, Any]]:
     """
     Splits full text into parent-child chunks for ChromaDB indexing.
     Returns a list of dicts with: {id, text, metadata}.
@@ -37,7 +37,7 @@ def chunk_article_with_hierarchy(
     current_parent_paragraphs = []
     current_parent_words = 0
 
-    def _flush_parent(paras: List[str], p_idx: int) -> str:
+    def _flush_parent(paras: list[str], p_idx: int) -> str:
         parent_text = "\n\n".join(paras)
         parent_id = f"{article_id}_parent_{p_idx}"
         chunks_to_index.append({

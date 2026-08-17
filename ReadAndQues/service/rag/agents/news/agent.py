@@ -5,25 +5,25 @@ service/rag/agents/news/agent.py — News RAG Agent.
 import logging
 import os
 import time
-from typing import Dict, List, Optional
+
 from openai import OpenAI
 
-from service.domain.enums import AgentIntent
-import service.infrastructure.chroma.vector_store as vector_store
 import service.infrastructure.bm25.connection as bm25_conn
 import service.infrastructure.bm25.index as bm25_idx
+import service.infrastructure.chroma.vector_store as vector_store
+from service.domain.enums import AgentIntent
 from service.rag.agents.news.prompts import NEWS_AGENT_SYSTEM_PROMPT
 from service.rag.schemas import AgentResult, Citation
 
 logger = logging.getLogger(__name__)
 
 
-def _retrieve_hybrid(query: str, top_k: int = 6, filters: Optional[Dict] = None) -> List[Dict]:
+def _retrieve_hybrid(query: str, top_k: int = 6, filters: dict | None = None) -> list[dict]:
     vector_hits = vector_store.vector_search_chunks(query, limit=top_k * 2, where_filter=filters)
     tokens = bm25_conn.process_text_to_tokens(query) if hasattr(bm25_conn, "process_text_to_tokens") else []
     bm25_hits = bm25_idx.search_bm25(tokens, n=top_k * 2) if tokens else []
 
-    rrf_map: Dict[str, Dict] = {}
+    rrf_map: dict[str, dict] = {}
     rrf_k = 60.0
 
     for rank, hit in enumerate(vector_hits):
@@ -59,7 +59,7 @@ def _retrieve_hybrid(query: str, top_k: int = 6, filters: Optional[Dict] = None)
     return results
 
 
-def run_news_agent(query: str, filters: Optional[Dict] = None, top_k: int = 6) -> AgentResult:
+def run_news_agent(query: str, filters: dict | None = None, top_k: int = 6) -> AgentResult:
     """Executes News RAG Agent workflow."""
     start_time = time.time()
     retrieved = _retrieve_hybrid(query, top_k=top_k, filters=filters)

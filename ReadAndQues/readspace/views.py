@@ -1,20 +1,20 @@
 import json
 import logging
-from datetime import datetime
 
 from django.contrib import messages
+from django.contrib.auth.decorators import login_required
+from django.core.paginator import Paginator
 from django.http import JsonResponse
 from django.shortcuts import redirect, render
-from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.cache import never_cache
-from django.contrib.auth.decorators import login_required
-from django.views.decorators.http import require_POST, require_GET, require_http_methods
-from django.core.paginator import Paginator
+from django.views.decorators.csrf import csrf_exempt
+from django.views.decorators.http import require_GET, require_http_methods, require_POST
+
+import service.selectors as selectors
+import service.services as services
 
 from .decorators import api_error_handler, rate_limit
 from .utils import consume_user_star
-import service.services as services
-import service.selectors as selectors
 
 logger = logging.getLogger(__name__)
 
@@ -54,8 +54,9 @@ def import_article_view(request):
     is_new = result.get("is_new", False)
 
     if request.user.is_authenticated:
-        from accounts.models import UserProfile
         from django.db import transaction
+
+        from accounts.models import UserProfile
         try:
             with transaction.atomic():
                 profile = UserProfile.objects.select_for_update().get(user=request.user)
@@ -203,6 +204,7 @@ def save_markers_api(request, pk: str):
 def rag_stream_api(request):
     """Server-Sent Events (SSE) streaming endpoint for RAG Study Buddy responses."""
     import time
+
     from django.http import StreamingHttpResponse
 
     try:

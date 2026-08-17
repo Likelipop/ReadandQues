@@ -4,6 +4,7 @@ service/infrastructure/bm25/index.py — Raw BM25 search & marker search operati
 
 import logging
 import re
+
 from service.infrastructure.bm25.connection import get_index
 from service.infrastructure.bm25.text_processing import process_text_to_tokens
 from service.infrastructure.utils import db_safe

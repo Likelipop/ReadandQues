@@ -3,9 +3,9 @@ service/infrastructure/chroma/vector_store.py — Vector Store Operations for ar
 """
 
 import logging
-from typing import Dict, List, Optional
-from service.infrastructure.chroma.connection import articles_collection, news_chunks_collection
+
 from service.infrastructure.chroma.chunking import chunk_article_with_hierarchy
+from service.infrastructure.chroma.connection import articles_collection, news_chunks_collection
 from service.infrastructure.utils import db_safe
 
 logger = logging.getLogger(__name__)
@@ -35,7 +35,7 @@ def add_article_vector(
 
 
 @db_safe(default_return=[])
-def query_related_chroma_ids(summary: str, exclude_id: str, limit: int = 5) -> List[str]:
+def query_related_chroma_ids(summary: str, exclude_id: str, limit: int = 5) -> list[str]:
     if not articles_collection or not summary:
         return []
 
@@ -50,7 +50,7 @@ def query_related_chroma_ids(summary: str, exclude_id: str, limit: int = 5) -> L
 
 
 @db_safe(default_return=[])
-def search_by_text(query: str, limit: int = 5) -> List[Dict]:
+def search_by_text(query: str, limit: int = 5) -> list[dict]:
     if not articles_collection or not query:
         return []
 
@@ -112,8 +112,8 @@ def upsert_article_chunks(
 
 @db_safe(default_return=[])
 def vector_search_chunks(
-    query: str, limit: int = 10, where_filter: Optional[Dict] = None
-) -> List[Dict]:
+    query: str, limit: int = 10, where_filter: dict | None = None
+) -> list[dict]:
     if not news_chunks_collection or not query:
         return []
 

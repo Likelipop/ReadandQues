@@ -4,7 +4,9 @@ service/tasks.py — Celery Async Tasks & Background Worker Dispatcher.
 
 import logging
 import threading
-from typing import Callable, Any, Dict
+from collections.abc import Callable
+from typing import Any
+
 from celery import shared_task
 
 logger = logging.getLogger(__name__)
@@ -13,7 +15,7 @@ logger = logging.getLogger(__name__)
 # ── Celery Shared Tasks ───────────────────────────────────────────────────────
 
 @shared_task(bind=True, max_retries=2, default_retry_delay=30, name="service.tasks.ingest_and_enrich_article")
-def task_ingest_and_enrich_article(self, article_id: str, url: str) -> Dict[str, Any]:
+def task_ingest_and_enrich_article(self, article_id: str, url: str) -> dict[str, Any]:
     """Celery worker task to crawl, parse, and generate IELTS quizzes with LangGraph."""
     from service.pipelines import ingest_and_enrich_article
     try:
@@ -27,7 +29,7 @@ def task_ingest_and_enrich_article(self, article_id: str, url: str) -> Dict[str,
 
 
 @shared_task(bind=True, max_retries=2, default_retry_delay=30, name="service.tasks.enrich_article_only")
-def task_enrich_article_only(self, article_id: str) -> Dict[str, Any]:
+def task_enrich_article_only(self, article_id: str) -> dict[str, Any]:
     """Celery worker task to re-run AI quiz generation for an existing article."""
     from service.pipelines import enrich_article_only
     try:
@@ -55,7 +57,7 @@ def run_in_background(func: Callable, *args, **kwargs) -> Any:
     Dispatches task to Celery worker queue when available.
     Falls back to a daemon thread if Celery broker is unreachable or in local dev.
     """
-    from service.pipelines import ingest_and_enrich_article, enrich_article_only
+    from service.pipelines import enrich_article_only, ingest_and_enrich_article
 
     try:
         if func == ingest_and_enrich_article:

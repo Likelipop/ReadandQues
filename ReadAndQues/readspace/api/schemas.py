@@ -2,19 +2,20 @@
 Pydantic schemas for ReadAndQues typed API endpoints.
 """
 
-from typing import Any, Dict, List, Optional
+from typing import Any
+
 from ninja import Schema
 
 
 class StatusResponse(Schema):
     status: str
-    message: Optional[str] = None
+    message: str | None = None
 
 
 class ExamSubmitIn(Schema):
     score: int = 0
     total_questions: int = 0
-    answers: Dict[str, Any] = {}
+    answers: dict[str, Any] = {}
     highlighted_markdown: str = ""
     elapsed_time: int = 0
 
@@ -22,7 +23,7 @@ class ExamSubmitIn(Schema):
 class ExamSubmitOut(Schema):
     status: str = "success"
     id: str
-    related_articles: List[Dict[str, Any]] = []
+    related_articles: list[dict[str, Any]] = []
 
 
 class SmartParaphraseIn(Schema):
@@ -33,8 +34,8 @@ class SmartParaphraseIn(Schema):
 
 class SmartParaphraseOut(Schema):
     status: str = "success"
-    paraphrased_text: Optional[str] = None
-    explanation: Optional[str] = None
+    paraphrased_text: str | None = None
+    explanation: str | None = None
 
 
 class SaveMarkersIn(Schema):
@@ -43,7 +44,7 @@ class SaveMarkersIn(Schema):
 
 class PassageProofOut(Schema):
     status: str = "success"
-    proof: Dict[str, Any]
+    proof: dict[str, Any]
 
 
 class ArticleStatusOut(Schema):
@@ -52,26 +53,26 @@ class ArticleStatusOut(Schema):
     ai_status: str
     has_quiz: bool
     has_passage_proof: bool
-    title: Optional[str] = None
+    title: str | None = None
 
 
 class SearchResultItem(Schema):
-    article_id: Optional[str] = None
-    id: Optional[str] = None
+    article_id: str | None = None
+    id: str | None = None
     title: str = ""
-    source: Optional[str] = None
-    theme: Optional[str] = None
-    genre: Optional[str] = None
-    word_count: Optional[int] = 0
-    reading_time: Optional[int] = 0
+    source: str | None = None
+    theme: str | None = None
+    genre: str | None = None
+    word_count: int | None = 0
+    reading_time: int | None = 0
 
 
 class SearchResponseOut(Schema):
     status: str = "success"
-    results: List[Dict[str, Any]] = []
+    results: list[dict[str, Any]] = []
 
 
 class GenericAiToolIn(Schema):
-    question: Optional[str] = None
-    article_id: Optional[str] = None
-    input_data: Optional[Dict[str, Any]] = None
+    question: str | None = None
+    article_id: str | None = None
+    input_data: dict[str, Any] | None = None

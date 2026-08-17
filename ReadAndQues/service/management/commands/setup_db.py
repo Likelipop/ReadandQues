@@ -4,13 +4,10 @@ Idempotently initializes MongoDB indexes, schema validators, MinIO buckets, and 
 """
 
 from django.core.management.base import BaseCommand
-import service.infrastructure.mongo.article_store as article_store
-import service.infrastructure.mongo.exam_store as exam_store
-import service.infrastructure.mongo.activity_store as activity_store
-import service.infrastructure.mongo.pipeline_store as pipeline_store
-import service.infrastructure.mongo.connection as mongo_conn
-import service.infrastructure.minio.connection as minio_conn
+
 import service.infrastructure.bm25.connection as bm25_conn
+import service.infrastructure.minio.connection as minio_conn
+import service.infrastructure.mongo.connection as mongo_conn
 
 
 class Command(BaseCommand):

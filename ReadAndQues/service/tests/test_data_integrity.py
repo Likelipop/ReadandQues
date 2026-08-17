@@ -1,6 +1,7 @@
 from unittest import TestCase
-from service.domain.contracts import ArticleContract, ExamAttemptContract, generate_article_id
-from service.domain.enums import ArticleStatus, AIStatus
+
+from service.domain.contracts import ArticleContract, generate_article_id
+from service.domain.enums import AIStatus, ArticleStatus
 
 
 class DataIntegrityContractsTests(TestCase):

@@ -1,5 +1,5 @@
 import logging
-from typing import Any, List
+from typing import Any
 
 # Ensure providers are loaded and registered
 import service.ai_core.connection.providers  # noqa: F401
@@ -9,7 +9,7 @@ logger = logging.getLogger(__name__)
 
 
 class ModelRouter:
-    def __init__(self, fallback_order: List[str] = None):
+    def __init__(self, fallback_order: list[str] = None):
         self.fallback_order = fallback_order or ["azure"]
 
     def get_llm(self, temperature: float = 0.3) -> Any:

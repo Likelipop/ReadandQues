@@ -1,7 +1,6 @@
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any
 
-from django.db import models
 from pydantic import BaseModel, Field
 
 # Create your models here.
@@ -27,7 +26,7 @@ class QuizItem(BaseModel):
             "For fill_in_blank: the summary paragraph containing [1]..[5]."
         ),
     )
-    options: Optional[List[str]] = Field(
+    options: list[str] | None = Field(
         default=None,
         description="For yes_no_not_given: ['Yes', 'No', 'Not Given']. For fill_in_blank: null.",
     )
@@ -38,14 +37,14 @@ class QuizItem(BaseModel):
             "For fill_in_blank: 5 answers separated by ' | ' (e.g. 'word1 | word2 | word3 | word4 | word5')."
         ),
     )
-    explanation: Optional[str] = Field(
+    explanation: str | None = Field(
         default="", description="Detailed explanation of why the answer is correct."
     )
-    supporting_text: Optional[str] = Field(
+    supporting_text: str | None = Field(
         default="",
         description="Verbatim sentence(s) from the article supporting the answer.",
     )
-    reading_skill: Optional[str] = Field(
+    reading_skill: str | None = Field(
         default=None,
         description=(
             "Reading skill tested. One of: 'inference', 'main_idea', "
@@ -68,41 +67,41 @@ class ArticleMongoModel(BaseModel):
     """
 
     # PyMongo returns _id as ObjectId, mapping to str
-    id: Optional[str] = Field(default=None, alias="_id")
+    id: str | None = Field(default=None, alias="_id")
 
     url: str = Field(..., description="Original article URL")
     title: str = Field(..., description="Article title")
     original_text: str = Field(..., description="Raw crawled content")
-    html_content: Optional[str] = Field(
+    html_content: str | None = Field(
         default=None, description="Raw HTML for rendering in UI"
     )
-    clean_text: Optional[str] = Field(
+    clean_text: str | None = Field(
         default=None, description="Cleaned text (after Smart Cleaner)"
     )
-    source_name: Optional[str] = Field(
+    source_name: str | None = Field(
         default="Unknown", description="Source name, e.g., BBC, CNN"
     )
 
     # Exam configuration used during generation (for auditing/re-generating)
-    exam_config: Optional[Dict[str, Any]] = Field(
+    exam_config: dict[str, Any] | None = Field(
         default=None, description='Generation config, e.g., {"total_questions": 10}'
     )
 
     # All questions (MCQ Yes/No/NG followed by FIB Summary Completion)
-    quizzes: List[QuizItem] = Field(default_factory=list)
+    quizzes: list[QuizItem] = Field(default_factory=list)
 
     # Generated exams (aligned with structure from Celery)
-    exams: List[Dict[str, Any]] = Field(default_factory=list)
+    exams: list[dict[str, Any]] = Field(default_factory=list)
 
     # Classification and images
-    theme: Optional[str] = Field(
+    theme: str | None = Field(
         default=None, description="Article theme (e.g., Technology, Science)"
     )
-    genre: Optional[str] = Field(
+    genre: str | None = Field(
         default=None, description="Text genre (e.g., scientific, news)"
     )
-    image_url: Optional[str] = Field(default=None, description="Main article image URL")
-    image_urls: List[str] = Field(
+    image_url: str | None = Field(default=None, description="Main article image URL")
+    image_urls: list[str] = Field(
         default_factory=list, description="List of all image URLs in the article"
     )
 
@@ -121,7 +120,7 @@ class AttemptMongoModel(BaseModel):
     article_id: str
     score: int = 0
     total_questions: int = 0
-    answers: Dict[str, Any] = {}
+    answers: dict[str, Any] = {}
     highlighted_markdown: str = ""
     elapsed_time: int = 0
     submitted_at: datetime

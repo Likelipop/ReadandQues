@@ -4,27 +4,25 @@ The SINGLE ENTRY POINT for all mutations. Views call these functions only.
 """
 
 import logging
-from typing import Any, Dict, Optional
+from typing import Any
 
-from django.db import transaction
-
-from service.domain.contracts import generate_article_id
-from service.domain.enums import AIStatus, ArticleStage
+import service.infrastructure.bm25.connection as bm25_conn
+import service.infrastructure.chroma.vector_store as vector_store
+import service.infrastructure.minio.object_store as object_store
+import service.infrastructure.mongo.activity_store as activity_store
 import service.infrastructure.mongo.article_store as article_store
 import service.infrastructure.mongo.exam_store as exam_store
-import service.infrastructure.mongo.activity_store as activity_store
 import service.infrastructure.mongo.pipeline_store as pipeline_store
-import service.infrastructure.minio.object_store as object_store
-import service.infrastructure.chroma.vector_store as vector_store
-import service.infrastructure.bm25.connection as bm25_conn
-from service.models import ArticleImportRequest, ExamAttemptLog, TopicProficiency
+from service.domain.contracts import generate_article_id
+from service.domain.enums import AIStatus
+from service.models import ExamAttemptLog, TopicProficiency
 from service.pipelines import enrich_article_only, ingest_and_enrich_article
 from service.tasks import run_in_background
 
 logger = logging.getLogger(__name__)
 
 
-def import_article(url: str, user_id: int) -> Dict[str, Any]:
+def import_article(url: str, user_id: int) -> dict[str, Any]:
     """
     User submits a new article URL to import.
     Deduplicates against index; if new, triggers background ingestion pipeline.
@@ -44,7 +42,7 @@ def import_article(url: str, user_id: int) -> Dict[str, Any]:
     return {"status": "created", "article_id": article_id, "is_new": True}
 
 
-def trigger_quiz_generation(article_id: str) -> Dict[str, Any]:
+def trigger_quiz_generation(article_id: str) -> dict[str, Any]:
     """Re-trigger AI quiz generation for an existing silver article."""
     idx = article_store.get_article_index(article_id)
     if not idx:
@@ -64,7 +62,7 @@ def submit_exam_attempt(
     answers: dict,
     highlighted_markdown: str = "",
     elapsed_time: int = 0,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Submit quiz results, save to PostgreSQL attempt log & TopicProficiency."""
     attempt_log = ExamAttemptLog.objects.create(
         user_id=user_id,
@@ -102,7 +100,7 @@ def submit_exam_attempt(
     }
 
 
-def run_daily_ingestion(max_articles: int = 10) -> Dict[str, Any]:
+def run_daily_ingestion(max_articles: int = 10) -> dict[str, Any]:
     """Run daily RSS feed crawling & batch ingestion for Today's Brief."""
     from service.crawler.feed_crawler import fetch_rss_feed_links
     new_links = fetch_rss_feed_links(max_per_feed=5)
@@ -127,7 +125,7 @@ def smart_paraphrase(
     paragraph_text: str,
     user_start_index: int = 0,
     user_end_index: int = 0,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     import hashlib
     p_hash = hashlib.md5(paragraph_text.encode("utf-8")).hexdigest()
 
@@ -171,7 +169,7 @@ def save_user_highlights(user_id: int, article_id: str, highlighted_text: str, n
     return activity_store.add_highlight(user_id=user_id, article_id=article_id, highlighted_text=highlighted_text, note=note)
 
 
-def ask_rag_question(question: str, article_id: Optional[str] = None) -> Dict[str, Any]:
+def ask_rag_question(question: str, article_id: str | None = None) -> dict[str, Any]:
     try:
         from service.rag.router import execute_rag_pipeline
         res = execute_rag_pipeline(question=question, article_id=article_id)
@@ -181,7 +179,7 @@ def ask_rag_question(question: str, article_id: Optional[str] = None) -> Dict[st
         return {"status": "error", "answer": f"Error executing RAG: {str(e)}", "citations": []}
 
 
-def delete_article_hard(article_id: str) -> Dict[str, Any]:
+def delete_article_hard(article_id: str) -> dict[str, Any]:
     article_store.delete_article(article_id)
     exam_store.delete_exam(article_id)
     activity_store.delete_article_activity(article_id)

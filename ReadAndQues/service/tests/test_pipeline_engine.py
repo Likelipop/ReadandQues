@@ -7,8 +7,7 @@ rather than silently changing the assumptions captured here.
 
 from unittest import TestCase
 
-from service.orchestration.configuration import Pipe
-from service.orchestration.configuration import registry
+from service.orchestration.configuration import Pipe, registry
 
 
 class RegistryCharacterizationTests(TestCase):
@@ -20,11 +19,12 @@ class RegistryCharacterizationTests(TestCase):
         registry._JOBS.clear()
         registry._PIPES.clear()
         import importlib
-        import service.orchestration.jobs.ingestion
-        import service.orchestration.jobs.processing
+
         import service.orchestration.jobs.enrichment
+        import service.orchestration.jobs.ingestion
         import service.orchestration.jobs.maintenance
         import service.orchestration.jobs.paraphrase
+        import service.orchestration.jobs.processing
         import service.orchestration.pipes
         importlib.reload(service.orchestration.jobs.ingestion)
         importlib.reload(service.orchestration.jobs.processing)

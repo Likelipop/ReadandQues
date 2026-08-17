@@ -5,7 +5,7 @@ PostgreSQL, Redis caching, and structured rotating file logging.
 """
 
 import os
-from pathlib import Path
+
 from .base import *
 
 DEBUG = False

@@ -1,8 +1,9 @@
 from django.core.management.base import BaseCommand
-import service.infrastructure.mongo.connection as mongo_conn
-import service.infrastructure.minio.connection as minio_conn
-import service.infrastructure.chroma.connection as chroma_conn
+
 import service.infrastructure.bm25.connection as bm25_conn
+import service.infrastructure.chroma.connection as chroma_conn
+import service.infrastructure.minio.connection as minio_conn
+import service.infrastructure.mongo.connection as mongo_conn
 
 
 class Command(BaseCommand):

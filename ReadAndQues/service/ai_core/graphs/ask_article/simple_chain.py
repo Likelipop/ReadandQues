@@ -5,10 +5,10 @@ service/ai_core/graphs/ask_article/simple_chain.py — Streamlined LangChain Que
 import logging
 import time
 from datetime import datetime
-from typing import Dict, List, Optional
-from pydantic import BaseModel, Field
 
 from langchain_core.prompts import ChatPromptTemplate
+from pydantic import BaseModel, Field
+
 from service.ai_core.connection import get_llm
 from service.ai_core.grounding import chunk_article_text, retrieve_article_chunks
 
@@ -18,20 +18,20 @@ logger = logging.getLogger(__name__)
 class ArticleQuestionTicketSchema(BaseModel):
     has_evidence: bool = Field(description="True if the question relates to the article (facts, vocabulary, concepts, summary). Set False ONLY if question is completely unrelated.")
     answer: str = Field(description="Direct answer or vocabulary/concept explanations grounded in the text.")
-    citation_quote: Optional[str] = Field(default="", description="Exact quote or key excerpt from the article supporting the answer or vocabulary example.")
+    citation_quote: str | None = Field(default="", description="Exact quote or key excerpt from the article supporting the answer or vocabulary example.")
 
 
 def is_learning_or_analytical_query(question: str) -> bool:
     q_lower = question.lower()
     keywords = [
-        "vocab", "vocabulary", "concept", "explain", "summary", "summarize", 
+        "vocab", "vocabulary", "concept", "explain", "summary", "summarize",
         "meaning", "define", "grammar", "difficult", "word", "phrase", "translate",
         "key point", "theme", "overview", "what is this about", "highlight", "analyse", "analyze"
     ]
     return any(kw in q_lower for kw in keywords)
 
 
-def run_ask_article_ticket_chain(article_text: str, question: str) -> Dict:
+def run_ask_article_ticket_chain(article_text: str, question: str) -> dict:
     """
     Enhanced LangChain pipeline for single-article Question Ticket resolution.
     Supports both factual Q&A and language learning (vocabulary, concepts, summaries).

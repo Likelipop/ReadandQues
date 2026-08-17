@@ -1,5 +1,6 @@
 import io
 import unittest
+
 from pypdf import PdfWriter
 
 from service.crawler.pdf_parser import (
@@ -36,10 +37,10 @@ class PdfParserTests(unittest.TestCase):
         # Create a valid PDF in memory using pypdf
         writer = PdfWriter()
         writer.add_outline_item("Introduction", 0)
-        
+
         # Create a blank page with text
         page = writer.add_blank_page(width=612, height=792)
-        
+
         buffer = io.BytesIO()
         writer.write(buffer)
         pdf_bytes = buffer.getvalue()

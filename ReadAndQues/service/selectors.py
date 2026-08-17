@@ -4,33 +4,32 @@ Views and APIs call these for fetching data. No side effects.
 """
 
 import logging
-from typing import Any, Dict, List, Optional, Set
+from typing import Any
 
-from service.domain.enums import Genre, ThemeCategory
-from service.domain.models import Article, Exam, ExamAttempt
-import service.infrastructure.mongo.article_store as article_store
-import service.infrastructure.mongo.exam_store as exam_store
-import service.infrastructure.mongo.activity_store as activity_store
-import service.infrastructure.minio.object_store as object_store
-import service.infrastructure.chroma.vector_store as vector_store
 import service.infrastructure.bm25.connection as bm25_conn
 import service.infrastructure.bm25.index as bm25_idx
+import service.infrastructure.chroma.vector_store as vector_store
+import service.infrastructure.minio.object_store as object_store
+import service.infrastructure.mongo.article_store as article_store
+import service.infrastructure.mongo.exam_store as exam_store
+from service.domain.enums import Genre, ThemeCategory
+from service.domain.models import Article
 from service.models import ExamAttemptLog
 
 logger = logging.getLogger(__name__)
 
 
-def get_theme_choices() -> List[str]:
+def get_theme_choices() -> list[str]:
     """Single Source of Truth for Theme categories."""
     return ["All"] + [t.value for t in ThemeCategory]
 
 
-def get_genre_choices() -> List[str]:
+def get_genre_choices() -> list[str]:
     """Single Source of Truth for Genres."""
     return ["All"] + [g.value for g in Genre]
 
 
-def get_article_detail(article_id: str) -> Optional[Dict[str, Any]]:
+def get_article_detail(article_id: str) -> dict[str, Any] | None:
     """Fetch complete article detail including clean text and exam payload."""
     index_doc = article_store.get_article_index(article_id)
     if not index_doc:
@@ -71,7 +70,7 @@ def get_article_detail(article_id: str) -> Optional[Dict[str, Any]]:
     return data
 
 
-def get_article_status(article_id: str) -> Dict[str, Any]:
+def get_article_status(article_id: str) -> dict[str, Any]:
     """Fetch status payload for quiz generation polling."""
     index_doc = article_store.get_article_index(article_id) or {}
     status_val = index_doc.get("ai_status", "pending")
@@ -88,11 +87,11 @@ def get_article_status(article_id: str) -> Dict[str, Any]:
 
 
 def list_completed_articles(
-    theme: Optional[str] = None,
-    genre: Optional[str] = None,
+    theme: str | None = None,
+    genre: str | None = None,
     page: int = 1,
     limit: int = 12,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Paginated completed articles listing with optional theme/genre filter."""
     if (theme and theme != "All") or (genre and genre != "All"):
         t_filter = theme if theme != "All" else None
@@ -127,13 +126,13 @@ def list_completed_articles(
     }
 
 
-def get_hot_news(limit: int = 6) -> List[Dict[str, Any]]:
+def get_hot_news(limit: int = 6) -> list[dict[str, Any]]:
     """Top completed news articles for hero banner."""
     res = list_completed_articles(limit=limit)
     return res.get("articles", [])
 
 
-def get_recommendations(user=None, limit: int = 4) -> List[Dict[str, Any]]:
+def get_recommendations(user=None, limit: int = 4) -> list[dict[str, Any]]:
     """Adaptive recommendation engine based on user TopicProficiency."""
     user_id = getattr(user, "id", None) if user and getattr(user, "is_authenticated", False) else None
     if user_id:
@@ -151,14 +150,14 @@ def get_recommendations(user=None, limit: int = 4) -> List[Dict[str, Any]]:
     return res.get("articles", [])
 
 
-def get_related_articles(article_id: str, limit: int = 5) -> List[Dict[str, Any]]:
+def get_related_articles(article_id: str, limit: int = 5) -> list[dict[str, Any]]:
     """Fetch related articles based on vector summary similarity or BM25 markers."""
     completed = list_completed_articles(limit=limit + 2).get("articles", [])
     filtered = [a for a in completed if a.get("article_id") != article_id and a.get("id") != article_id]
     return filtered[:limit]
 
 
-def get_user_attempted_ids(user_id: Optional[int]) -> Set[str]:
+def get_user_attempted_ids(user_id: int | None) -> set[str]:
     """Return set of article_ids completed/attempted by user."""
     if not user_id:
         return set()
@@ -166,7 +165,7 @@ def get_user_attempted_ids(user_id: Optional[int]) -> Set[str]:
     return set(attempt_ids)
 
 
-def get_daily_vocab(user=None, user_id=None) -> Dict[str, Any]:
+def get_daily_vocab(user=None, user_id=None) -> dict[str, Any]:
     """Word of the Day payload."""
     return {
         "word": "Resilience",
@@ -177,7 +176,7 @@ def get_daily_vocab(user=None, user_id=None) -> Dict[str, Any]:
     }
 
 
-def search_articles_keyword(query: str, limit: int = 10) -> List[Dict[str, Any]]:
+def search_articles_keyword(query: str, limit: int = 10) -> list[dict[str, Any]]:
     """BM25 + Mongo text search for articles."""
     tokens = bm25_conn.process_text_to_tokens(query) if hasattr(bm25_conn, "process_text_to_tokens") else []
     hits = bm25_idx.search_bm25(tokens, n=limit) if tokens else []
@@ -202,7 +201,7 @@ def search_articles_keyword(query: str, limit: int = 10) -> List[Dict[str, Any]]
     return results
 
 
-def search_articles_semantic(query: str, limit: int = 5) -> List[Dict[str, Any]]:
+def search_articles_semantic(query: str, limit: int = 5) -> list[dict[str, Any]]:
     """ChromaDB semantic search."""
     hits = vector_store.search_by_text(query, limit=limit)
     results = []
@@ -216,7 +215,7 @@ def search_articles_semantic(query: str, limit: int = 5) -> List[Dict[str, Any]]
     return results
 
 
-def _build_article_card(index_doc: dict, exam_doc: Optional[dict] = None) -> Dict[str, Any]:
+def _build_article_card(index_doc: dict, exam_doc: dict | None = None) -> dict[str, Any]:
     aid = str(index_doc.get("_id", ""))
     ex = exam_doc or {}
     analysis = ex.get("analysis", {})

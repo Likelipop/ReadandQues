@@ -5,6 +5,7 @@ service/infrastructure/chroma/connection.py — ChromaDB client and collection s
 import logging
 import os
 import socket
+
 import chromadb
 
 logger = logging.getLogger(__name__)

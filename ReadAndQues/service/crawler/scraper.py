@@ -3,17 +3,16 @@ from __future__ import annotations
 import ipaddress
 import logging
 import socket
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 from urllib.parse import urljoin, urlparse
 
+from bs4 import BeautifulSoup
 from django.conf import settings
 from lxml import html as lxml_html
-from trafilatura import bare_extraction, fetch_response, extract
+from trafilatura import bare_extraction, extract, fetch_response
 from trafilatura.settings import use_config
-from bs4 import BeautifulSoup
 
-import re
 from .formatter import to_markdown
 
 logger = logging.getLogger(__name__)
@@ -87,8 +86,8 @@ def _parse_published_at(value: Any) -> datetime | None:
             logger.info("Failed to parse published time")
             return None
     if parsed.tzinfo is None:
-        parsed = parsed.replace(tzinfo=timezone.utc)
-    return parsed.astimezone(timezone.utc)
+        parsed = parsed.replace(tzinfo=UTC)
+    return parsed.astimezone(UTC)
 
 
 def _first_src_from_srcset(srcset: str) -> str | None:
@@ -131,7 +130,7 @@ def _extract_images(
     )
     for xpath in metadata_xpaths:
         candidates.extend(tree.xpath(xpath))
-        
+
     # Also extract images from the main article body
     for image in tree.xpath("//article//img | //main//img | //img"):
         raw_url = (
@@ -193,7 +192,7 @@ def _extract_article(
         )
 
     content = to_markdown(raw_text)
-    
+
     # Generate standardized HTML for UI rendering
     try:
         extracted_html = extract(
@@ -206,21 +205,21 @@ def _extract_article(
         )
         if not extracted_html:
             extracted_html = f"<html><body><div><pre>{content}</pre></div></body></html>"
-            
+
         published_date = _parse_published_at(extracted.get("date"))
         date_str = published_date.strftime("%B %d, %Y") if published_date else ""
-        
+
         soup = BeautifulSoup(extracted_html, "html.parser")
         wrapper = BeautifulSoup("<html><head></head><body><article></article></body></html>", "html.parser")
-        
+
         base_tag = wrapper.new_tag("base", href=final_url)
         wrapper.head.append(base_tag)
-        
+
         header_tag = wrapper.new_tag("header")
         title_tag = wrapper.new_tag("h1")
         title_tag.string = title
         header_tag.append(title_tag)
-        
+
         if date_str:
             date_tag = wrapper.new_tag("p")
             date_strong = wrapper.new_tag("strong")
@@ -228,7 +227,7 @@ def _extract_article(
             date_tag.append(date_strong)
             date_tag.append(date_str)
             header_tag.append(date_tag)
-            
+
         if extracted.get("author"):
             author_tag = wrapper.new_tag("p")
             author_strong = wrapper.new_tag("strong")
@@ -236,15 +235,15 @@ def _extract_article(
             author_tag.append(author_strong)
             author_tag.append(extracted.get("author"))
             header_tag.append(author_tag)
-            
+
         wrapper.article.append(header_tag)
-        
+
         if soup.body:
             content_div = wrapper.new_tag("div", attrs={"class": "article-body"})
             for child in list(soup.body.children):
                 content_div.append(child)
             wrapper.article.append(content_div)
-            
+
         footer_tag = wrapper.new_tag("footer")
         footer_tag.append(wrapper.new_tag("hr"))
         link_p = wrapper.new_tag("p")
@@ -254,7 +253,7 @@ def _extract_article(
         link_p.append(a_tag)
         footer_tag.append(link_p)
         wrapper.article.append(footer_tag)
-        
+
         clean_html = str(wrapper)
     except Exception as e:
         logger.error(f"Error generating standard HTML: {e}")
@@ -304,7 +303,7 @@ def _extract_article(
             "content_type": content_type,
             "hostname": extracted.get("hostname") or fallback_source,
             "fingerprint": extracted.get("fingerprint"),
-            "crawled_at": datetime.now(timezone.utc),
+            "crawled_at": datetime.now(UTC),
         },
     }
 
@@ -325,7 +324,7 @@ def crawl_article_content(url: str) -> dict[str, Any]:
             decode=not is_pdf_path,
             with_headers=True,
             config=TRAFILATURA_CONFIG,
-        )  
+        )
         if response is None:
             raise CrawlError("DOWNLOAD_FAILED", "Could not download content from this URL.")
         status = int(response.status or 0)

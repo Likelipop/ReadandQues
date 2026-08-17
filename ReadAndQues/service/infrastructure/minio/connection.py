@@ -2,10 +2,11 @@
 service/infrastructure/minio/connection.py — MinIO client singleton.
 """
 
-import os
 import logging
-from minio import Minio
+import os
+
 from django.conf import settings
+from minio import Minio
 
 logger = logging.getLogger(__name__)
 

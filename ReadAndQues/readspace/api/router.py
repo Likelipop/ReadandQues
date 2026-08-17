@@ -4,25 +4,27 @@ Provides OpenAPI / Swagger docs at /readspace/api/docs
 """
 
 import logging
-from typing import Any, Dict
+from typing import Any
+
 from django.http import HttpRequest
 from ninja import NinjaAPI, Router
 from ninja.errors import HttpError
 from ninja.security import django_auth
 
-import service.services as services
 import service.selectors as selectors
+import service.services as services
 from service.passage_proof_service import get_passage_proof
+
 from .schemas import (
     ExamSubmitIn,
     ExamSubmitOut,
+    GenericAiToolIn,
+    PassageProofOut,
+    SaveMarkersIn,
+    SearchResponseOut,
     SmartParaphraseIn,
     SmartParaphraseOut,
-    SaveMarkersIn,
     StatusResponse,
-    PassageProofOut,
-    SearchResponseOut,
-    GenericAiToolIn,
 )
 
 logger = logging.getLogger(__name__)
@@ -39,7 +41,7 @@ router = Router()
 
 # ── Status & Ingestion Endpoints ──────────────────────────────────────────────
 
-@router.get("/status/{pk}/", response=Dict[str, Any], summary="Get Article Pipeline Status")
+@router.get("/status/{pk}/", response=dict[str, Any], summary="Get Article Pipeline Status")
 def get_article_status(request: HttpRequest, pk: str):
     """Poll the ingestion and AI generation status for a specific article."""
     payload = selectors.get_article_status(pk)
@@ -137,7 +139,7 @@ def search_semantic(request: HttpRequest, q: str):
     return {"status": "success", "results": results}
 
 
-@router.post("/ai/tool/run/", response=Dict[str, Any], summary="Generic AI Tool Gateway")
+@router.post("/ai/tool/run/", response=dict[str, Any], summary="Generic AI Tool Gateway")
 def run_ai_tool(request: HttpRequest, data: GenericAiToolIn):
     """Gateway endpoint for invoking RAG tool questions."""
     question = data.question or (data.input_data.get("question") if data.input_data else "") or ""

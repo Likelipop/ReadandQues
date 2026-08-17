@@ -1,5 +1,5 @@
 import logging
-from typing import Any, Dict, Optional
+from typing import Any
 
 from service.ai_core.graphs.question_generator.graph import run_question_generator_flow
 from service.ai_core.platform import AITool, AIToolPolicy, AIToolRunResult, register_ai_tool
@@ -12,7 +12,7 @@ class QuizGeneratorTool(AITool):
     version = "1.0.0"
     model_profile = "default"
 
-    def run(self, input_data: Dict[str, Any], user_id: Optional[int] = None) -> AIToolRunResult:
+    def run(self, input_data: dict[str, Any], user_id: int | None = None) -> AIToolRunResult:
         original_text = input_data.get("original_text", "")
 
         def _execute():

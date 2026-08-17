@@ -4,6 +4,7 @@ service/infrastructure/bm25/text_processing.py — Shared NLP text preprocessing
 
 import logging
 import re
+
 import spacy
 
 logger = logging.getLogger(__name__)

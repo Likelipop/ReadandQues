@@ -3,28 +3,29 @@ import json
 import logging
 import time
 import uuid
-from typing import Any, Callable, Dict, Optional
+from collections.abc import Callable
+from typing import Any
 
 from service.ai_core.platform.contracts import AIToolRunResult
 
 logger = logging.getLogger(__name__)
 
-_AI_CACHE: Dict[str, Any] = {}
+_AI_CACHE: dict[str, Any] = {}
 
 
 def clear_ai_cache() -> None:
     _AI_CACHE.clear()
 
 
-def hash_input(input_data: Dict[str, Any]) -> str:
+def hash_input(input_data: dict[str, Any]) -> str:
     serialized = json.dumps(input_data, sort_keys=True, default=str)
     return hashlib.sha256(serialized.encode("utf-8")).hexdigest()
 
 
 def log_ai_run(
     run_result: AIToolRunResult,
-    input_payload: Dict[str, Any],
-    user_id: Optional[int] = None
+    input_payload: dict[str, Any],
+    user_id: int | None = None
 ) -> None:
     """Persists an AIRunLog entry to PostgreSQL."""
     try:
@@ -60,8 +61,8 @@ class AIToolPolicy:
         tool_name: str,
         version: str,
         func: Callable[[], Any],
-        input_data: Dict[str, Any],
-        user_id: Optional[int] = None,
+        input_data: dict[str, Any],
+        user_id: int | None = None,
         model_name: str = "azure_gpt",
         use_cache: bool = False,
     ) -> AIToolRunResult:

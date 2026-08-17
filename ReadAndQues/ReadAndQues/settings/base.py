@@ -5,6 +5,7 @@ All common settings across development and production reside here.
 
 import os
 from pathlib import Path
+
 from dotenv import load_dotenv
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.

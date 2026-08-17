@@ -2,10 +2,11 @@
 service/crawler/feed_crawler.py — RSS Feed Ingestion Crawler for Today's Brief.
 """
 
-from datetime import datetime, timezone
 import logging
-from typing import Dict, List
+from datetime import UTC, datetime
+
 import feedparser
+
 import service.infrastructure.mongo.pipeline_store as pipeline_store
 
 logger = logging.getLogger(__name__)
@@ -17,7 +18,7 @@ DEFAULT_RSS_FEEDS = [
 ]
 
 
-def fetch_rss_feed_links(feed_urls: List[str] = None, max_per_feed: int = 5) -> List[Dict]:
+def fetch_rss_feed_links(feed_urls: list[str] = None, max_per_feed: int = 5) -> list[dict]:
     """Fetch and parse new RSS feed links."""
     urls = feed_urls or DEFAULT_RSS_FEEDS
     collected_links = []
@@ -32,9 +33,9 @@ def fetch_rss_feed_links(feed_urls: List[str] = None, max_per_feed: int = 5) -> 
                     collected_links.append({
                         "link": link,
                         "title": title,
-                        "pubDate": entry.get("published", str(datetime.now(timezone.utc))),
+                        "pubDate": entry.get("published", str(datetime.now(UTC))),
                         "is_extracted": False,
-                        "insert_date": datetime.now(timezone.utc),
+                        "insert_date": datetime.now(UTC),
                     })
         except Exception as e:
             logger.warning(f"Error parsing RSS feed '{feed_url}': {e}")

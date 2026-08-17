@@ -3,24 +3,22 @@ service/pipelines.py — Plain ETL Pipelines. Zero framework code.
 """
 
 import logging
-from datetime import datetime, timezone
-from typing import Any, Dict, List, Optional, Tuple
+from datetime import UTC, datetime
+from typing import Any
 
-from service.crawler.scraper import crawl_article_content
-from service.domain.contracts import generate_article_id
-from service.domain.enums import AIStatus, ArticleStage
+import service.infrastructure.bm25.connection as bm25_conn
+import service.infrastructure.chroma.vector_store as vector_store
+import service.infrastructure.minio.object_store as object_store
 import service.infrastructure.mongo.article_store as article_store
 import service.infrastructure.mongo.exam_store as exam_store
 import service.infrastructure.mongo.pipeline_store as pipeline_store
-import service.infrastructure.minio.object_store as object_store
-import service.infrastructure.chroma.vector_store as vector_store
-import service.infrastructure.bm25.connection as bm25_conn
-import service.infrastructure.bm25.index as bm25_idx
+from service.crawler.scraper import crawl_article_content
+from service.domain.enums import AIStatus, ArticleStage
 
 logger = logging.getLogger(__name__)
 
 
-def _clean_and_validate(raw_doc: Dict[str, Any]) -> Tuple[bool, str, Dict[str, Any]]:
+def _clean_and_validate(raw_doc: dict[str, Any]) -> tuple[bool, str, dict[str, Any]]:
     content = raw_doc.get("raw_text", "").strip()
     title = raw_doc.get("title", "").strip()
     source_name = raw_doc.get("source_name", "Unknown")
@@ -42,12 +40,12 @@ def _clean_and_validate(raw_doc: Dict[str, Any]) -> Tuple[bool, str, Dict[str, A
         "language": raw_doc.get("language", "en"),
         "image_url": raw_doc.get("image_url"),
         "image_urls": raw_doc.get("image_urls") or [],
-        "cleaned_at": datetime.now(timezone.utc).isoformat(),
+        "cleaned_at": datetime.now(UTC).isoformat(),
     }
     return True, "", cleaned_doc
 
 
-def _run_ai_enrichment(text: str) -> Optional[dict]:
+def _run_ai_enrichment(text: str) -> dict | None:
     try:
         from service.ai_core.graphs.question_generator.graph import app as question_graph
         final_state = question_graph.invoke({"original_text": text})
@@ -80,7 +78,7 @@ def ingest_and_enrich_article(article_id: str, url: str) -> dict:
         "source_name": crawl_res.get("source_name", "Unknown"),
         "image_url": crawl_res.get("image_url"),
         "image_urls": crawl_res.get("image_urls", []),
-        "crawled_at": datetime.now(timezone.utc).isoformat(),
+        "crawled_at": datetime.now(UTC).isoformat(),
         "raw_text": crawl_res.get("raw_text", ""),
         "html_content": crawl_res.get("html_content", ""),
         "word_count": crawl_res.get("word_count", 0),
@@ -129,7 +127,7 @@ def ingest_and_enrich_article(article_id: str, url: str) -> dict:
         "summary": analysis.get("core", {}).get("summary", ""),
         "analysis": analysis,
         "exams": exams_list,
-        "created_at": datetime.now(timezone.utc).isoformat(),
+        "created_at": datetime.now(UTC).isoformat(),
     }
 
     object_store.save_gold_enriched(article_id, gold_doc)
@@ -181,7 +179,7 @@ def enrich_article_only(article_id: str) -> dict:
         "summary": analysis.get("core", {}).get("summary", ""),
         "analysis": analysis,
         "exams": exams_list,
-        "created_at": datetime.now(timezone.utc).isoformat(),
+        "created_at": datetime.now(UTC).isoformat(),
     }
 
     object_store.save_gold_enriched(article_id, gold_doc)

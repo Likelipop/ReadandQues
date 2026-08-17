@@ -3,6 +3,7 @@ service/infrastructure/bm25/connection.py — Process-level BM25 singleton index
 """
 
 import logging
+
 from rank_bm25 import BM25Okapi
 
 logger = logging.getLogger(__name__)

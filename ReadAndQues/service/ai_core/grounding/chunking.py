@@ -1,6 +1,6 @@
 import hashlib
 import re
-from typing import List
+
 from pydantic import BaseModel
 
 
@@ -12,7 +12,7 @@ class ArticleChunk(BaseModel):
     content_hash: str
 
 
-def chunk_article_text(article_text: str) -> List[ArticleChunk]:
+def chunk_article_text(article_text: str) -> list[ArticleChunk]:
     """
     Splits article text into stable, offset-aware chunks with SHA-256 hashes.
     """

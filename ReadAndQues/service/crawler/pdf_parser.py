@@ -6,11 +6,12 @@ from academic papers and PDF URLs (e.g. arXiv, PubMed, open access papers).
 """
 
 import io
-import re
 import logging
-from datetime import datetime, timezone
-from typing import Any, Dict, List, Optional, Tuple
+import re
+from datetime import UTC, datetime
+from typing import Any
 from urllib.parse import urlparse
+
 from bs4 import BeautifulSoup
 from django.conf import settings
 from pypdf import PdfReader
@@ -29,7 +30,7 @@ def is_pdf_url_or_content(url: str, content_type: str) -> bool:
     )
 
 
-def resolve_arxiv_pdf_url(url: str) -> Optional[str]:
+def resolve_arxiv_pdf_url(url: str) -> str | None:
     """
     If URL is an arXiv abstract page (e.g. https://arxiv.org/abs/2301.12345),
     convert it to the corresponding direct PDF URL.
@@ -59,7 +60,7 @@ def parse_pdf_bytes(
     requested_url: str,
     final_url: str,
     http_status: int = 200,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """
     Extract title, authors, markdown content, and HTML layout from raw PDF bytes.
     """
@@ -77,7 +78,7 @@ def parse_pdf_bytes(
     pdf_author = (metadata.get("/Author") or getattr(metadata, "author", "") or "").strip()
 
     # Extract text page by page
-    page_texts: List[str] = []
+    page_texts: list[str] = []
     for page in reader.pages:
         text = page.extract_text() or ""
         if text.strip():
@@ -189,7 +190,7 @@ def parse_pdf_bytes(
         "html_content": clean_html,
         "source_name": source_name,
         "author": pdf_author or None,
-        "published_at": datetime.now(timezone.utc),
+        "published_at": datetime.now(UTC),
         "language": "en",
         "word_count": word_count,
         "image_url": None,
@@ -201,6 +202,6 @@ def parse_pdf_bytes(
             "content_type": "application/pdf",
             "hostname": hostname,
             "pages": num_pages,
-            "crawled_at": datetime.now(timezone.utc),
+            "crawled_at": datetime.now(UTC),
         },
     }

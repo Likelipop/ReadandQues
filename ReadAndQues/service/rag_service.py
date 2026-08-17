@@ -4,12 +4,12 @@ service/rag_service.py — Hybrid Retrieval & RAG Query Execution.
 
 import logging
 import os
-from typing import Dict, List, Optional
+
 from openai import OpenAI
 
-import service.infrastructure.chroma.vector_store as vector_store
 import service.infrastructure.bm25.connection as bm25_conn
 import service.infrastructure.bm25.index as bm25_idx
+import service.infrastructure.chroma.vector_store as vector_store
 from service.rag_prompts import NEWS_RAG_SYSTEM_PROMPT, NEWS_RAG_USER_TEMPLATE
 
 logger = logging.getLogger(__name__)
@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 _openai_client = None
 
 
-def get_openai_client() -> Optional[OpenAI]:
+def get_openai_client() -> OpenAI | None:
     global _openai_client
     if _openai_client is not None:
         return _openai_client
@@ -35,7 +35,7 @@ def get_openai_client() -> Optional[OpenAI]:
         return None
 
 
-def format_context_documents(chunks: List[Dict]) -> str:
+def format_context_documents(chunks: list[dict]) -> str:
     if not chunks:
         return "No relevant news articles found."
 
@@ -60,13 +60,13 @@ def format_context_documents(chunks: List[Dict]) -> str:
     return "\n\n".join(formatted_pieces)
 
 
-def perform_hybrid_search(query: str, top_k: int = 6, filters: Optional[Dict] = None) -> List[Dict]:
+def perform_hybrid_search(query: str, top_k: int = 6, filters: dict | None = None) -> list[dict]:
     """Hybrid Search combining ChromaDB vector search + BM25 keyword search via RRF."""
     vector_hits = vector_store.vector_search_chunks(query, limit=top_k * 2, where_filter=filters)
     tokens = bm25_conn.process_text_to_tokens(query) if hasattr(bm25_conn, "process_text_to_tokens") else []
     bm25_hits = bm25_idx.search_bm25(tokens, n=top_k * 2) if tokens else []
 
-    rrf_map: Dict[str, Dict] = {}
+    rrf_map: dict[str, dict] = {}
     rrf_k = 60.0
 
     for rank, hit in enumerate(vector_hits):
@@ -119,9 +119,9 @@ def perform_hybrid_search(query: str, top_k: int = 6, filters: Optional[Dict] = 
 def query_news_rag(
     query: str,
     top_k: int = 6,
-    filters: Optional[Dict] = None,
+    filters: dict | None = None,
     model_name: str = "gpt-4o-mini",
-) -> Dict:
+) -> dict:
     """Execute end-to-end RAG query."""
     if not query or not query.strip():
         return {

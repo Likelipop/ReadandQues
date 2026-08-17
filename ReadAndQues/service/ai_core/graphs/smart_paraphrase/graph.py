@@ -1,15 +1,18 @@
 import logging
-from typing import Dict, Any
-from langgraph.graph import StateGraph, END
+from typing import Any
+
 from langchain_core.output_parsers import JsonOutputParser
+from langgraph.graph import END, StateGraph
+
 from service.ai_core.connection.router import get_llm
-from .schemas import SmartParaphraseState, SmartParaphraseOutput, ValidatorOutput
+
 from .prompts import get_generator_prompt, get_validator_prompt
+from .schemas import SmartParaphraseOutput, SmartParaphraseState, ValidatorOutput
 
 logger = logging.getLogger(__name__)
 
 
-def generator_node(state: SmartParaphraseState) -> Dict[str, Any]:
+def generator_node(state: SmartParaphraseState) -> dict[str, Any]:
     logger.info(f"Generator Node: attempt {state['retry_count'] + 1}")
     llm = get_llm(temperature=1.0)
     parser = JsonOutputParser(pydantic_object=SmartParaphraseOutput)
@@ -45,7 +48,7 @@ def generator_node(state: SmartParaphraseState) -> Dict[str, Any]:
         }
 
 
-def validator_node(state: SmartParaphraseState) -> Dict[str, Any]:
+def validator_node(state: SmartParaphraseState) -> dict[str, Any]:
     logger.info("Validator Node: checking paraphrase accuracy")
     llm = get_llm(temperature=0.1)
     parser = JsonOutputParser(pydantic_object=ValidatorOutput)
@@ -105,9 +108,9 @@ workflow.add_conditional_edges(
 app = workflow.compile()
 
 
-def run_smart_paraphrase_flow(highlighted_text: str, 
-                              paragraph_text: str, 
-                              start_idx: int = 0, 
+def run_smart_paraphrase_flow(highlighted_text: str,
+                              paragraph_text: str,
+                              start_idx: int = 0,
                               end_idx: int = 0) -> dict:
     initial_state = {
         "highlighted_text": highlighted_text,

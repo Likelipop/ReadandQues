@@ -5,7 +5,8 @@ service/rag/router.py — LangGraph StateGraph Router for dynamic RAG agent sele
 import json
 import logging
 import os
-from typing import Any, Dict, List, Optional, TypedDict
+from typing import Any, TypedDict
+
 from langgraph.graph import END, StateGraph
 from openai import OpenAI
 
@@ -19,11 +20,11 @@ logger = logging.getLogger(__name__)
 
 class RouterState(TypedDict):
     question: str
-    article_id: Optional[str]
+    article_id: str | None
     intent: str
     confidence: float
     answer: str
-    citations: List[Dict[str, Any]]
+    citations: list[dict[str, Any]]
     retrieved_chunks_count: int
     model_used: str
 
@@ -113,7 +114,7 @@ def get_rag_router():
     return _rag_router_app
 
 
-def execute_rag_pipeline(question: str, article_id: Optional[str] = None) -> RAGResponse:
+def execute_rag_pipeline(question: str, article_id: str | None = None) -> RAGResponse:
     """Executes the LangGraph RAG router."""
     app = get_rag_router()
 

@@ -1,9 +1,8 @@
 import hashlib
 import importlib.util
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
-from typing import List
 
 from database.Mongo.connection import get_mongo_db
 
@@ -31,7 +30,7 @@ class NonSqlMigrationRunner:
             applied[doc["name"]] = doc
         return applied
 
-    def run(self) -> List[str]:
+    def run(self) -> list[str]:
         if not VERSIONS_DIR.exists():
             VERSIONS_DIR.mkdir(parents=True, exist_ok=True)
             return []
@@ -67,7 +66,7 @@ class NonSqlMigrationRunner:
             record = {
                 "name": name,
                 "checksum": checksum,
-                "applied_at": datetime.now(timezone.utc),
+                "applied_at": datetime.now(UTC),
             }
             self.migrations_coll.update_one({"name": name}, {"$set": record}, upsert=True)
             executed.append(name)

@@ -1,6 +1,7 @@
 from abc import ABC, abstractmethod
-from typing import Any, Dict, Optional
-from pydantic import BaseModel, Field
+from typing import Any
+
+from pydantic import BaseModel
 
 
 class AIToolRunResult(BaseModel):
@@ -16,7 +17,7 @@ class AIToolRunResult(BaseModel):
     completion_tokens: int = 0
     total_tokens: int = 0
     duration_ms: float = 0.0
-    error: Optional[str] = None
+    error: str | None = None
 
 
 class AITool(ABC):
@@ -27,6 +28,6 @@ class AITool(ABC):
     model_profile: str = "default"
 
     @abstractmethod
-    def run(self, input_data: Dict[str, Any], user_id: Optional[int] = None) -> AIToolRunResult:
+    def run(self, input_data: dict[str, Any], user_id: int | None = None) -> AIToolRunResult:
         """Executes the AI tool logic and returns a structured AIToolRunResult."""
         pass

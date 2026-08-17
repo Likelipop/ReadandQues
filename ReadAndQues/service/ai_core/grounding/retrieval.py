@@ -1,9 +1,9 @@
 import re
-from typing import List
+
 from service.ai_core.grounding.chunking import ArticleChunk
 
 
-def retrieve_article_chunks(chunks: List[ArticleChunk], query: str, top_k: int = 3) -> List[ArticleChunk]:
+def retrieve_article_chunks(chunks: list[ArticleChunk], query: str, top_k: int = 3) -> list[ArticleChunk]:
     """
     Performs article-scoped lexical retrieval over the given article's chunks.
     Guarantees no cross-article leakage.

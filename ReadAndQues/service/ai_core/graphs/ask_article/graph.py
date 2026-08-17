@@ -1,10 +1,11 @@
 import logging
-from typing import Any, Dict, List, Optional, TypedDict
-from pydantic import BaseModel
+from typing import Any, TypedDict
 
 from langgraph.graph import END, START, StateGraph
+from pydantic import BaseModel
+
 from service.ai_core.connection import get_llm
-from service.ai_core.grounding import ArticleChunk, chunk_article_text, retrieve_article_chunks
+from service.ai_core.grounding import chunk_article_text, retrieve_article_chunks
 
 logger = logging.getLogger(__name__)
 
@@ -12,22 +13,22 @@ logger = logging.getLogger(__name__)
 class GroundedAnswerSchema(BaseModel):
     has_evidence: bool
     answer: str
-    citation_quote: Optional[str] = ""
-    chunk_id: Optional[str] = ""
+    citation_quote: str | None = ""
+    chunk_id: str | None = ""
 
 
 class AskArticleState(TypedDict):
     article_text: str
     question: str
-    chunks: List[Dict[str, Any]]
-    retrieved_chunks: List[Dict[str, Any]]
+    chunks: list[dict[str, Any]]
+    retrieved_chunks: list[dict[str, Any]]
     answer: str
     citation_quote: str
     chunk_id: str
     is_grounded: bool
 
 
-def node_chunk_and_retrieve(state: AskArticleState) -> Dict[str, Any]:
+def node_chunk_and_retrieve(state: AskArticleState) -> dict[str, Any]:
     article_text = state["article_text"]
     question = state["question"]
 
@@ -40,7 +41,7 @@ def node_chunk_and_retrieve(state: AskArticleState) -> Dict[str, Any]:
     }
 
 
-def node_generate_grounded_answer(state: AskArticleState) -> Dict[str, Any]:
+def node_generate_grounded_answer(state: AskArticleState) -> dict[str, Any]:
     retrieved = state.get("retrieved_chunks", [])
     question = state["question"]
 
@@ -90,7 +91,7 @@ def node_generate_grounded_answer(state: AskArticleState) -> Dict[str, Any]:
         }
 
 
-def node_verify_grounding(state: AskArticleState) -> Dict[str, Any]:
+def node_verify_grounding(state: AskArticleState) -> dict[str, Any]:
     answer = state.get("answer", "")
     quote = state.get("citation_quote", "")
     retrieved = state.get("retrieved_chunks", [])

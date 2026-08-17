@@ -2,8 +2,9 @@
 service/infrastructure/mongo/connection.py — Minimalist MongoDB Connection.
 """
 
-import os
 import logging
+import os
+
 from django.conf import settings
 from pymongo import MongoClient
 from pymongo.collection import Collection

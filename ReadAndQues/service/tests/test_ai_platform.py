@@ -1,16 +1,13 @@
 from unittest import TestCase
 from unittest.mock import Mock, patch
 
+import service.ai_core.tools  # noqa: F401
 from service.ai_core.platform import (
-    AITool,
     AIToolPolicy,
-    AIToolRunResult,
     ModelGateway,
     get_ai_tool,
-    register_ai_tool,
 )
 from service.ai_core.platform.policy import clear_ai_cache
-import service.ai_core.tools  # noqa: F401
 
 
 class AIPlatformTests(TestCase):

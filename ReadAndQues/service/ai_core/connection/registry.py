@@ -1,8 +1,9 @@
-from typing import Any, Callable, Dict
+from collections.abc import Callable
+from typing import Any
 
 ModelFactory = Callable[[float], Any]
 
-_PROVIDERS: Dict[str, ModelFactory] = {}
+_PROVIDERS: dict[str, ModelFactory] = {}
 
 
 def register_provider(name: str) -> Callable[[ModelFactory], ModelFactory]:
@@ -19,5 +20,5 @@ def get_provider(name: str) -> ModelFactory:
     return _PROVIDERS[name]
 
 
-def get_all_providers() -> Dict[str, ModelFactory]:
+def get_all_providers() -> dict[str, ModelFactory]:
     return _PROVIDERS

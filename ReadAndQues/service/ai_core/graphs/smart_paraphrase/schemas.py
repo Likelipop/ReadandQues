@@ -1,5 +1,7 @@
-from pydantic import BaseModel, Field
 from typing import TypedDict
+
+from pydantic import BaseModel, Field
+
 
 class SmartParaphraseOutput(BaseModel):
     expanded_text: str = Field(description="Must be EXACTLY the same as the highlighted text, character for character.")

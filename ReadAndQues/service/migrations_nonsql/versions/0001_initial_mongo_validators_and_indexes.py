@@ -1,4 +1,5 @@
 import logging
+
 from pymongo.database import Database
 from pymongo.errors import OperationFailure
 
