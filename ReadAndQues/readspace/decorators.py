@@ -5,22 +5,33 @@ from django.core.cache import cache
 from django.contrib import messages
 from django.shortcuts import redirect
 
+from django.core.exceptions import PermissionDenied
+import json
+
 logger = logging.getLogger(__name__)
 
 def api_error_handler(func):
     """
-    Catch any exception inside API views and return a generic 400 or 500 JsonResponse.
-    Prevents repeated try-except blocks.
+    Catch exceptions inside API views and return appropriate JsonResponse status codes.
+    - PermissionDenied -> 403 Forbidden
+    - ValueError, json.JSONDecodeError, KeyError -> 400 Bad Request
+    - Other exceptions -> 500 Internal Server Error (or 400 with message in non-strict mode)
     """
     @wraps(func)
     def wrapper(request, *args, **kwargs):
         try:
             return func(request, *args, **kwargs)
+        except PermissionDenied as e:
+            logger.warning(f"Permission denied in {func.__name__}: {str(e)}")
+            return JsonResponse({"status": "error", "message": "Permission denied."}, status=403)
+        except (ValueError, KeyError, json.JSONDecodeError) as e:
+            logger.warning(f"Bad request in {func.__name__}: {str(e)}")
+            return JsonResponse({"status": "error", "message": f"Invalid request data: {str(e)}"}, status=400)
         except Exception as e:
             import traceback
             traceback.print_exc()
-            logger.error(f"API Error in {func.__name__}: {str(e)}")
-            return JsonResponse({"status": "error", "message": str(e)}, status=400)
+            logger.error(f"Internal Error in {func.__name__}: {str(e)}")
+            return JsonResponse({"status": "error", "message": str(e)}, status=500)
     return wrapper
 
 def rate_limit(requests=5, timeout=60, redirect_url="home"):

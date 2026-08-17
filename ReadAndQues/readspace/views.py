@@ -74,7 +74,7 @@ def import_article_view(request):
 
 
 @require_POST
-@csrf_exempt
+@login_required(login_url='/login/')
 @api_error_handler
 def trigger_quiz(request, pk):
     res = services.trigger_quiz_generation(pk)
@@ -133,7 +133,6 @@ def all_tests_view(request):
 
 @require_POST
 @login_required(login_url='/login/')
-@csrf_exempt
 @api_error_handler
 def submit_exam_attempt(request, pk):
     data = json.loads(request.body)
@@ -160,7 +159,6 @@ def submit_exam_attempt(request, pk):
 
 @require_POST
 @login_required(login_url='/login/')
-@csrf_exempt
 @api_error_handler
 def smart_paraphrase_api(request, pk: str):
     data = json.loads(request.body)
@@ -187,7 +185,6 @@ def smart_paraphrase_api(request, pk: str):
 
 @require_POST
 @login_required(login_url='/login/')
-@csrf_exempt
 @api_error_handler
 def save_markers_api(request, pk: str):
     data = json.loads(request.body)
@@ -276,7 +273,6 @@ def search_semantic_api(request):
     return JsonResponse({"status": "success", "results": results})
 
 
-@csrf_exempt
 @api_error_handler
 def run_ai_tool_api(request):
     """Generic AI Tool gateway endpoint."""
