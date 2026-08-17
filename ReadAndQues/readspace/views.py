@@ -164,6 +164,7 @@ def submit_exam_attempt(request, pk):
 def smart_paraphrase_api(request, pk: str):
     data = json.loads(request.body)
     paragraph_text = data.get("paragraph_text", "").strip()
+    highlighted_text = data.get("highlighted_text", "").strip()
     start_idx = data.get("start_index") if "start_index" in data else data.get("start_idx", 0)
     end_idx = data.get("end_index") if "end_index" in data else data.get("end_idx", 0)
 
@@ -175,13 +176,15 @@ def smart_paraphrase_api(request, pk: str):
         paragraph_text=paragraph_text,
         user_start_index=start_idx,
         user_end_index=end_idx,
+        highlighted_text=highlighted_text,
     )
 
-    paraphrased = res.get("paraphrased_text", "")
+    paraphrased = res.get("paraphrased_text", highlighted_text or paragraph_text)
+    expanded = res.get("expanded_text", paraphrased)
     return JsonResponse({
         "status": "success",
         "paraphrased_text": paraphrased,
-        "expanded_text": paraphrased,
+        "expanded_text": expanded,
         "explanation": res.get("explanation", ""),
     })
 

@@ -107,6 +107,7 @@ class APIContractsTestCase(TestCase):
                 paragraph_text="Original text passage.",
                 user_start_index=5,
                 user_end_index=15,
+                highlighted_text="",
             )
 
     def test_smart_paraphrase_with_start_idx_end_idx(self):
@@ -130,6 +131,7 @@ class APIContractsTestCase(TestCase):
                 paragraph_text="Sample text.",
                 user_start_index=2,
                 user_end_index=8,
+                highlighted_text="",
             )
 
     # ── 3. submit_exam_attempt Contract Tests ───────────────────────────────────
