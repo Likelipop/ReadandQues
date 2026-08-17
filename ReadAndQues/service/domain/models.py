@@ -75,18 +75,31 @@ class ThemeCategory(str, Enum):
 
 class Option(BaseModel):
     """A quiz option."""
-    id: str
-    text: str
+    id: str = ""
+    text: str = ""
 
 
 class Question(BaseModel):
-    """A quiz question item."""
-    id: str
-    question_type: str = "single_choice"
-    question: str
-    options: list[Option] = Field(default_factory=list)
+    """A quiz question item supporting both raw generator and structured representations."""
+    id: str | None = None
+    quiz_type: str = "multiple_choice"
+    question_type: str | None = None
+    question: str = ""
+    options: list[str] = Field(default_factory=list)
     correct_answer: Any = ""
     explanation: str | None = ""
+    supporting_text: str | None = ""
+    source_chunk_ids: list[str] | None = Field(default_factory=list)
+
+    @classmethod
+    def from_raw(cls, data: dict[str, Any]) -> "Question":
+        return cls(**data)
+
+    def model_post_init(self, __context: Any) -> None:
+        if not self.quiz_type and self.question_type:
+            self.quiz_type = self.question_type
+        elif not self.question_type and self.quiz_type:
+            self.question_type = self.quiz_type
 
 
 class Exam(BaseModel):
@@ -119,11 +132,11 @@ class Article(BaseModel):
     title: str = "Loading title..."
     source_name: str = "Unknown"
     image_url: str | None = None
-    published_at: datetime | None = None
+    published_at: datetime | str | None = None
 
     # Status & Progress
-    stage: Stage = Stage.BRONZE
-    status: Status = Status.PENDING
+    stage: str = Stage.BRONZE.value
+    status: str = Status.PENDING.value
     error_message: str | None = ""
 
     # AI Enriched Fields
@@ -148,7 +161,7 @@ class Article(BaseModel):
             self.id = self.article_id
 
     @property
-    def ai_status(self) -> Status:
+    def ai_status(self) -> str:
         return self.status
 
 
