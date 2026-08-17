@@ -147,8 +147,9 @@ def save_user_highlights(user_id: int, article_id: str, highlighted_text: str, n
 def ask_rag_question(question: str, article_id: Optional[str] = None) -> Dict[str, Any]:
     """Single entry point for all RAG questions (cross-article news or single article Q&A)."""
     try:
-        from service.rag_service import query_news_rag
-        return query_news_rag(query=question)
+        from service.rag.router import execute_rag_pipeline
+        res = execute_rag_pipeline(question=question, article_id=article_id)
+        return res.model_dump(mode="json")
     except Exception as e:
         logger.error(f"RAG service query failed: {e}")
         return {"status": "error", "answer": f"Error executing RAG: {str(e)}", "citations": []}
