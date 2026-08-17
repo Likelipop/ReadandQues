@@ -14,6 +14,8 @@ export interface StreamState {
   error: string | null;
 }
 
+export type StreamCompleteCallback = (finalText: string, citations: Citation[]) => void;
+
 export function useSSEStream() {
   const [state, setState] = useState<StreamState>({
     isStreaming: false,
@@ -22,73 +24,89 @@ export function useSSEStream() {
     error: null,
   });
 
-  const startStream = useCallback(async (question: string, articleId?: string) => {
-    setState({
-      isStreaming: true,
-      streamedText: '',
-      citations: [],
-      error: null,
-    });
-
-    try {
-      const response = await fetch('/readspace/api/rag/stream/', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ question, article_id: articleId }),
+  const startStream = useCallback(
+    async (
+      question: string,
+      articleId?: string,
+      onComplete?: StreamCompleteCallback
+    ) => {
+      setState({
+        isStreaming: true,
+        streamedText: '',
+        citations: [],
+        error: null,
       });
 
-      if (!response.ok || !response.body) {
-        throw new Error(`HTTP ${response.status}: Failed to connect to stream`);
-      }
+      try {
+        const response = await fetch('/readspace/api/rag/stream/', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ question, article_id: articleId }),
+        });
 
-      const reader = response.body.getReader();
-      const decoder = new TextDecoder('utf-8');
-      let accumulatedText = '';
+        if (!response.ok || !response.body) {
+          throw new Error(`HTTP ${response.status}: Failed to connect to stream`);
+        }
 
-      while (true) {
-        const { value, done } = await reader.read();
-        if (done) break;
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder('utf-8');
+        let accumulatedText = '';
+        let accumulatedCitations: Citation[] = [];
 
-        const chunkStr = decoder.decode(value, { stream: true });
-        const lines = chunkStr.split('\n\n');
+        while (true) {
+          const { value, done } = await reader.read();
+          if (done) break;
 
-        for (const line of lines) {
-          if (line.startsWith('data: ')) {
-            const dataPayload = line.replace('data: ', '').strip ? line.replace('data: ', '').trim() : line.replace('data: ', '');
-            if (dataPayload === '[DONE]') {
-              setState((prev) => ({ ...prev, isStreaming: false }));
-              return;
-            }
+          const chunkStr = decoder.decode(value, { stream: true });
+          const lines = chunkStr.split('\n\n');
 
-            try {
-              const parsed = JSON.parse(dataPayload);
-              if (parsed.type === 'metadata') {
-                setState((prev) => ({ ...prev, citations: parsed.citations || [] }));
-              } else if (parsed.type === 'delta') {
-                accumulatedText += parsed.text;
-                setState((prev) => ({
-                  ...prev,
-                  streamedText: accumulatedText,
-                }));
+          for (const line of lines) {
+            if (line.startsWith('data: ')) {
+              const dataPayload = line.replace('data: ', '').trim();
+              if (dataPayload === '[DONE]') {
+                setState((prev) => ({ ...prev, isStreaming: false }));
+                if (onComplete) {
+                  onComplete(accumulatedText, accumulatedCitations);
+                }
+                return;
               }
-            } catch (e) {
-              // Ignore non-JSON lines
+
+              try {
+                const parsed = JSON.parse(dataPayload);
+                if (parsed.type === 'metadata') {
+                  accumulatedCitations = parsed.citations || [];
+                  setState((prev) => ({ ...prev, citations: accumulatedCitations }));
+                } else if (parsed.type === 'delta') {
+                  accumulatedText += parsed.text || '';
+                  setState((prev) => ({
+                    ...prev,
+                    streamedText: accumulatedText,
+                  }));
+                }
+              } catch {
+                // Ignore non-JSON or partial lines
+              }
             }
           }
         }
-      }
 
-      setState((prev) => ({ ...prev, isStreaming: false }));
-    } catch (err: any) {
-      setState((prev) => ({
-        ...prev,
-        isStreaming: false,
-        error: err.message || 'Stream error',
-      }));
-    }
-  }, []);
+        setState((prev) => ({ ...prev, isStreaming: false }));
+        if (onComplete && accumulatedText) {
+          onComplete(accumulatedText, accumulatedCitations);
+        }
+      } catch (err: unknown) {
+        const message = err instanceof Error ? err.message : 'Stream error occurred';
+        setState((prev) => ({
+          ...prev,
+          isStreaming: false,
+          error: message,
+        }));
+      }
+    },
+    []
+  );
 
   return { ...state, startStream };
 }

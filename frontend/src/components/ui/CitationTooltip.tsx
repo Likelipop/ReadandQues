@@ -1,5 +1,12 @@
 import React, { useState } from 'react';
-import { ExternalLink, CheckCircle2 } from 'lucide-react';
+import { CheckCircle2, AlertCircle } from 'lucide-react';
+
+export interface ProofData {
+  proof_found: boolean;
+  proof_excerpt?: string;
+  confidence_score?: number;
+  reason?: string;
+}
 
 interface CitationTooltipProps {
   articleId: string;
@@ -14,7 +21,8 @@ export const CitationTooltip: React.FC<CitationTooltipProps> = ({
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [proofData, setProofData] = useState<any>(null);
+  const [proofData, setProofData] = useState<ProofData | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   const handleFetchProof = async () => {
     if (isOpen) {
@@ -23,16 +31,24 @@ export const CitationTooltip: React.FC<CitationTooltipProps> = ({
     }
 
     setIsOpen(true);
+    setError(null);
+
     if (!proofData) {
       setLoading(true);
       try {
         const res = await fetch(`/readspace/${articleId}/proof/${questionIdx}/`);
+        if (!res.ok) {
+          throw new Error(`HTTP error ${res.status}`);
+        }
         const json = await res.json();
         if (json.status === 'success') {
           setProofData(json.proof);
+        } else {
+          setError(json.message || 'Proof not found');
         }
-      } catch (e) {
-        console.error('Failed to fetch proof excerpt:', e);
+      } catch (e: unknown) {
+        const msg = e instanceof Error ? e.message : 'Failed to fetch proof';
+        setError(msg);
       } finally {
         setLoading(false);
       }
@@ -43,17 +59,27 @@ export const CitationTooltip: React.FC<CitationTooltipProps> = ({
     <span className="relative inline-block">
       <button
         onClick={handleFetchProof}
+        aria-expanded={isOpen}
+        aria-label="View passage grounding proof"
         className="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-semibold text-cyber-cyan bg-cyber-cyan/10 border border-cyber-cyan/30 rounded-lg hover:bg-cyber-cyan/20 transition-all cursor-pointer"
       >
         {children}
       </button>
 
       {isOpen && (
-        <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-80 p-4 glass-card glow-cyan z-50 animate-in fade-in zoom-in-95 duration-200">
+        <div
+          role="tooltip"
+          className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-80 p-4 glass-card glow-cyan z-50 animate-in fade-in zoom-95 duration-200"
+        >
           {loading ? (
             <div className="flex items-center justify-center py-4 gap-2 text-slate-400 text-xs">
               <div className="w-3 h-3 border-2 border-cyber-cyan border-t-transparent rounded-full animate-spin" />
               Retrieving grounded paragraph proof...
+            </div>
+          ) : error ? (
+            <div className="flex items-center gap-2 text-xs text-red-400 py-2">
+              <AlertCircle className="w-4 h-4 shrink-0" />
+              <span>{error}</span>
             </div>
           ) : proofData?.proof_found ? (
             <div className="space-y-2">
@@ -65,7 +91,12 @@ export const CitationTooltip: React.FC<CitationTooltipProps> = ({
                 "{proofData.proof_excerpt}"
               </p>
               <div className="text-[10px] text-slate-400 flex justify-between items-center pt-1">
-                <span>Confidence: {(proofData.confidence_score * 100).toFixed(0)}%</span>
+                <span>
+                  Confidence:{' '}
+                  {proofData.confidence_score !== undefined
+                    ? `${(proofData.confidence_score * 100).toFixed(0)}%`
+                    : 'N/A'}
+                </span>
                 <span className="text-cyber-cyan font-medium">Paragraph Proof Match</span>
               </div>
             </div>
