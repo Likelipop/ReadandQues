@@ -1,4 +1,4 @@
-from database.Chroma.connection import articles_collection, chroma_client
+from service.infrastructure.chroma.connection import articles_collection, chroma_client
 
 __all__ = [
     "chroma_client",

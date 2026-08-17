@@ -1,24 +1,15 @@
 from django.core.management.base import BaseCommand
-from service.orchestrator import run_daily_pipeline
+import service.services as services
 
 
 class Command(BaseCommand):
-    help = "Runs the daily data and AI enrichment pipeline."
+    help = "Run daily news ingestion and enrichment pipeline."
 
     def add_arguments(self, parser):
-        parser.add_argument(
-            '--max-news',
-            type=int,
-            help='Override the default batch size to process a maximum number of news articles.',
-        )
+        parser.add_argument("--max-news", type=int, default=10, help="Max news articles to crawl")
 
     def handle(self, *args, **options):
-        max_news = options.get('max_news')
-        
-        if max_news:
-            self.stdout.write(self.style.SUCCESS(f"Starting daily pipeline execution (max_news={max_news})..."))
-        else:
-            self.stdout.write(self.style.SUCCESS("Starting daily pipeline execution..."))
-            
-        result = run_daily_pipeline(max_news=max_news)
-        self.stdout.write(self.style.SUCCESS(f"Daily pipeline finished: {result['message']}"))
+        max_news = options.get("max_news", 10)
+        self.stdout.write(f"Starting daily pipeline (max_news={max_news})...")
+        res = services.run_daily_ingestion(max_articles=max_news)
+        self.stdout.write(self.style.SUCCESS(f"Daily pipeline completed: {res}"))

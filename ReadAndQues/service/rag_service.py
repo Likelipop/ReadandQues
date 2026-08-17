@@ -1,5 +1,5 @@
 """
-service/rag_service.py — Production RAG Service implementation
+service/rag_service.py — Hybrid Retrieval & RAG Query Execution.
 """
 
 import logging
@@ -7,7 +7,9 @@ import os
 from typing import Dict, List, Optional
 from openai import OpenAI
 
-from service.repositories.search_repository import SearchRepository
+import service.infrastructure.chroma.vector_store as vector_store
+import service.infrastructure.bm25.connection as bm25_conn
+import service.infrastructure.bm25.index as bm25_idx
 from service.rag_prompts import NEWS_RAG_SYSTEM_PROMPT, NEWS_RAG_USER_TEMPLATE
 
 logger = logging.getLogger(__name__)
@@ -34,7 +36,6 @@ def get_openai_client() -> Optional[OpenAI]:
 
 
 def format_context_documents(chunks: List[Dict]) -> str:
-    """Format retrieved RAG chunks into readable string context for LLM prompt."""
     if not chunks:
         return "No relevant news articles found."
 
@@ -59,19 +60,69 @@ def format_context_documents(chunks: List[Dict]) -> str:
     return "\n\n".join(formatted_pieces)
 
 
+def perform_hybrid_search(query: str, top_k: int = 6, filters: Optional[Dict] = None) -> List[Dict]:
+    """Hybrid Search combining ChromaDB vector search + BM25 keyword search via RRF."""
+    vector_hits = vector_store.vector_search_chunks(query, limit=top_k * 2, where_filter=filters)
+    tokens = bm25_conn.process_text_to_tokens(query) if hasattr(bm25_conn, "process_text_to_tokens") else []
+    bm25_hits = bm25_idx.search_bm25(tokens, n=top_k * 2) if tokens else []
+
+    rrf_map: Dict[str, Dict] = {}
+    rrf_k = 60.0
+
+    for rank, hit in enumerate(vector_hits):
+        doc_key = hit["id"]
+        rrf_score = 1.0 / (rrf_k + (rank + 1))
+        rrf_map[doc_key] = {
+            "rrf_score": rrf_score,
+            "hit": hit,
+            "sources": ["vector"],
+        }
+
+    for rank, hit in enumerate(bm25_hits):
+        article_id = hit["id"]
+        matching_key = None
+        for key in rrf_map:
+            if rrf_map[key]["hit"]["metadata"].get("article_id") == article_id:
+                matching_key = key
+                break
+
+        rrf_score = 1.0 / (rrf_k + (rank + 1))
+
+        if matching_key:
+            rrf_map[matching_key]["rrf_score"] += rrf_score
+            rrf_map[matching_key]["sources"].append("bm25")
+        else:
+            synthetic_key = f"{article_id}_bm25_{rank}"
+            rrf_map[synthetic_key] = {
+                "rrf_score": rrf_score,
+                "hit": {
+                    "id": synthetic_key,
+                    "text": "",
+                    "metadata": {"article_id": article_id, "title": f"Article {article_id}"},
+                    "distance": 1.0,
+                    "score": hit.get("score", 0.0),
+                },
+                "sources": ["bm25"],
+            }
+
+    sorted_candidates = sorted(rrf_map.values(), key=lambda x: x["rrf_score"], reverse=True)
+    final_results = []
+    for candidate in sorted_candidates[:top_k]:
+        hit = candidate["hit"]
+        hit["rrf_score"] = round(candidate["rrf_score"], 4)
+        hit["retrieval_sources"] = candidate["sources"]
+        final_results.append(hit)
+
+    return final_results
+
+
 def query_news_rag(
     query: str,
     top_k: int = 6,
     filters: Optional[Dict] = None,
     model_name: str = "gpt-4o-mini",
 ) -> Dict:
-    """
-    Execute end-to-end RAG pipeline over MongoDB news collection:
-    1. Hybrid search (ChromaDB Vector + BM25 Lexical + RRF).
-    2. Build grounded context & prompts.
-    3. Invoke LLM with temperature=0.0 (Factual Grounding).
-    4. Return formatted answer & citation metadata.
-    """
+    """Execute end-to-end RAG query."""
     if not query or not query.strip():
         return {
             "status": "error",
@@ -81,9 +132,7 @@ def query_news_rag(
             "retrieved_chunks_count": 0,
         }
 
-    # 1. Retrieve Chunks
-    search_repo = SearchRepository()
-    retrieved_chunks = search_repo.search_hybrid(query, top_k=top_k, where_filter=filters)
+    retrieved_chunks = perform_hybrid_search(query, top_k=top_k, filters=filters)
 
     if not retrieved_chunks:
         return {
@@ -94,7 +143,6 @@ def query_news_rag(
             "retrieved_chunks_count": 0,
         }
 
-    # 2. Extract Citations
     citations = []
     seen_articles = set()
     for chunk in retrieved_chunks:
@@ -111,15 +159,12 @@ def query_news_rag(
                 "rrf_score": chunk.get("rrf_score", 0.0),
             })
 
-    # 3. Build Prompt Context
     formatted_context = format_context_documents(retrieved_chunks)
     system_prompt = NEWS_RAG_SYSTEM_PROMPT.format(context=formatted_context)
     user_prompt = NEWS_RAG_USER_TEMPLATE.format(query=query)
 
-    # 4. Invoke LLM
     client = get_openai_client()
     if not client:
-        # Fallback response if OpenAI key is not configured
         return {
             "status": "warning",
             "answer": (
@@ -139,7 +184,7 @@ def query_news_rag(
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": user_prompt},
             ],
-            temperature=0.0,  # Strict factual grounding as per skill-rag-pipeline & skill-prompt-patterns
+            temperature=0.0,
         )
         answer_text = response.choices[0].message.content
 

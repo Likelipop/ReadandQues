@@ -1,0 +1,167 @@
+"""
+service/services.py — Centralized Write Operations & Business Logic Services.
+The SINGLE ENTRY POINT for all mutations. Views call these functions only.
+"""
+
+import logging
+from typing import Any, Dict, Optional
+
+from django.db import transaction
+
+from service.domain.contracts import generate_article_id
+from service.domain.enums import AIStatus, ArticleStage
+import service.infrastructure.mongo.article_store as article_store
+import service.infrastructure.mongo.exam_store as exam_store
+import service.infrastructure.mongo.activity_store as activity_store
+import service.infrastructure.mongo.pipeline_store as pipeline_store
+import service.infrastructure.minio.object_store as object_store
+import service.infrastructure.chroma.vector_store as vector_store
+import service.infrastructure.bm25.connection as bm25_conn
+from service.models import ArticleImportRequest, ExamAttemptLog
+from service.pipelines import enrich_article_only, ingest_and_enrich_article
+from service.tasks import run_in_background
+
+logger = logging.getLogger(__name__)
+
+
+def import_article(url: str, user_id: int) -> Dict[str, Any]:
+    """
+    User submits a new article URL to import.
+    Deduplicates against index; if new, triggers background ingestion pipeline.
+    """
+    existing = article_store.get_article_index_by_url(url)
+    if existing:
+        aid = str(existing["_id"])
+        logger.info(f"Article URL already exists: {url} → {aid}")
+        return {"status": "exists", "article_id": aid, "is_new": False}
+
+    article_id = generate_article_id(url)
+    article_store.create_article_index(article_id=article_id, url=url, stage="bronze", ai_status="pending")
+
+    # Launch background ETL task
+    run_in_background(ingest_and_enrich_article, article_id=article_id, url=url)
+
+    return {"status": "created", "article_id": article_id, "is_new": True}
+
+
+def trigger_quiz_generation(article_id: str) -> Dict[str, Any]:
+    """Re-trigger AI quiz generation for an existing silver article."""
+    idx = article_store.get_article_index(article_id)
+    if not idx:
+        return {"status": "error", "message": "Article not found"}
+
+    article_store.update_ai_status(article_id, AIStatus.PENDING_GENERATION)
+    run_in_background(enrich_article_only, article_id=article_id)
+
+    return {"status": "triggered", "article_id": article_id}
+
+
+def submit_exam_attempt(
+    user_id: int,
+    article_id: str,
+    score: int,
+    total_questions: int,
+    answers: dict,
+    highlighted_markdown: str = "",
+    elapsed_time: int = 0,
+) -> Dict[str, Any]:
+    """Submit quiz results, save to PostgreSQL attempt log, and return results."""
+    attempt_log = ExamAttemptLog.objects.create(
+        user_id=user_id,
+        article_id=article_id,
+        score=score,
+        total_questions=total_questions,
+        answers=answers,
+        highlighted_markdown=highlighted_markdown,
+        elapsed_time=elapsed_time,
+    )
+
+    # Save to MongoDB activity store
+    activity_store.log_reading_session(
+        user_id=user_id,
+        article_id=article_id,
+        duration_sec=elapsed_time,
+        completion_rate=1.0 if score > 0 else 0.5,
+    )
+
+    return {
+        "status": "success",
+        "attempt_id": str(attempt_log.attempt_id),
+        "score": score,
+        "total_questions": total_questions,
+    }
+
+
+def smart_paraphrase(
+    article_id: str,
+    paragraph_text: str,
+    user_start_index: int = 0,
+    user_end_index: int = 0,
+) -> Dict[str, Any]:
+    """Execute or fetch cached smart paraphrase for highlighted text."""
+    import hashlib
+    p_hash = hashlib.md5(paragraph_text.encode("utf-8")).hexdigest()
+
+    cached = article_store.find_exact_paraphrase(
+        article_id=article_id,
+        paragraph_hash=p_hash,
+        user_start_index=user_start_index,
+        user_end_index=user_end_index,
+    )
+    if cached:
+        return cached
+
+    # Run Smart Paraphrase AI pipeline
+    try:
+        from service.ai_core.graphs.smart_paraphrase.graph import app as paraphrase_graph
+        result = paraphrase_graph.invoke({
+            "paragraph_text": paragraph_text,
+            "start_index": user_start_index,
+            "end_index": user_end_index,
+        })
+        payload = {
+            "article_id": article_id,
+            "paragraph_hash": p_hash,
+            "user_start_index": user_start_index,
+            "user_end_index": user_end_index,
+            "paraphrased_text": result.get("paraphrased_text", paragraph_text),
+            "explanation": result.get("explanation", ""),
+        }
+        article_store.save_smart_paraphrase(payload)
+        return payload
+    except Exception as e:
+        logger.error(f"Smart paraphrase execution failed: {e}")
+        return {
+            "article_id": article_id,
+            "paragraph_hash": p_hash,
+            "paraphrased_text": paragraph_text,
+            "explanation": f"Paraphrase service error: {str(e)}",
+        }
+
+
+def save_user_highlights(user_id: int, article_id: str, highlighted_text: str, note: str = "") -> bool:
+    """Save user text highlight and annotation."""
+    return activity_store.add_highlight(user_id=user_id, article_id=article_id, highlighted_text=highlighted_text, note=note)
+
+
+def ask_rag_question(question: str, article_id: Optional[str] = None) -> Dict[str, Any]:
+    """Single entry point for all RAG questions (cross-article news or single article Q&A)."""
+    try:
+        from service.rag_service import query_news_rag
+        return query_news_rag(query=question)
+    except Exception as e:
+        logger.error(f"RAG service query failed: {e}")
+        return {"status": "error", "answer": f"Error executing RAG: {str(e)}", "citations": []}
+
+
+def delete_article_hard(article_id: str) -> Dict[str, Any]:
+    """Cascading hard delete across all 5 data stores."""
+    article_store.delete_article(article_id)
+    exam_store.delete_exam(article_id)
+    activity_store.delete_article_activity(article_id)
+    object_store.delete_article_objects(article_id)
+    vector_store.delete_article_chunks(article_id)
+    bm25_conn.rebuild_index()
+
+    logger.info(f"🗑 Hard deleted article {article_id} across Mongo, MinIO, ChromaDB, and BM25")
+    return {"status": "success", "article_id": article_id}
