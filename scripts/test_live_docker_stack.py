@@ -9,7 +9,7 @@ from datetime import datetime, timezone
 # Add app paths
 sys.path.insert(0, "/app")
 sys.path.insert(0, "/app/ReadAndQues")
-os.environ.setdefault("DJANGO_SETTINGS_MODULE", "ReadAndQues.settings_prod")
+os.environ.setdefault("DJANGO_SETTINGS_MODULE", "ReadAndQues.settings.prod")
 
 import django
 django.setup()

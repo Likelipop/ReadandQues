@@ -12,7 +12,7 @@ if str(_PROJECT_ROOT) not in sys.path:
 
 def main():
     """Run administrative tasks."""
-    os.environ.setdefault("DJANGO_SETTINGS_MODULE", "ReadAndQues.settings")
+    os.environ.setdefault("DJANGO_SETTINGS_MODULE", "ReadAndQues.settings.dev")
     try:
         from django.core.management import execute_from_command_line
     except ImportError as exc:
