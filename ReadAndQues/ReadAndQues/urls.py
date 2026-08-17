@@ -18,8 +18,11 @@ Including another URLconf
 from django.contrib import admin
 from django.urls import include, path
 
+from readspace.api import api as readspace_api
+
 urlpatterns = [
     path("admin/", admin.site.urls),
+    path("readspace/v1/", readspace_api.urls),
     path("readspace/", include("readspace.urls")),
     path("", include("homepage.urls")),
     path("", include("accounts.urls")),

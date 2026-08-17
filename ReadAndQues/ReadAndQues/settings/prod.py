@@ -93,7 +93,7 @@ LOGGING = {
         "file_error": {
             "level": "ERROR",
             "class": "logging.handlers.RotatingFileHandler",
-            "filename": LOGS_DIR / "django_error.log",
+            "filename": str(LOGS_DIR / "django_error.log"),
             "maxBytes": 10 * 1024 * 1024,  # 10 MB
             "backupCount": 5,
             "formatter": "verbose",
@@ -101,7 +101,7 @@ LOGGING = {
         "file_info": {
             "level": "INFO",
             "class": "logging.handlers.RotatingFileHandler",
-            "filename": LOGS_DIR / "django_info.log",
+            "filename": str(LOGS_DIR / "django_info.log"),
             "maxBytes": 10 * 1024 * 1024,  # 10 MB
             "backupCount": 5,
             "formatter": "verbose",

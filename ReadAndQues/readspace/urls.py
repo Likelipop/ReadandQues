@@ -26,7 +26,4 @@ urlpatterns = [
     path("api/rag/stream/", views.rag_stream_api, name="rag_stream_api"),
     path("api/search/keyword/", views.search_bm25_api, name="search_bm25_api"),
     path("api/search/semantic/", views.search_semantic_api, name="search_semantic_api"),
-
-    # ── Typed Django Ninja OpenAPI / Swagger Router ──────────────────────────
-    path("v1/", readspace_api.urls),
 ]
