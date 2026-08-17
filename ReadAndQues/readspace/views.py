@@ -201,6 +201,49 @@ def save_markers_api(request, pk: str):
     return JsonResponse({"status": "success"})
 
 
+@require_POST
+@csrf_exempt
+def rag_stream_api(request):
+    """Server-Sent Events (SSE) streaming endpoint for RAG Study Buddy responses."""
+    import time
+    from django.http import StreamingHttpResponse
+
+    try:
+        body = json.loads(request.body.decode("utf-8"))
+    except Exception:
+        body = {}
+
+    question = body.get("question", "").strip()
+    article_id = body.get("article_id")
+
+    if not question:
+        return JsonResponse({"status": "error", "message": "Question required"}, status=400)
+
+    res = services.ask_rag_question(question=question, article_id=article_id)
+    answer_text = res.get("answer", "")
+    citations = res.get("citations", [])
+
+    def event_stream():
+        # Stream metadata first
+        yield f"data: {json.dumps({'type': 'metadata', 'citations': citations})}\n\n"
+        time.sleep(0.05)
+
+        # Stream words word-by-word (ChatGPT style)
+        words = answer_text.split(" ")
+        for i, word in enumerate(words):
+            chunk = word + (" " if i < len(words) - 1 else "")
+            payload = json.dumps({"type": "delta", "text": chunk})
+            yield f"data: {payload}\n\n"
+            time.sleep(0.02)
+
+        yield "data: [DONE]\n\n"
+
+    response = StreamingHttpResponse(event_stream(), content_type="text/event-stream")
+    response["Cache-Control"] = "no-cache"
+    response["X-Accel-Buffering"] = "no"
+    return response
+
+
 @require_GET
 @api_error_handler
 def passage_proof_api(request, pk: str, idx: int):

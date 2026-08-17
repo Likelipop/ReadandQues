@@ -21,7 +21,8 @@ urlpatterns = [
     path("api/ai/tool/run/", views.run_ai_tool_api, name="run_ai_tool_api"),
     path("api/ai-tool/", views.run_ai_tool_api, name="run_ai_tool_alias"),
 
-    # Search API
+    # Search & RAG Streaming API
+    path("api/rag/stream/", views.rag_stream_api, name="rag_stream_api"),
     path("api/search/keyword/", views.search_bm25_api, name="search_bm25_api"),
     path("api/search/semantic/", views.search_semantic_api, name="search_semantic_api"),
 ]
