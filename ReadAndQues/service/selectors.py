@@ -166,7 +166,7 @@ def get_user_attempted_ids(user_id: Optional[int]) -> Set[str]:
     return set(attempt_ids)
 
 
-def get_daily_vocab(user=None) -> Dict[str, Any]:
+def get_daily_vocab(user=None, user_id=None) -> Dict[str, Any]:
     """Word of the Day payload."""
     return {
         "word": "Resilience",
@@ -234,5 +234,7 @@ def _build_article_card(index_doc: dict, exam_doc: Optional[dict] = None) -> Dic
         "theme": ex.get("theme") or analysis.get("theme", ThemeCategory.GENERAL.value),
         "genre": ex.get("genre") or analysis.get("genre", "general"),
         "summary": ex.get("summary") or analysis.get("core", {}).get("summary", ""),
+        "original_text": ex.get("summary") or analysis.get("core", {}).get("summary", ""),
+        "word_count": ex.get("word_count", 0),
         "has_attempted": False,
     }

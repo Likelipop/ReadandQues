@@ -100,7 +100,7 @@ services:
         condition: service_healthy
     command: >
       sh -c "python3 ReadAndQues/manage.py migrate &&
-             python3 ReadAndQues/manage.py migrate_non_sql &&
+             python3 ReadAndQues/manage.py setup_db &&
              python3 ReadAndQues/manage.py collectstatic --noinput &&
              gunicorn --config /app/gunicorn.conf.py --chdir /app/ReadAndQues ReadAndQues.wsgi:application"
     healthcheck:
