@@ -346,13 +346,14 @@
                         
                         const data = await res.json();
                         if (data.status === 'success') {
-                            target.innerHTML = data.expanded_text;
+                            const paraphrasedResult = data.paraphrased_text || data.expanded_text || highlightedText;
+                            target.innerHTML = paraphrasedResult;
                             target.style.backgroundColor = '#bfdbfe'; 
                             
                             setTimeout(() => {
                                 target.style.opacity = '0';
                                 setTimeout(() => {
-                                    target.innerHTML = `<strong>${data.paraphrased_text}</strong>`;
+                                    target.innerHTML = `<strong>${paraphrasedResult}</strong>`;
                                     target.style.backgroundColor = '#dcfce7'; 
                                     target.style.opacity = '1';
                                     
@@ -633,7 +634,7 @@
                         quizPollDone = true;
                         quizPollTimeout = null;
                         renderQuizzesDynamically(data.exams);
-                    } else if (data.quiz_status === 'failed') {
+                    } else if (data.status === 'failed' || data.status === 'error' || data.ai_status === 'failed' || data.ai_status === 'error' || data.quiz_status === 'failed') {
                         quizPollDone = true;
                         quizPollTimeout = null;
                         const proc = document.getElementById('processing-right');
@@ -859,6 +860,7 @@
                         score: correctCount,
                         total_questions: totalQuestions,
                         answers: examState.answers,
+                        elapsed_time: elapsedTime,
                         time_taken_seconds: elapsedTime,
                         highlighted_markdown: highlightedMarkdown
                     })
@@ -1161,20 +1163,23 @@
             const data = await response.json();
             
             let finalTicket;
-            if (data.status === "completed" && data.output) {
+            if (data.status === "success" || data.status === "completed") {
+                const answerText = data.answer || (data.output && data.output.answer) || "Answer processed.";
+                const citationQuote = (data.citations && data.citations[0] && data.citations[0].quote) || 
+                                      (data.output && data.output.citation_quote) || "";
                 finalTicket = {
-                    ticket_id: data.output.ticket_id || pendingTicket.ticket_id,
+                    ticket_id: (data.output && data.output.ticket_id) || pendingTicket.ticket_id,
                     question: question,
-                    answer: data.output.answer || "Answer processed.",
-                    citation_quote: data.output.citation_quote || "",
-                    status: data.output.status || "RESOLVED",
-                    timestamp: data.output.timestamp || pendingTicket.timestamp,
+                    answer: answerText,
+                    citation_quote: citationQuote,
+                    status: "RESOLVED",
+                    timestamp: (data.output && data.output.timestamp) || pendingTicket.timestamp,
                 };
             } else {
                 finalTicket = {
                     ticket_id: pendingTicket.ticket_id,
                     question: question,
-                    answer: data.error || "Failed to process ticket.",
+                    answer: data.error || data.message || "Failed to process ticket.",
                     citation_quote: "",
                     status: "ERROR",
                     timestamp: pendingTicket.timestamp,

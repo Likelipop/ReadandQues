@@ -141,7 +141,7 @@ def submit_exam_attempt(request, pk):
     total_questions = data.get("total_questions", 0)
     answers = data.get("answers", {})
     highlighted_markdown = data.get("highlighted_markdown", "")
-    elapsed_time = data.get("elapsed_time", 0)
+    elapsed_time = data.get("elapsed_time") or data.get("time_taken_seconds", 0)
     user_id = request.user.id
 
     res = services.submit_exam_attempt(
@@ -164,8 +164,8 @@ def submit_exam_attempt(request, pk):
 def smart_paraphrase_api(request, pk: str):
     data = json.loads(request.body)
     paragraph_text = data.get("paragraph_text", "").strip()
-    start_idx = data.get("start_index", 0)
-    end_idx = data.get("end_index", 0)
+    start_idx = data.get("start_index") if "start_index" in data else data.get("start_idx", 0)
+    end_idx = data.get("end_index") if "end_index" in data else data.get("end_idx", 0)
 
     if not paragraph_text:
         return JsonResponse({"status": "error", "message": "Missing paragraph_text"}, status=400)
@@ -177,10 +177,12 @@ def smart_paraphrase_api(request, pk: str):
         user_end_index=end_idx,
     )
 
+    paraphrased = res.get("paraphrased_text", "")
     return JsonResponse({
         "status": "success",
-        "paraphrased_text": res.get("paraphrased_text"),
-        "explanation": res.get("explanation"),
+        "paraphrased_text": paraphrased,
+        "expanded_text": paraphrased,
+        "explanation": res.get("explanation", ""),
     })
 
 
@@ -189,12 +191,12 @@ def smart_paraphrase_api(request, pk: str):
 @api_error_handler
 def save_markers_api(request, pk: str):
     data = json.loads(request.body)
-    highlighted_markdown = data.get("highlighted_markdown", "")
+    highlighted_markdown = data.get("highlighted_markdown") or data.get("highlights", "")
 
     services.save_user_highlights(
         user_id=request.user.id,
         article_id=pk,
-        highlights=highlighted_markdown,
+        highlighted_text=highlighted_markdown,
     )
     return JsonResponse({"status": "success"})
 
@@ -285,8 +287,21 @@ def run_ai_tool_api(request):
     except Exception:
         return JsonResponse({"error": "Invalid JSON body"}, status=400)
 
-    question = body.get("question") or body.get("input_data", {}).get("question", "")
+    question = body.get("question") or (body.get("input_data", {}).get("question") if isinstance(body.get("input_data"), dict) else "") or ""
     article_id = body.get("article_id")
 
     res = services.ask_rag_question(question=question, article_id=article_id)
-    return JsonResponse(res)
+    answer = res.get("answer", "")
+    citations = res.get("citations", [])
+    first_quote = citations[0].get("quote", "") if citations and isinstance(citations[0], dict) else ""
+
+    return JsonResponse({
+        "status": "success",
+        "answer": answer,
+        "citations": citations,
+        "output": {
+            "answer": answer,
+            "citation_quote": first_quote,
+            "status": "RESOLVED",
+        },
+    })

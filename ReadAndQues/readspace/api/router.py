@@ -105,7 +105,7 @@ def save_markers(request: HttpRequest, pk: str, data: SaveMarkersIn):
     services.save_user_highlights(
         user_id=request.user.id,
         article_id=pk,
-        highlights=data.highlighted_markdown,
+        highlighted_text=data.highlighted_markdown,
     )
     return {"status": "success"}
 

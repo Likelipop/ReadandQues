@@ -197,7 +197,7 @@ class ReadspaceFunctionalTestCase(TestCase):
             mock_save.assert_called_once_with(
                 user_id=self.user.id,
                 article_id=self.article_id,
-                highlights="==Marine biology== is crucial.",
+                highlighted_text="==Marine biology== is crucial.",
             )
 
     def test_passage_proof_grounding_functional(self):
