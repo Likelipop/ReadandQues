@@ -78,3 +78,5 @@ resend>=2.0.0
 minio>=7.2.14
 celery>=5.4.0
 redis>=5.0.0
+django-ninja>=1.0.0
+
