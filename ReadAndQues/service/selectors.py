@@ -134,7 +134,19 @@ def get_hot_news(limit: int = 6) -> List[Dict[str, Any]]:
 
 
 def get_recommendations(user=None, limit: int = 4) -> List[Dict[str, Any]]:
-    """Recommended reading articles."""
+    """Adaptive recommendation engine based on user TopicProficiency."""
+    user_id = getattr(user, "id", None) if user and getattr(user, "is_authenticated", False) else None
+    if user_id:
+        from service.models import TopicProficiency
+        weak_topics = list(TopicProficiency.objects.filter(user_id=user_id, accuracy__lt=0.60).values_list("topic", flat=True)[:2])
+        if weak_topics:
+            adapted = []
+            for t in weak_topics:
+                res = list_completed_articles(theme=t, limit=2)
+                adapted.extend(res.get("articles", []))
+            if adapted:
+                return adapted[:limit]
+
     res = list_completed_articles(limit=limit)
     return res.get("articles", [])
 

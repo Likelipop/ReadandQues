@@ -17,7 +17,7 @@ import service.infrastructure.mongo.pipeline_store as pipeline_store
 import service.infrastructure.minio.object_store as object_store
 import service.infrastructure.chroma.vector_store as vector_store
 import service.infrastructure.bm25.connection as bm25_conn
-from service.models import ArticleImportRequest, ExamAttemptLog
+from service.models import ArticleImportRequest, ExamAttemptLog, TopicProficiency
 from service.pipelines import enrich_article_only, ingest_and_enrich_article
 from service.tasks import run_in_background
 
@@ -65,7 +65,7 @@ def submit_exam_attempt(
     highlighted_markdown: str = "",
     elapsed_time: int = 0,
 ) -> Dict[str, Any]:
-    """Submit quiz results, save to PostgreSQL attempt log, and return results."""
+    """Submit quiz results, save to PostgreSQL attempt log & TopicProficiency."""
     attempt_log = ExamAttemptLog.objects.create(
         user_id=user_id,
         article_id=article_id,
@@ -76,13 +76,23 @@ def submit_exam_attempt(
         elapsed_time=elapsed_time,
     )
 
-    # Save to MongoDB activity store
+    # Save activity session to MongoDB
     activity_store.log_reading_session(
         user_id=user_id,
         article_id=article_id,
         duration_sec=elapsed_time,
         completion_rate=1.0 if score > 0 else 0.5,
     )
+
+    # Update Topic Proficiency for adaptive recommendation engine
+    exam_doc = exam_store.get_exam(article_id) or {}
+    topic = exam_doc.get("theme", "General")
+    if user_id and topic:
+        prof, _ = TopicProficiency.objects.get_or_create(user_id=user_id, topic=topic)
+        prof.total_questions += total_questions
+        prof.correct_answers += score
+        prof.accuracy = prof.correct_answers / max(1, prof.total_questions)
+        prof.save()
 
     return {
         "status": "success",
@@ -92,13 +102,32 @@ def submit_exam_attempt(
     }
 
 
+def run_daily_ingestion(max_articles: int = 10) -> Dict[str, Any]:
+    """Run daily RSS feed crawling & batch ingestion for Today's Brief."""
+    from service.crawler.feed_crawler import fetch_rss_feed_links
+    new_links = fetch_rss_feed_links(max_per_feed=5)
+    unprocessed = pipeline_store.get_unprocessed_rss_links(limit=max_articles)
+
+    processed_count = 0
+    for item in unprocessed:
+        url = item.get("link")
+        if url:
+            article_id = generate_article_id(url)
+            article_store.create_article_index(article_id=article_id, url=url, stage="bronze", ai_status="pending")
+            res = ingest_and_enrich_article(article_id=article_id, url=url)
+            if res.get("status") == "completed":
+                processed_count += 1
+            pipeline_store.mark_rss_link_extracted(url)
+
+    return {"status": "success", "crawled_count": len(new_links), "processed_count": processed_count}
+
+
 def smart_paraphrase(
     article_id: str,
     paragraph_text: str,
     user_start_index: int = 0,
     user_end_index: int = 0,
 ) -> Dict[str, Any]:
-    """Execute or fetch cached smart paraphrase for highlighted text."""
     import hashlib
     p_hash = hashlib.md5(paragraph_text.encode("utf-8")).hexdigest()
 
@@ -111,7 +140,6 @@ def smart_paraphrase(
     if cached:
         return cached
 
-    # Run Smart Paraphrase AI pipeline
     try:
         from service.ai_core.graphs.smart_paraphrase.graph import app as paraphrase_graph
         result = paraphrase_graph.invoke({
@@ -140,12 +168,10 @@ def smart_paraphrase(
 
 
 def save_user_highlights(user_id: int, article_id: str, highlighted_text: str, note: str = "") -> bool:
-    """Save user text highlight and annotation."""
     return activity_store.add_highlight(user_id=user_id, article_id=article_id, highlighted_text=highlighted_text, note=note)
 
 
 def ask_rag_question(question: str, article_id: Optional[str] = None) -> Dict[str, Any]:
-    """Single entry point for all RAG questions (cross-article news or single article Q&A)."""
     try:
         from service.rag.router import execute_rag_pipeline
         res = execute_rag_pipeline(question=question, article_id=article_id)
@@ -156,7 +182,6 @@ def ask_rag_question(question: str, article_id: Optional[str] = None) -> Dict[st
 
 
 def delete_article_hard(article_id: str) -> Dict[str, Any]:
-    """Cascading hard delete across all 5 data stores."""
     article_store.delete_article(article_id)
     exam_store.delete_exam(article_id)
     activity_store.delete_article_activity(article_id)

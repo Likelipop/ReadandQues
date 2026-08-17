@@ -203,6 +203,16 @@ def save_markers_api(request, pk: str):
 
 @require_GET
 @api_error_handler
+def passage_proof_api(request, pk: str, idx: int):
+    from service.passage_proof_service import get_passage_proof
+    proof = get_passage_proof(article_id=pk, question_idx=idx)
+    if not proof:
+        return JsonResponse({"status": "error", "message": "Proof not found"}, status=404)
+    return JsonResponse({"status": "success", "proof": proof})
+
+
+@require_GET
+@api_error_handler
 def search_bm25_api(request):
     query = request.GET.get("q", "").strip()
     if not query:

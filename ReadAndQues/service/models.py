@@ -35,7 +35,7 @@ class ArticleImportRequest(models.Model):
     user_id = models.IntegerField()
     url = models.CharField(max_length=1024)
     article_id = models.CharField(max_length=64, blank=True, default="")
-    status = models.CharField(max_length=32, default="pending")  # "pending" | "completed" | "failed"
+    status = models.CharField(max_length=32, default="pending")
     stars_charged = models.IntegerField(default=1)
     created_at = models.DateTimeField(auto_now_add=True)
 
@@ -62,11 +62,25 @@ class ExamAttemptLog(models.Model):
         ordering = ["-submitted_at"]
 
 
+class TopicProficiency(models.Model):
+    """PostgreSQL storage tracking user proficiency per IELTS reading topic."""
+
+    id = models.CharField(max_length=64, primary_key=True, default=uuid.uuid4)
+    user_id = models.IntegerField()
+    topic = models.CharField(max_length=64)  # Economy, Technology, Science, etc.
+    total_questions = models.IntegerField(default=0)
+    correct_answers = models.IntegerField(default=0)
+    accuracy = models.FloatField(default=0.0)
+    last_practiced = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = "service_topic_proficiency"
+        unique_together = ("user_id", "topic")
+        ordering = ["accuracy"]
+
+
 @transaction.atomic
 def charge_and_create_import_request(user_id: int, url: str, stars_cost: int = 1) -> ArticleImportRequest:
-    """
-    Atomically creates an ArticleImportRequest.
-    """
     import_req = ArticleImportRequest.objects.create(
         user_id=user_id,
         url=url,
