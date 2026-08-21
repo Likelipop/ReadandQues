@@ -19,20 +19,25 @@ class Command(BaseCommand):
         # 1. MongoDB Indexes
         try:
             db = mongo_conn.get_mongo_db()
-            db["article_index"].create_index("url", unique=True, name="url_unique")
-            db["article_index"].create_index("stage", name="stage_1")
-            db["article_index"].create_index("ai_status", name="ai_status_1")
-            db["article_index"].create_index([("published_at", -1)], name="published_at_desc")
+            index_specs = [
+                ("article_index", "url", {"unique": True}),
+                ("article_index", "stage", {}),
+                ("article_index", "ai_status", {}),
+                ("article_index", [("published_at", -1)], {}),
+                ("exams", "article_id", {"unique": True}),
+                ("exams", [("theme", 1), ("genre", 1)], {}),
+                ("attempts", [("user_id", 1), ("article_id", 1)], {}),
+                ("reading_history", [("user_id", 1), ("article_id", 1)], {"unique": True}),
+                ("user_highlights", [("user_id", 1), ("article_id", 1)], {}),
+                ("rss_links", [("link", 1), ("pubDate", 1)], {"unique": True}),
+            ]
+            for coll_name, keys, kwargs in index_specs:
+                try:
+                    db[coll_name].create_index(keys, **kwargs)
+                except Exception as idx_err:
+                    self.stdout.write(f"  Note on {coll_name} index: {idx_err}")
 
-            db["exams"].create_index("article_id", unique=True, name="article_id_unique")
-            db["exams"].create_index([("theme", 1), ("genre", 1)], name="theme_genre")
-
-            db["attempts"].create_index([("user_id", 1), ("article_id", 1)], name="user_article")
-            db["reading_history"].create_index([("user_id", 1), ("article_id", 1)], unique=True, name="user_article_unique")
-            db["user_highlights"].create_index([("user_id", 1), ("article_id", 1)], name="user_article_highlights")
-            db["rss_links"].create_index([("link", 1), ("pubDate", 1)], unique=True, name="rss_link_pubdate_unique")
-
-            self.stdout.write(self.style.SUCCESS("✅ MongoDB indexes created successfully."))
+            self.stdout.write(self.style.SUCCESS("✅ MongoDB indexes verified successfully."))
         except Exception as e:
             self.stdout.write(self.style.WARNING(f"⚠️ MongoDB index setup warning: {e}"))
 

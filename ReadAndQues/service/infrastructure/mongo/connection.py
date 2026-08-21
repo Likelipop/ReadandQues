@@ -37,7 +37,16 @@ def get_mongo_client() -> MongoClient:
             except Exception:
                 uri = uri.replace("@mongo:", "@localhost:").replace("mongodb://mongo:", "mongodb://localhost:")
 
-        _mongo_client = MongoClient(uri, serverSelectionTimeoutMS=2000, connect=False)
+        _mongo_client = MongoClient(
+            uri,
+            serverSelectionTimeoutMS=2000,
+            connect=False,
+            maxPoolSize=100,
+            minPoolSize=10,
+            maxIdleTimeMS=45000,
+            waitQueueTimeoutMS=5000,
+            retryWrites=True,
+        )
     return _mongo_client
 
 
