@@ -139,7 +139,13 @@ def ingest_and_enrich_article(article_id: str, url: str) -> dict:
     summary = gold_doc["summary"] or gold_doc["title"]
     vector_store.add_article_vector(gold_id=article_id, summary=summary, title=gold_doc["title"], url=url, theme=gold_doc["theme"], genre=gold_doc["genre"])
     vector_store.upsert_article_chunks(article_id=article_id, title=gold_doc["title"], full_text=clean_doc["original_text"], url=url, theme=gold_doc["theme"], genre=gold_doc["genre"])
-    bm25_conn.rebuild_index()
+    
+    # Rebuild BM25 search index asynchronously
+    try:
+        from service.tasks import task_rebuild_bm25_index
+        task_rebuild_bm25_index.delay()
+    except Exception:
+        bm25_conn.rebuild_index()
 
     logger.info(f"✅ [Pipeline] Successfully finished ingest_and_enrich_article for {article_id}")
     return {"status": "completed", "article_id": article_id}
@@ -190,6 +196,11 @@ def enrich_article_only(article_id: str) -> dict:
     summary = gold_doc["summary"] or gold_doc["title"]
     vector_store.add_article_vector(gold_id=article_id, summary=summary, title=gold_doc["title"], url=url, theme=gold_doc["theme"], genre=gold_doc["genre"])
     vector_store.upsert_article_chunks(article_id=article_id, title=gold_doc["title"], full_text=clean_doc["original_text"], url=url, theme=gold_doc["theme"], genre=gold_doc["genre"])
-    bm25_conn.rebuild_index()
+    # Rebuild BM25 search index asynchronously
+    try:
+        from service.tasks import task_rebuild_bm25_index
+        task_rebuild_bm25_index.delay()
+    except Exception:
+        bm25_conn.rebuild_index()
 
     return {"status": "completed", "article_id": article_id}

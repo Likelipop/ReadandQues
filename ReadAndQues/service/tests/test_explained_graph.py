@@ -1,10 +1,10 @@
 import unittest
 
-from service.ai_core.platform import get_ai_tool
 from service.ai_core.graphs.explained.graph import (
-    stream_explained_tokens,
     run_explained_flow,
+    stream_explained_tokens,
 )
+from service.ai_core.platform import get_ai_tool
 
 
 class ExplainedGraphTests(unittest.TestCase):

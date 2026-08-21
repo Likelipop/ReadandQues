@@ -4,7 +4,7 @@ pipeline/ai_core/graph.py — 4-node LangGraph pipeline for IELTS exam generatio
 
 import logging
 import uuid
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Any
 
 from langgraph.graph import END, START, StateGraph
@@ -171,7 +171,7 @@ def node_formatter(state: GraphState) -> dict[str, Any]:
         "total_questions": len(quizzes),
         "quizzes": quizzes,
         "token_usage": token_log,
-        "created_at": datetime.utcnow().isoformat(),
+        "created_at": datetime.now(UTC).isoformat(),
     }
 
     return {"final_exam": final_exam}

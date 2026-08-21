@@ -157,7 +157,7 @@ def _is_within_date_filter(published_at: Any, date_filter: str | None) -> bool:
     if isinstance(published_at, datetime.datetime):
         dt = published_at
     elif isinstance(published_at, datetime.date):
-        dt = datetime.datetime(published_at.year, published_at.month, published_at.day, tzinfo=datetime.timezone.utc)
+        dt = datetime.datetime(published_at.year, published_at.month, published_at.day, tzinfo=datetime.UTC)
     elif isinstance(published_at, str):
         try:
             clean_str = published_at.strip().replace("Z", "+00:00")
@@ -168,9 +168,9 @@ def _is_within_date_filter(published_at: Any, date_filter: str | None) -> bool:
     if not dt:
         return True
 
-    now = datetime.datetime.now(datetime.timezone.utc)
+    now = datetime.datetime.now(datetime.UTC)
     if dt.tzinfo is None:
-        dt = dt.replace(tzinfo=datetime.timezone.utc)
+        dt = dt.replace(tzinfo=datetime.UTC)
 
     delta = now - dt
     # Future dates are considered valid

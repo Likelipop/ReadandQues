@@ -99,14 +99,12 @@ def send_verification_email(to_email: str, code: str, is_resend_action: bool = F
             })
             resend_id = response.get("id", "N/A") if isinstance(response, dict) else getattr(response, "id", "N/A")
             logger.info(f"Successfully sent OTP email via Resend to {to_email}. Response ID: {resend_id}")
-            print(f"[RESEND SUCCESS] Sent OTP verification code to {to_email}. Resend ID: {resend_id}")
             return True
         except Exception as e:
             logger.warning(f"Resend API error sending email to {to_email}: {e}")
-            print(f"\n[RESEND FALLBACK] Failed to send email via Resend API: {e}")
 
-    # Fallback to terminal console print if API key is missing or request failed
-    print(f"[EMAIL FALLBACK] Account Registration Verification Code {subject_prefix}")
-    print(f"To: {to_email}")
-    print(f"Your verification code is: {code}. The code is valid for 5 minutes.\n")
+    # Fallback to local debug logging if API key is unconfigured or in test/dev
+    logger.debug(f"[EMAIL DEV] OTP generated for {to_email}: {code}")
+    if getattr(settings, "DEBUG", False):
+        logger.info(f"[EMAIL DEV] Sent verification code to {to_email} (check debug logs)")
     return False

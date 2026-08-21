@@ -352,7 +352,7 @@ class ServiceTestSuite(TestCase):
 
     def test_deterministic_daily_vocab_consistency(self):
         """QA Test: selectors.get_daily_vocab returns consistent deterministic word across calls."""
-        from service.selectors import get_daily_vocab, DAILY_VOCAB_POOL
+        from service.selectors import DAILY_VOCAB_POOL, get_daily_vocab
 
         vocab1 = get_daily_vocab()
         vocab2 = get_daily_vocab()

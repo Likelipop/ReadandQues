@@ -1,4 +1,5 @@
 import unittest
+
 from service.dictionary import lookup_word
 
 
