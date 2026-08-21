@@ -1,68 +1,169 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
+import { Navbar } from './components/common/Navbar';
+import { Footer } from './components/common/Footer';
+import { TrendingTicker } from './components/common/TrendingTicker';
+import { Toast } from './components/common/Toast';
+import { HomePage } from './features/discovery/HomePage';
+import { AllTestsPage } from './features/discovery/AllTestsPage';
+import { ReadingSpacePage } from './features/workspace/ReadingSpacePage';
+import { ProfilePage } from './features/auth/ProfilePage';
+import { AuthModal } from './features/auth/AuthModal';
 import { StudyBuddyWidget } from './features/rag/StudyBuddyWidget';
-import { CitationTooltip } from './components/ui/CitationTooltip';
-import { Sparkles, BookOpen, Compass, Trophy } from 'lucide-react';
+import { useAuth } from './store';
+import { api } from './api/client';
+import { NavTheme } from './types';
 
 export default function App() {
+  const [currentView, setCurrentView] = useState<'home' | 'all-tests' | 'readspace' | 'profile'>('home');
+  const [selectedArticleId, setSelectedArticleId] = useState<string | null>(null);
+  const [selectedTheme, setSelectedTheme] = useState<string>('All');
+  const [navThemes, setNavThemes] = useState<NavTheme[]>([]);
+  const [trendingTopics, setTrendingTopics] = useState<Array<{ id: string; title: string }>>([]);
+
+  // Auth modal
+  const [authModalOpen, setAuthModalOpen] = useState(false);
+  const [authModalTab, setAuthModalTab] = useState<'login' | 'register'>('login');
+
+  // Toast
+  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'info' } | null>(null);
+
+  const { fetchCurrentUser } = useAuth();
+
+  useEffect(() => {
+    fetchCurrentUser();
+
+    api.homepage
+      .get()
+      .then((data) => {
+        if (data.nav_themes) setNavThemes(data.nav_themes);
+        if (data.trending_topics) setTrendingTopics(data.trending_topics);
+      })
+      .catch(() => {});
+  }, []);
+
+  const handleNavigate = (view: string, articleId?: string) => {
+    if (view === 'readspace' && articleId) {
+      setSelectedArticleId(articleId);
+      setCurrentView('readspace');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    } else if (view === 'all-tests') {
+      setCurrentView('all-tests');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    } else if (view === 'profile') {
+      setCurrentView('profile');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    } else {
+      setCurrentView('home');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  };
+
+  const handleOpenAuth = (mode: 'login' | 'register' = 'login') => {
+    setAuthModalTab(mode);
+    setAuthModalOpen(true);
+  };
+
+  const showToast = (message: string, type: 'success' | 'error' | 'info' = 'info') => {
+    setToast({ message, type });
+    setTimeout(() => {
+      setToast((prev) => (prev?.message === message ? null : prev));
+    }, 4500);
+  };
+
   return (
-    <div className="min-h-screen bg-obsidian-900 text-slate-100 flex flex-col font-sans">
-      {/* Navbar */}
-      <header className="border-b border-white/10 bg-white/[0.02] backdrop-blur-md sticky top-0 z-40">
-        <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-cyber-violet to-cyber-cyan flex items-center justify-center font-black text-white text-lg shadow-lg glow-violet">
-              R
-            </div>
-            <span className="font-extrabold text-lg tracking-tight bg-gradient-to-r from-white via-slate-200 to-slate-400 bg-clip-text text-transparent">
-              ReadAndQues
-            </span>
-          </div>
+    <div className="min-h-screen bg-obsidian-900 text-slate-100 flex flex-col font-sans selection:bg-cyber-violet/30 selection:text-cyber-cyan">
+      {/* 1. Global Navigation Bar */}
+      <Navbar
+        currentView={currentView}
+        onNavigate={handleNavigate}
+        onOpenAuth={handleOpenAuth}
+        navThemes={navThemes}
+        selectedTheme={selectedTheme}
+        onSelectTheme={(themeId) => {
+          setSelectedTheme(themeId);
+          if (currentView !== 'all-tests' && currentView !== 'home') {
+            setCurrentView('all-tests');
+          }
+        }}
+        onShowToast={showToast}
+      />
 
-          <nav className="flex items-center gap-6 text-sm font-medium text-slate-300">
-            <a href="#" className="flex items-center gap-2 hover:text-cyber-cyan transition-all">
-              <Compass className="w-4 h-4" /> Explore
-            </a>
-            <a href="#" className="flex items-center gap-2 hover:text-cyber-cyan transition-all">
-              <BookOpen className="w-4 h-4" /> Workspace
-            </a>
-            <a href="#" className="flex items-center gap-2 hover:text-cyber-cyan transition-all">
-              <Trophy className="w-4 h-4" /> Leaderboard
-            </a>
-          </nav>
-        </div>
-      </header>
+      {/* 2. Trending Topics Banner */}
+      {currentView === 'home' && trendingTopics.length > 0 && (
+        <TrendingTicker
+          topics={trendingTopics}
+          onSelectArticle={(aid) => handleNavigate('readspace', aid)}
+        />
+      )}
 
-      {/* Hero Section */}
-      <main className="flex-1 max-w-7xl w-full mx-auto px-6 py-12 space-y-12">
-        <section className="text-center space-y-4 max-w-3xl mx-auto pt-6">
-          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-cyber-violet/10 border border-cyber-violet/30 text-cyber-violet text-xs font-semibold glow-violet">
-            <Sparkles className="w-3.5 h-3.5" /> Next-Gen IELTS AI Reading Platform
-          </div>
-          <h1 className="text-4xl sm:text-5xl font-black text-white tracking-tight leading-tight">
-            Master IELTS Reading with <span className="bg-gradient-to-r from-cyber-violet via-indigo-400 to-cyber-cyan bg-clip-text text-transparent">Real-Time RAG AI</span>
-          </h1>
-          <p className="text-slate-400 text-sm sm:text-base leading-relaxed">
-            Practice authentic IELTS questions generated dynamically from daily world news. Verified by passage proof grounding and interactive Study Buddy AI.
-          </p>
-        </section>
+      {/* 3. Main Dynamic Content View */}
+      <div className="flex-1">
+        {currentView === 'home' && (
+          <HomePage
+            onSelectArticle={(aid) => handleNavigate('readspace', aid)}
+            selectedTheme={selectedTheme}
+            onSelectTheme={setSelectedTheme}
+            onExploreTopic={(keyword) => {
+              setSelectedTheme('All');
+              setCurrentView('all-tests');
+            }}
+          />
+        )}
 
-        {/* Demo Proof Card */}
-        <section className="glass-card p-8 max-w-2xl mx-auto space-y-4 glow-violet">
-          <h3 className="text-sm font-bold text-cyber-cyan uppercase tracking-wider">Passage Proof Demonstration</h3>
-          <p className="text-sm text-slate-300">
-            Question 1: What is the primary cause of global agricultural vulnerability according to recent reports?
-          </p>
-          <div className="flex items-center justify-between pt-2">
-            <span className="text-xs text-slate-400">Correct Answer: Extreme weather shifts</span>
-            <CitationTooltip articleId="art_demo" questionIdx={0}>
-              Show Verbatim Proof
-            </CitationTooltip>
-          </div>
-        </section>
-      </main>
+        {currentView === 'all-tests' && (
+          <AllTestsPage
+            initialTheme={selectedTheme}
+            onSelectArticle={(aid) => handleNavigate('readspace', aid)}
+          />
+        )}
 
-      {/* Floating RAG Chat Widget */}
-      <StudyBuddyWidget />
+        {currentView === 'readspace' && selectedArticleId && (
+          <ReadingSpacePage
+            articleId={selectedArticleId}
+            onNavigateHome={() => handleNavigate('home')}
+            onSelectArticle={(aid) => handleNavigate('readspace', aid)}
+          />
+        )}
+
+        {currentView === 'profile' && (
+          <ProfilePage
+            onShowToast={showToast}
+            onOpenAuth={() => handleOpenAuth('login')}
+          />
+        )}
+      </div>
+
+      {/* 4. Global Footer */}
+      <Footer
+        navThemes={navThemes}
+        onSelectTheme={(t) => {
+          setSelectedTheme(t);
+          setCurrentView('all-tests');
+        }}
+        onNavigate={handleNavigate}
+      />
+
+      {/* 5. Floating RAG Study Buddy Widget */}
+      <StudyBuddyWidget
+        activeArticleId={currentView === 'readspace' ? selectedArticleId || undefined : undefined}
+      />
+
+      {/* 6. Global Auth Modal */}
+      <AuthModal
+        isOpen={authModalOpen}
+        onClose={() => setAuthModalOpen(false)}
+        initialTab={authModalTab}
+        onShowToast={showToast}
+      />
+
+      {/* 7. Global Toast Notification */}
+      {toast && (
+        <Toast
+          message={toast.message}
+          type={toast.type}
+          onClose={() => setToast(null)}
+        />
+      )}
     </div>
   );
 }

@@ -4,7 +4,7 @@ import logging
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.paginator import Paginator
-from django.http import JsonResponse
+from django.http import JsonResponse, StreamingHttpResponse
 from django.shortcuts import redirect, render
 from django.views.decorators.cache import never_cache
 from django.views.decorators.csrf import csrf_exempt
@@ -246,6 +246,38 @@ def rag_stream_api(request):
     response["Cache-Control"] = "no-cache"
     response["X-Accel-Buffering"] = "no"
     return response
+
+
+@csrf_exempt
+@require_POST
+def explain_stream_api(request, pk: str | None = None):
+    """Stream token-by-token explanation for clicked markdown phrase/sentence."""
+    try:
+        body = json.loads(request.body.decode("utf-8")) if request.body else {}
+    except Exception:
+        body = {}
+
+    phrase = body.get("phrase", "").strip()
+    paragraph_context = body.get("paragraph_context", "").strip()
+
+    if not phrase:
+        return JsonResponse({"status": "error", "message": "Missing phrase"}, status=400)
+
+    from service.ai_core.graphs.explained.graph import stream_explained_tokens
+
+    def event_stream():
+        is_term = len(phrase.split()) <= 2
+        yield f"data: {json.dumps({'type': 'metadata', 'phrase': phrase, 'is_term': is_term})}\n\n"
+        for chunk in stream_explained_tokens(phrase=phrase, paragraph_context=paragraph_context):
+            payload = json.dumps({"type": "delta", "text": chunk})
+            yield f"data: {payload}\n\n"
+        yield "data: [DONE]\n\n"
+
+    response = StreamingHttpResponse(event_stream(), content_type="text/event-stream")
+    response["Cache-Control"] = "no-cache"
+    response["X-Accel-Buffering"] = "no"
+    return response
+
 
 
 @require_GET

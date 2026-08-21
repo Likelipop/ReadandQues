@@ -10,7 +10,7 @@ logger = logging.getLogger(__name__)
 
 class ModelRouter:
     def __init__(self, fallback_order: list[str] = None):
-        self.fallback_order = fallback_order or ["azure"]
+        self.fallback_order = fallback_order or ["azure", "openai", "ollama"]
 
     def get_llm(self, temperature: float = 0.3) -> Any:
         providers = get_all_providers()
@@ -23,7 +23,7 @@ class ModelRouter:
                     llm = factory(temperature)
                     available_llms.append(llm)
                 except Exception as e:
-                    logger.error(f"Failed to initialize provider '{provider_name}': {e}")
+                    logger.debug(f"Provider '{provider_name}' not available: {e}")
             else:
                 logger.warning(f"Provider '{provider_name}' is not registered.")
 
@@ -39,7 +39,7 @@ class ModelRouter:
         return primary_llm
 
 
-default_router = ModelRouter(fallback_order=["azure"])
+default_router = ModelRouter(fallback_order=["azure", "openai", "ollama"])
 
 
 def get_llm(temperature: float = 0.3) -> Any:

@@ -174,6 +174,55 @@ def smart_paraphrase(
         }
 
 
+def explain_phrase(
+    article_id: str,
+    phrase: str,
+    paragraph_context: str = "",
+) -> dict[str, Any]:
+    """Execute the explained AI tool on a phrase within its paragraph context."""
+    try:
+        from service.ai_core.platform import get_ai_tool
+        tool = get_ai_tool("explained")
+        if tool:
+            run_res = tool.run({
+                "phrase": phrase,
+                "paragraph_context": paragraph_context or phrase,
+            })
+            if run_res.status == "completed" and isinstance(run_res.output, dict):
+                return {
+                    "article_id": article_id,
+                    "phrase": phrase,
+                    "summary": run_res.output.get("summary", ""),
+                    "detailed_explanation": run_res.output.get("detailed_explanation", ""),
+                    "simplified_version": run_res.output.get("simplified_version", phrase),
+                    "key_terms": run_res.output.get("key_terms", []),
+                }
+    except Exception as e:
+        logger.error(f"Error using platform explained tool: {e}")
+
+    try:
+        from service.ai_core.graphs.explained import run_explained_flow
+        res = run_explained_flow(phrase=phrase, paragraph_context=paragraph_context)
+        return {
+            "article_id": article_id,
+            "phrase": phrase,
+            "summary": res.get("summary", ""),
+            "detailed_explanation": res.get("detailed_explanation", ""),
+            "simplified_version": res.get("simplified_version", phrase),
+            "key_terms": res.get("key_terms", []),
+        }
+    except Exception as e:
+        logger.error(f"Error running explained flow: {e}")
+        return {
+            "article_id": article_id,
+            "phrase": phrase,
+            "summary": f"Contextual meaning of \"{phrase[:50]}\"",
+            "detailed_explanation": f"In this passage, this phrase explains the core concept of {phrase}.",
+            "simplified_version": phrase,
+            "key_terms": [],
+        }
+
+
 def save_user_highlights(user_id: int, article_id: str, highlighted_text: str, note: str = "") -> bool:
     return activity_store.add_highlight(user_id=user_id, article_id=article_id, highlighted_text=highlighted_text, note=note)
 

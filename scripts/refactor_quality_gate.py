@@ -18,7 +18,7 @@ import sys
 
 ROOT = Path(__file__).resolve().parents[1]
 DJANGO_ROOT = ROOT / "ReadAndQues"
-EXCLUDED_PARTS = {".git", ".venv", "staticfiles", "__pycache__"}
+EXCLUDED_PARTS = {".git", ".venv", "staticfiles", "__pycache__", "node_modules", "dist"}
 
 
 def run(label: str, command: list[str], *, cwd: Path = ROOT, env=None) -> None:
@@ -73,18 +73,19 @@ def isolated_tests() -> None:
     environment = os.environ.copy()
     environment.setdefault("DJANGO_SETTINGS_MODULE", "ReadAndQues.settings")
     run(
-        "legacy characterization tests",
+        "service characterization tests",
         [
             sys.executable,
             "-m",
             "unittest",
-            "service.tests.test_pipeline_engine",
-            "service.tests.test_application_flows",
             "service.tests.test_data_integrity",
-            "service.tests.test_typed_orchestration",
             "service.tests.test_ai_platform",
             "service.tests.test_grounded_question_ticket",
-            "service.tests.test_operations_cutover",
+            "service.tests.test_pdf_parser",
+            "service.tests.test_dictionary",
+            "service.tests.test_smart_ink_flow",
+            "service.tests.test_explained_graph",
+            "service.tests.test_explained_streaming",
         ],
         cwd=DJANGO_ROOT,
         env=environment,

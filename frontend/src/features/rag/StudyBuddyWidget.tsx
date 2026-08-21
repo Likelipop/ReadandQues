@@ -14,7 +14,7 @@ export const StudyBuddyWidget: React.FC<{ activeArticleId?: string }> = ({ activ
   const [messages, setMessages] = useState<Message[]>([
     {
       role: 'assistant',
-      content: 'Hi! I am your AI Study Buddy. Ask me anything about IELTS news or reading comprehension!',
+      content: 'Hi! I am your AI Study Buddy. Ask me anything about current news or reading comprehension!',
     },
   ]);
 
@@ -74,7 +74,7 @@ export const StudyBuddyWidget: React.FC<{ activeArticleId?: string }> = ({ activ
                   <span className="w-2 h-2 rounded-full bg-cyber-emerald animate-ping" />
                 </h4>
                 <p className="text-[10px] text-slate-400">
-                  {activeArticleId ? 'Workspace Article Context' : 'Global IELTS News RAG'}
+                  {activeArticleId ? 'Workspace Article Context' : 'Global Knowledge Base RAG'}
                 </p>
               </div>
             </div>

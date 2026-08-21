@@ -22,6 +22,7 @@ from readspace.api import api as readspace_api
 
 urlpatterns = [
     path("admin/", admin.site.urls),
+    path("api/v1/", readspace_api.urls),
     path("readspace/v1/", readspace_api.urls),
     path("readspace/", include("readspace.urls")),
     path("", include("homepage.urls")),

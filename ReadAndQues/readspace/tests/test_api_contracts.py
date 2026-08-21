@@ -203,3 +203,49 @@ class APIContractsTestCase(TestCase):
                 question="What is the conclusion?",
                 article_id=self.article_id,
             )
+
+    # ── 5. Ninja REST API Discovery & Auth Endpoints ─────────────────────────
+
+    def test_homepage_bundle_api(self):
+        """GET /api/v1/homepage/ returns status success and complete structure."""
+        response = self.client.get("/api/v1/homepage/")
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        self.assertEqual(data["status"], "success")
+        self.assertIn("hero_articles", data)
+        self.assertIn("daily_vocab", data)
+        self.assertIn("paraphrase_demo", data)
+        self.assertIn("themes", data)
+
+    def test_articles_list_api(self):
+        """GET /api/v1/articles/ returns paginated list."""
+        response = self.client.get("/api/v1/articles/?theme=All&page=1&limit=6")
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        self.assertEqual(data["status"], "success")
+        self.assertIn("articles", data)
+        self.assertIn("total_count", data)
+
+    def test_auth_me_api(self):
+        """GET /api/v1/auth/me/ returns authenticated user data when logged in."""
+        self.client.login(username="contract_user", password="SecurePassword123!")
+        response = self.client.get("/api/v1/auth/me/")
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        self.assertTrue(data["is_authenticated"])
+        self.assertEqual(data["username"], "contract_user")
+
+    def test_auth_login_and_logout_api(self):
+        """POST /api/v1/auth/login/ and /api/v1/auth/logout/ manage session."""
+        login_res = self.client.post(
+            "/api/v1/auth/login/",
+            data=json.dumps({"username": "contract_user", "password": "SecurePassword123!"}),
+            content_type="application/json",
+        )
+        self.assertEqual(login_res.status_code, 200)
+        self.assertEqual(login_res.json()["status"], "success")
+
+        logout_res = self.client.post("/api/v1/auth/logout/")
+        self.assertEqual(logout_res.status_code, 200)
+        self.assertEqual(logout_res.json()["status"], "success")
+

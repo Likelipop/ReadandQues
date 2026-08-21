@@ -21,7 +21,7 @@ describe('useSSEStream', () => {
     const { result } = renderHook(() => useSSEStream());
 
     await act(async () => {
-      await result.current.startStream('What is IELTS?');
+      await result.current.startStream('What is artificial intelligence?');
     });
 
     expect(result.current.isStreaming).toBe(false);

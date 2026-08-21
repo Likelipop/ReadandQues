@@ -19,11 +19,11 @@ if not SECRET_KEY or SECRET_KEY.startswith("django-insecure"):
         "prod-secure-key-must-be-replaced-in-env-file-for-security-982137918237",
     )
 
-ALLOWED_HOSTS = [
+ALLOWED_HOSTS = list(set([
     h.strip()
     for h in os.getenv("ALLOWED_HOSTS", "localhost,127.0.0.1,0.0.0.0").split(",")
     if h.strip()
-]
+] + ["web", "frontend", "nginx", "localhost", "127.0.0.1", "0.0.0.0"]))
 
 CSRF_TRUSTED_ORIGINS = [
     origin.strip()

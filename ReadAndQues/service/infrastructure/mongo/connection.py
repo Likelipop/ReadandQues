@@ -28,7 +28,16 @@ def get_mongo_client() -> MongoClient:
                 "MONGO_URI",
                 "mongodb://admin:changeme@localhost:27017/articlesDB?authSource=admin",
             )
-        _mongo_client = MongoClient(uri, serverSelectionTimeoutMS=5000, connect=False)
+
+        # If running outside docker and uri has 'mongo:', check if mongo is resolvable
+        if "@mongo:" in uri or "mongodb://mongo:" in uri:
+            import socket
+            try:
+                socket.gethostbyname("mongo")
+            except Exception:
+                uri = uri.replace("@mongo:", "@localhost:").replace("mongodb://mongo:", "mongodb://localhost:")
+
+        _mongo_client = MongoClient(uri, serverSelectionTimeoutMS=2000, connect=False)
     return _mongo_client
 
 

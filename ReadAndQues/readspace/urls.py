@@ -24,6 +24,8 @@ urlpatterns = [
 
     # ── Streaming & Search ───────────────────────────────────────────────────
     path("api/rag/stream/", views.rag_stream_api, name="rag_stream_api"),
+    path("api/explain/stream/", views.explain_stream_api, name="explain_stream_api"),
+    path("api/<str:pk>/explain/stream/", views.explain_stream_api, name="explain_stream_api_pk"),
     path("api/search/keyword/", views.search_bm25_api, name="search_bm25_api"),
     path("api/search/semantic/", views.search_semantic_api, name="search_semantic_api"),
 ]
