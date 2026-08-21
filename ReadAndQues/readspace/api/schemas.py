@@ -3,6 +3,7 @@ Pydantic schemas for ReadAndQues typed API endpoints.
 """
 
 from typing import Any
+
 from ninja import Schema
 
 

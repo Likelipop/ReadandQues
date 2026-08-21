@@ -1,6 +1,7 @@
 """Tests for offline NLTK WordNet dictionary service and API endpoint."""
 from django.test import TestCase
 from ninja.testing import TestClient
+
 from readspace.api.router import api
 from service.dictionary import lookup_word
 

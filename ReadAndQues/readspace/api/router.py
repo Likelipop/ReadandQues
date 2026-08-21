@@ -17,10 +17,10 @@ from ninja import NinjaAPI, Router
 from ninja.errors import HttpError
 from ninja.security import django_auth
 
-from accounts.emails import send_verification_email
-from accounts.models import EmailVerification, UserProfile
 import service.selectors as selectors
 import service.services as services
+from accounts.emails import send_verification_email
+from accounts.models import EmailVerification, UserProfile
 from service.dictionary import lookup_word
 from service.domain.enums import ThemeCategory
 from service.passage_proof_service import get_passage_proof

@@ -3,13 +3,14 @@ import time
 from typing import Any, Generator
 
 from service.ai_core.connection.router import get_llm
+
 from .prompts import get_stream_prompt
 from .schemas import ExplainedOutput, ExplainedState
 
 logger = logging.getLogger(__name__)
 
 
-def stream_explained_tokens(phrase: str, paragraph_context: str = "") -> Generator[str, None, None]:
+def stream_explained_tokens(phrase: str, paragraph_context: str = "") -> Generator[str]:
     """
     Stream token-by-token explanation for a clicked term or sentence.
     Adapts prompt based on whether phrase is a single term (<=2 words) or whole sentence (>2 words).
