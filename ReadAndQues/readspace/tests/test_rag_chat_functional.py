@@ -110,8 +110,8 @@ class RAGChatFunctionalTestCase(TestCase):
     # ── 2. LangGraph Router & Intent Classifier Tests ──────────────────────────
 
     def test_classify_intent_node_fallback_when_no_api_key(self):
-        """Intent classifier defaults to NEWS with confidence when no API key configured."""
-        with patch.dict("os.environ", {}, clear=True):
+        """Intent classifier defaults to NEWS with confidence when LLM fails or is unavailable."""
+        with patch("service.rag.router.ModelGateway.get_llm", side_effect=RuntimeError("No LLM provider")):
             initial_state: RouterState = {
                 "question": "Explain paragraph 1",
                 "article_id": self.article_id,
