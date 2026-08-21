@@ -3,18 +3,18 @@
 scripts/batch_index_news.py — Batch ETL script to index all MongoDB news into ChromaDB RAG store.
 """
 
-import sys
-import os
 import logging
+import os
+import sys
 
 # Ensure ReadAndQues inner directory is on Python path
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "ReadAndQues"))
 
+from database.Chroma.rag_operations import upsert_article_chunks
 from database.Mongo.crud import (
     get_all_silver_articles_for_indexing,
     update_article_rag_indexed_status,
 )
-from database.Chroma.rag_operations import upsert_article_chunks
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 logger = logging.getLogger("batch_index_news")

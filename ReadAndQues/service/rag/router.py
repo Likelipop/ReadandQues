@@ -5,11 +5,13 @@ service/rag/router.py — LangGraph StateGraph Router for dynamic RAG agent sele
 import json
 import logging
 import os
+import re
 from typing import Any, TypedDict
 
+from langchain_core.messages import HumanMessage
 from langgraph.graph import END, StateGraph
-from openai import OpenAI
 
+from service.ai_core.platform.gateway import ModelGateway
 from service.domain.enums import AgentIntent
 from service.rag.agents.news.agent import run_news_agent
 from service.rag.prompts import ROUTER_INTENT_CLASSIFIER_PROMPT
@@ -30,27 +32,20 @@ class RouterState(TypedDict):
 
 
 def classify_intent_node(state: RouterState) -> RouterState:
-    """Classifies user query intent using lightweight LLM classifier or fallback heuristic."""
+    """Classifies user query intent using ModelGateway with automatic provider fallbacks."""
     question = state.get("question", "")
     article_id = state.get("article_id") or ""
-    api_key = os.getenv("OPENAI_API_KEY")
-
-    if not api_key:
-        # Heuristic fallback if no API key present
-        state["intent"] = AgentIntent.NEWS.value
-        state["confidence"] = 0.9
-        return state
 
     try:
-        client = OpenAI(api_key=api_key)
+        llm = ModelGateway.get_llm(profile_name="precise", temperature=0.0)
         prompt = ROUTER_INTENT_CLASSIFIER_PROMPT.format(question=question, article_id=article_id)
-        resp = client.chat.completions.create(
-            model="gpt-4o-mini",
-            messages=[{"role": "user", "content": prompt}],
-            temperature=0.0,
-            response_format={"type": "json_object"},
-        )
-        content = resp.choices[0].message.content or "{}"
+        resp = llm.invoke([HumanMessage(content=prompt)])
+        content = resp.content if hasattr(resp, "content") else str(resp)
+        
+        # Clean potential markdown formatting
+        if "```" in content:
+            content = re.sub(r"^```(?:json)?|```$", "", content.strip(), flags=re.MULTILINE).strip()
+            
         parsed = json.loads(content)
 
         raw_intent = parsed.get("intent", "news").lower()
@@ -61,7 +56,7 @@ def classify_intent_node(state: RouterState) -> RouterState:
         state["confidence"] = float(parsed.get("confidence", 1.0))
         return state
     except Exception as e:
-        logger.warning(f"[RAG Router] Intent classification failed: {e}. Defaulting to 'news'.")
+        logger.warning(f"[RAG Router] Intent classification fallback: {e}. Defaulting to 'news'.")
         state["intent"] = AgentIntent.NEWS.value
         state["confidence"] = 0.5
         return state

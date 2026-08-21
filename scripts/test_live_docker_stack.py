@@ -2,8 +2,8 @@
 Live Integration Test Script for Refactored Database Layer in Docker Stack.
 """
 
-import sys
 import os
+import sys
 from datetime import datetime, timezone
 
 # Add app paths
@@ -12,9 +12,10 @@ sys.path.insert(0, "/app/ReadAndQues")
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "ReadAndQues.settings.prod")
 
 import django
+
 django.setup()
 
-from service.domain.models import Article, ExamAttempt, Stage, Status, Option, Question, Exam
+from service.domain.models import Article, Exam, ExamAttempt, Option, Question, Stage, Status
 from service.repositories import (
     ArticleRepository,
     AttemptRepository,
@@ -23,6 +24,7 @@ from service.repositories import (
     SearchRepository,
     UserActivityRepository,
 )
+
 
 def run_tests():
     print("==================================================")

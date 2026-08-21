@@ -1,15 +1,15 @@
 import unittest
-from unittest.mock import patch, Mock
+from unittest.mock import Mock, patch
 
 import service.ai_core.tools  # noqa: F401
-from service.ai_core.platform import get_ai_tool
-from service.ai_core.graphs.smart_paraphrase.schemas import SmartParaphraseState
 from service.ai_core.graphs.smart_paraphrase.graph import (
     generator_node,
-    validator_node,
-    should_continue,
     run_smart_paraphrase_flow,
+    should_continue,
+    validator_node,
 )
+from service.ai_core.graphs.smart_paraphrase.schemas import SmartParaphraseState
+from service.ai_core.platform import get_ai_tool
 
 
 class SmartInkFlowTests(unittest.TestCase):
