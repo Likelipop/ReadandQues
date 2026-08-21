@@ -4,7 +4,7 @@ import logging
 from datetime import UTC, datetime
 from pathlib import Path
 
-from database.Mongo.connection import get_mongo_db
+from service.infrastructure.mongo.connection import get_mongo_db
 
 logger = logging.getLogger(__name__)
 
