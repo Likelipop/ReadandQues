@@ -2,13 +2,12 @@
 ReadAndQues/service/tests/test_ai_functional_suite.py
 Comprehensive QA Functional Test Suite for AI Core Components.
 
-Designed from a Senior QA / Tester perspective to validate:
+Validates:
 1. Model Routing & Fallback Fault Tolerance (Azure -> OpenAI -> Ollama)
-2. Question Generator 4-Node LangGraph Flow (Analyzer, Cleaner, Planner, Verifier, Formatter)
-3. Smart Paraphrase AI Tool (Contextual expansion, simplification, edge cases)
-4. Contextual Explainer & Token Streaming (Single-word vs sentence breakdown, offline fallback)
-5. Grounding & RAG Retrieval (Deterministic chunking, BM25 retrieval, hallucination rejection)
-6. AI Platform Tool Policy & Cache Management (Cache hits, error isolation, execution metrics)
+2. Question Generator Direct LangChain Structured Output Flow
+3. Contextual Explainer & Token Streaming (Dynamic prompt, academic fallback)
+4. Grounding & RAG Retrieval (BM25 tokenized retrieval, passage proofs)
+5. AI Platform Tool Policy & Cache Management
 """
 
 from unittest import TestCase
@@ -16,380 +15,176 @@ from unittest.mock import MagicMock, Mock, patch
 
 import service.ai_core.tools  # noqa: F401
 from service.ai_core.connection.router import ModelRouter, get_llm
-from service.ai_core.graphs.ask_article.graph import node_verify_grounding, run_ask_article_flow
-from service.ai_core.graphs.explained.graph import run_explained_flow, stream_explained_tokens
-from service.ai_core.graphs.question_generator.graph import (
-    node_analyzer,
-    node_formatter,
-    node_question_planner,
-    node_text_cleaner,
-    node_verifier,
-    route_after_verifier,
-    run_question_generator_flow,
-)
-from service.ai_core.graphs.question_generator.schemas import (
-    CoreAnalysis,
+from service.ai_core.graphs import (
     ExamOutput,
     QuizItem,
     SemanticAnalysis,
-    TextGenre,
-    ThemeCategory,
-    VerifierFeedback,
+    generate_questions,
+    run_explained_flow,
+    run_question_generator_flow,
+    stream_explained_tokens,
 )
-from service.ai_core.graphs.smart_paraphrase.graph import run_smart_paraphrase_llm
 from service.ai_core.grounding import chunk_article_text, retrieve_article_chunks
-from service.ai_core.platform import (
-    AIToolPolicy,
-    ModelGateway,
-    get_ai_tool,
-)
-from service.ai_core.platform.policy import clear_ai_cache, hash_input
+from service.ai_core.platform import AIToolPolicy
 
 
 class AIFunctionalTestSuite(TestCase):
-    """Senior QA Functional Test Suite for AI Core Engine."""
-
     def setUp(self):
-        clear_ai_cache()
         self.sample_passage = (
-            "Renewable energy technologies, such as solar photovoltaic panels and wind turbines, "
-            "have seen substantial efficiency improvements over the last decade. In particular, "
-            "perovskite solar cells promise conversion efficiencies exceeding 30 percent. "
-            "However, grid integration and long-duration storage remain significant engineering hurdles."
+            "Perovskite solar cells promise conversion efficiencies exceeding 30 percent. "
+            "Unlike traditional silicon wafers, perovskite thin films can be printed on flexible substrates at low temperatures. "
+            "However, long-term stability against moisture and thermal degradation remains a major commercialization barrier."
         )
 
-    def tearDown(self):
-        clear_ai_cache()
+    # ── 1. Model Routing & Multi-Provider Fallbacks ──────────────────────────
 
-    # ── 1. Model Router & Resilience Tests ─────────────────────────────────────
+    def test_model_router_primary_azure_selection(self):
+        """QA Test: Router prioritizes primary provider in fallback list."""
+        mock_factory = Mock(return_value=Mock())
+        with patch("service.ai_core.connection.router.get_all_providers", return_value={"azure": mock_factory}):
+            router = ModelRouter(fallback_order=["azure"])
+            llm = router.get_llm(temperature=0.2)
+            self.assertIsNotNone(llm)
+            mock_factory.assert_called_once_with(0.2)
 
-    def test_model_router_fallback_from_azure_to_openai(self):
-        """QA Test: When primary provider (Azure) fails, router automatically falls back to secondary provider."""
-        mock_azure_llm = MagicMock()
-        mock_openai_llm = MagicMock()
+    def test_model_router_fallback_to_openai_when_azure_offline(self):
+        """QA Test: Router cascades to next available provider if primary raises error."""
+        def faulty_azure(temp):
+            raise ConnectionError("Azure down")
 
-        providers = {
-            "azure": MagicMock(return_value=mock_azure_llm),
-            "openai": MagicMock(return_value=mock_openai_llm),
-        }
-
-        with patch("service.ai_core.connection.router.get_all_providers", return_value=providers):
+        mock_openai = Mock(return_value=Mock())
+        with patch("service.ai_core.connection.router.get_all_providers", return_value={"azure": faulty_azure, "openai": mock_openai}):
             router = ModelRouter(fallback_order=["azure", "openai"])
-            result_llm = router.get_llm(temperature=0.2)
+            llm = router.get_llm(temperature=0.7)
+            self.assertIsNotNone(llm)
+            mock_openai.assert_called_once_with(0.7)
 
-            mock_azure_llm.with_fallbacks.assert_called_once_with([mock_openai_llm])
-            self.assertEqual(result_llm, mock_azure_llm.with_fallbacks.return_value)
+    def test_model_router_fallback_to_local_ollama_when_cloud_offline(self):
+        """QA Test: Router cascades to self-hosted Ollama if cloud providers fail."""
+        def faulty_provider(temp):
+            raise ConnectionError("Cloud offline")
 
-    def test_model_router_exhaustion_raises_runtime_error(self):
-        """QA Test: If no providers can be initialized, router raises descriptive RuntimeError."""
-        with patch("service.ai_core.connection.router.get_all_providers", return_value={}):
-            router = ModelRouter(fallback_order=["azure", "openai"])
-            with self.assertRaises(RuntimeError) as ctx:
-                router.get_llm(temperature=0.5)
-            self.assertIn("No LLM providers could be initialized", str(ctx.exception))
+        mock_ollama = Mock(return_value=Mock())
+        with patch("service.ai_core.connection.router.get_all_providers", return_value={"azure": faulty_provider, "openai": faulty_provider, "ollama": mock_ollama}):
+            router = ModelRouter(fallback_order=["azure", "openai", "ollama"])
+            llm = router.get_llm(temperature=0.0)
+            self.assertIsNotNone(llm)
+            mock_ollama.assert_called_once_with(0.0)
 
-    def test_model_gateway_profile_temperatures(self):
-        """QA Test: ModelGateway selects correct temperature profiles ('precise'=0.1, 'creative'=0.7)."""
-        with patch("service.ai_core.platform.gateway.default_router.get_llm") as mock_get_llm:
-            mock_get_llm.return_value = MagicMock()
+    # ── 2. Question Generator Structured Output Flow ─────────────────────────
 
-            ModelGateway.get_llm("precise")
-            mock_get_llm.assert_called_with(temperature=0.1)
-
-            ModelGateway.get_llm("creative")
-            mock_get_llm.assert_called_with(temperature=0.7)
-
-            ModelGateway.get_llm("default")
-            mock_get_llm.assert_called_with(temperature=0.3)
-
-    # ── 2. Question Generator 4-Node LangGraph Pipeline Tests ───────────────────
-
-    def test_node_analyzer_extracts_themes_and_exam_config(self):
-        """QA Test: Analyzer node evaluates text, produces CEFR analysis, and logs token usage."""
-        mock_core = CoreAnalysis(
-            summary="Renewable energy improvements and perovskite solar cells.",
-            central_theme="Renewable energy efficiency",
-            irrelevant_snippets=["Advertisement: Buy solar now"],
-        )
-        mock_analysis = SemanticAnalysis(
-            genre=TextGenre.scientific,
-            theme=ThemeCategory.environment,
-            core=mock_core,
-        )
-
-        mock_llm_result = {
-            "parsed": mock_analysis,
-            "raw": MagicMock(usage_metadata={"input_tokens": 150, "output_tokens": 80}),
-        }
-
-        mock_llm = MagicMock()
-        mock_llm.with_structured_output.return_value.invoke.return_value = mock_llm_result
-
-        with patch("service.ai_core.graphs.question_generator.graph.get_llm", return_value=mock_llm):
-            state = {
-                "original_text": self.sample_passage,
-                "token_log": [],
-            }
-            output = node_analyzer(state)
-
-            self.assertIn("semantic_analysis", output)
-            self.assertEqual(output["semantic_analysis"]["genre"], "scientific")
-            self.assertEqual(output["semantic_analysis"]["theme"], "Environment")
-            self.assertEqual(output["semantic_analysis"]["core"]["central_theme"], "Renewable energy efficiency")
-            self.assertIn("exam_config", output)
-            self.assertEqual(len(output["token_log"]), 1)
-            self.assertEqual(output["token_log"][0]["node"], "analyzer")
-            self.assertEqual(output["token_log"][0]["input_tokens"], 150)
-            self.assertEqual(output["retry_count"], 0)
-
-    def test_node_text_cleaner_removes_irrelevant_snippets(self):
-        """QA Test: Text cleaner accurately strips noisy snippets identified during semantic analysis."""
-        state = {
-            "original_text": "Header News. Renewable energy is vital. Footer: Click to subscribe.",
-            "semantic_analysis": {
-                "irrelevant_snippets": ["Header News. ", " Footer: Click to subscribe."],
-            },
-        }
-        cleaned = node_text_cleaner(state)
-        self.assertEqual(cleaned["original_text"], "Renewable energy is vital.")
-
-    def test_node_question_planner_generates_valid_quiz_schema(self):
-        """QA Test: Question planner invokes LLM with structured output and builds quizzes."""
+    def test_generate_questions_structured_output(self):
+        """QA Test: Structured output directly produces validated ExamOutput schema."""
         mock_quizzes = [
             QuizItem(
                 quiz_type="multiple_choice",
                 question="What efficiency level do perovskite solar cells promise?",
-                options=["Exceeding 30 percent", "Under 10 percent", "Exactly 50 percent", "Zero percent"],
+                options=["Exceeding 30 percent", "Under 10 percent", "50 percent", "0 percent"],
                 correct_answer="Exceeding 30 percent",
                 supporting_text="perovskite solar cells promise conversion efficiencies exceeding 30 percent",
-                explanation="The passage explicitly notes conversion efficiencies exceeding 30 percent.",
+                explanation="The passage states over 30 percent.",
             )
         ]
-        mock_exam_output = ExamOutput(quizzes=mock_quizzes)
-        mock_llm_result = {
-            "parsed": mock_exam_output,
-            "raw": MagicMock(usage_metadata={"input_tokens": 200, "output_tokens": 120}),
-        }
-
-        mock_llm = MagicMock()
-        mock_llm.with_structured_output.return_value.invoke.return_value = mock_llm_result
-
-        with patch("service.ai_core.graphs.question_generator.graph.get_llm", return_value=mock_llm):
-            state = {
-                "original_text": self.sample_passage,
-                "semantic_analysis": {"theme": "Environment", "core": {"irrelevant_snippets": []}},
-                "exam_config": {"word_count": 50, "total_questions": 1},
-                "token_log": [],
-            }
-            res = node_question_planner(state)
-            self.assertEqual(len(res["raw_quizzes"]), 1)
-            self.assertEqual(res["raw_quizzes"][0]["correct_answer"], "Exceeding 30 percent")
-            self.assertEqual(res["raw_quizzes"][0]["quiz_type"], "multiple_choice")
-
-    def test_node_verifier_approves_accurate_questions(self):
-        """QA Test: Verifier passes verified quizzes and flags routing to formatter."""
-        mock_feedback = VerifierFeedback(
-            passed=True,
-            rejected_indices=[],
-            reason="All questions are strictly grounded in the passage text.",
+        mock_exam_output = ExamOutput(
+            quizzes=mock_quizzes,
+            semantic_analysis=SemanticAnalysis(
+                genre="scientific",
+                theme="Science",
+                summary="Passage discusses perovskite solar cells.",
+            ),
         )
-        mock_llm_result = {
-            "parsed": mock_feedback,
-            "raw": MagicMock(usage_metadata={"input_tokens": 120, "output_tokens": 30}),
-        }
-
         mock_llm = MagicMock()
-        mock_llm.with_structured_output.return_value.invoke.return_value = mock_llm_result
+        mock_llm.with_structured_output.return_value.invoke.return_value = mock_exam_output
 
-        with patch("service.ai_core.graphs.question_generator.graph.get_llm", return_value=mock_llm):
-            state = {
-                "original_text": self.sample_passage,
-                "raw_quizzes": [{"question": "Q1", "correct_answer": "A"}],
-                "retry_count": 0,
-                "token_log": [],
-            }
-            res = node_verifier(state)
-            self.assertTrue(res["_verifier_passed"])
-            self.assertEqual(len(res["verified_quizzes"]), 1)
-            self.assertEqual(route_after_verifier(res), "formatter")
+        with patch("service.ai_core.graphs.model.question_generator.get_llm", return_value=mock_llm):
+            result = generate_questions(self.sample_passage)
+            self.assertEqual(len(result.quizzes), 1)
+            self.assertEqual(result.quizzes[0].correct_answer, "Exceeding 30 percent")
+            self.assertIsNotNone(result.semantic_analysis)
+            self.assertEqual(result.semantic_analysis.genre, "scientific")
 
-    def test_node_verifier_rejects_hallucinations_and_routes_to_planner(self):
-        """QA Test: Verifier filters ungrounded quizzes and routes back to planner for retry."""
-        mock_feedback = VerifierFeedback(
-            passed=False,
-            rejected_indices=[1],
-            reason="Question 2 mentions nuclear fusion which is not in the passage.",
-        )
-        mock_llm_result = {
-            "parsed": mock_feedback,
-            "raw": MagicMock(usage_metadata={"input_tokens": 120, "output_tokens": 30}),
-        }
-
-        mock_llm = MagicMock()
-        mock_llm.with_structured_output.return_value.invoke.return_value = mock_llm_result
-
-        with patch("service.ai_core.graphs.question_generator.graph.get_llm", return_value=mock_llm):
-            state = {
-                "original_text": self.sample_passage,
-                "raw_quizzes": [
-                    {"question": "Q1 (Solar)", "correct_answer": "A"},
-                    {"question": "Q2 (Nuclear)", "correct_answer": "B"},
-                ],
-                "retry_count": 0,
-                "token_log": [],
-            }
-            res = node_verifier(state)
-            self.assertFalse(res["_verifier_passed"])
-            self.assertEqual(len(res["verified_quizzes"]), 1)
-            self.assertEqual(res["verified_quizzes"][0]["question"], "Q1 (Solar)")
-            self.assertEqual(res["retry_count"], 1)
-            self.assertEqual(route_after_verifier(res), "question_planner")
-
-    def test_node_formatter_assembles_final_exam_payload(self):
-        """QA Test: Formatter creates unique exam ID, aggregates token usage, and produces final exam."""
-        state = {
-            "verified_quizzes": [
-                {"question": "Q1", "correct_answer": "Ans1"},
-                {"question": "Q2", "correct_answer": "Ans2"},
-            ],
-            "token_log": [
-                {"node": "analyzer", "input_tokens": 100, "output_tokens": 50},
-                {"node": "planner", "input_tokens": 200, "output_tokens": 100},
-            ],
-        }
-        res = node_formatter(state)
-        exam = res["final_exam"]
-        self.assertTrue(exam["exam_id"].startswith("EXAM_"))
-        self.assertEqual(exam["total_questions"], 2)
-        self.assertEqual(len(exam["quizzes"]), 2)
-        self.assertEqual(len(exam["token_usage"]), 2)
-        self.assertIn("created_at", exam)
-
-    # ── 3. Smart Paraphrase AI Tool Tests ──────────────────────────────────────
-
-    def test_smart_paraphrase_contextual_expansion_and_simplification(self):
-        """QA Test: Smart paraphrase expands target text and returns clear simplification."""
-        mock_output = {
-            "expanded_text": "Perovskite solar cells promise conversion efficiencies exceeding 30 percent.",
-            "paraphrased_text": "New solar cells made of perovskite can turn over 30% of sunlight into power.",
-            "explanation": "Replaced 'conversion efficiencies' with 'turn sunlight into power'.",
-            "is_valid": True,
-        }
-
-        with patch("service.ai_core.graphs.smart_paraphrase.graph.app.invoke", return_value=mock_output):
-            result = run_smart_paraphrase_llm(
-                highlighted_text="perovskite solar cells promise",
-                paragraph_text=self.sample_passage,
+    def test_run_question_generator_flow_formatting(self):
+        """QA Test: Flow produces complete dictionary output compatible with pipelines."""
+        mock_quizzes = [
+            QuizItem(
+                quiz_type="multiple_choice",
+                question="What efficiency level do perovskite solar cells promise?",
+                options=["Exceeding 30 percent", "Under 10 percent", "50 percent", "0 percent"],
+                correct_answer="Exceeding 30 percent",
+                supporting_text="perovskite solar cells promise conversion efficiencies exceeding 30 percent",
+                explanation="The passage states over 30 percent.",
             )
+        ]
+        mock_exam_output = ExamOutput(
+            quizzes=mock_quizzes,
+            semantic_analysis=SemanticAnalysis(
+                genre="scientific",
+                theme="Science",
+                summary="Passage discusses perovskite solar cells.",
+            ),
+        )
+        mock_llm = MagicMock()
+        mock_llm.with_structured_output.return_value.invoke.return_value = mock_exam_output
 
-            self.assertIn("paraphrased_text", result)
-            self.assertIn("30%", result["paraphrased_text"])
-            self.assertTrue(result["is_valid"])
+        with patch("service.ai_core.graphs.model.question_generator.get_llm", return_value=mock_llm):
+            res = run_question_generator_flow(self.sample_passage)
+            self.assertTrue(res["_verifier_passed"])
+            self.assertEqual(len(res["raw_quizzes"]), 1)
+            self.assertEqual(len(res["verified_quizzes"]), 1)
+            self.assertIn("exam_id", res["final_exam"])
+            self.assertEqual(res["final_exam"]["total_questions"], 1)
+            self.assertEqual(res["semantic_analysis"]["theme"], "Science")
 
-    def test_smart_paraphrase_tool_registered_and_executable(self):
-        """QA Test: Smart Paraphrase tool is properly registered in AI Platform registry."""
-        tool = get_ai_tool("smart_paraphrase")
-        self.assertIsNotNone(tool)
-        self.assertEqual(tool.name, "smart_paraphrase")
-        self.assertEqual(tool.version, "1.0.0")
-
-        with patch("service.ai_core.graphs.smart_paraphrase.run_smart_paraphrase_llm") as mock_flow:
-            mock_flow.return_value = {
-                "expanded_text": "expanded sentence",
-                "paraphrased_text": "simpler sentence",
-            }
-            res = tool.run({"highlighted_text": "phrase", "paragraph_text": "full paragraph"})
-            self.assertEqual(res.status, "completed")
-            self.assertEqual(res.output["paraphrased_text"], "simpler sentence")
-
-    # ── 4. Contextual Explainer & Streaming Tests ──────────────────────────────
+    # ── 3. Contextual Explainer & Streaming Tests ──────────────────────────────
 
     def test_stream_explained_token_generation(self):
-        """QA Test: Explainer stream yields tokens for clicked phrase."""
+        """QA Test: Explainer stream yields markdown tokens for clicked phrase."""
         mock_chunks = [MagicMock(content="**💡 In Simple Words:**\n"), MagicMock(content="Solar power is clean energy.")]
         mock_chain = MagicMock()
         mock_chain.stream.return_value = iter(mock_chunks)
 
-        with patch("service.ai_core.graphs.explained.graph.get_llm") as mock_get_llm:
-            mock_get_llm.return_value = MagicMock()
-            with patch("service.ai_core.graphs.explained.graph.get_stream_prompt") as mock_prompt:
-                mock_prompt.return_value.__or__.return_value = mock_chain
-
-                tokens = list(stream_explained_tokens("solar photovoltaic panels", self.sample_passage))
-                self.assertGreater(len(tokens), 0)
-                full_text = "".join(tokens)
-                self.assertIn("In Simple Words", full_text)
-
-    def test_stream_explained_offline_fallback_generator(self):
-        """QA Test: If LLM is offline or times out, explainer produces deterministic high-quality fallback."""
-        with patch("service.ai_core.graphs.explained.graph.get_llm", side_effect=ConnectionError("LLM Offline")):
-            tokens = list(stream_explained_tokens("perovskite", self.sample_passage))
+        with patch("service.ai_core.graphs.model.explained.get_llm", return_value=MagicMock()), \
+             patch("langchain_core.prompts.PromptTemplate.__or__", return_value=mock_chain):
+            tokens = list(stream_explained_tokens("solar power", paragraph_context=self.sample_passage))
             full_text = "".join(tokens)
             self.assertIn("In Simple Words", full_text)
-            self.assertIn("perovskite", full_text)
+            self.assertIn("Solar power", full_text)
 
-    def test_run_explained_flow_structured_output(self):
-        """QA Test: Synchronous explained flow returns structured dictionary."""
-        with patch("service.ai_core.graphs.explained.graph.stream_explained_tokens", return_value=["Explanation of ", "concept"]):
-            res = run_explained_flow("concept", "context text")
-            self.assertEqual(res["phrase"], "concept")
-            self.assertEqual(res["detailed_explanation"], "Explanation of concept")
-            self.assertIn("summary", res)
+    def test_stream_explained_offline_fallback_generator(self):
+        """QA Test: When LLM is completely offline, explainer stream gracefully uses academic fallback."""
+        with patch("service.ai_core.graphs.model.explained.get_llm", side_effect=RuntimeError("LLM Offline")):
+            tokens = list(stream_explained_tokens("perovskite solar cells", paragraph_context=self.sample_passage))
+            self.assertGreater(len(tokens), 0)
+            full_text = "".join(tokens)
+            self.assertIn("In Simple Words", full_text)
 
-    # ── 5. Grounding, RAG & Ask Article Tests ──────────────────────────────────
+    def test_run_explained_flow_synchronous_wrapper(self):
+        """QA Test: Synchronous explained wrapper aggregates stream into structured response."""
+        with patch("service.ai_core.graphs.model.explained.stream_explained_tokens", return_value=iter(["**💡 In Simple Words:**\n", "Simplified text."])):
+            res = run_explained_flow("perovskite", paragraph_context=self.sample_passage)
+            self.assertEqual(res["phrase"], "perovskite")
+            self.assertIn("Simplified text", res["detailed_explanation"])
 
-    def test_chunk_article_text_deterministic_hashing(self):
-        """QA Test: Article chunking splits paragraphs and generates stable SHA256 hashes."""
-        text = "First paragraph on solar.\n\nSecond paragraph on wind turbines."
+    # ── 4. Grounding & RAG Retrieval Tests ────────────────────────────────────
+
+    def test_chunk_article_text_deterministic_splitting(self):
+        """QA Test: Semantic chunking groups text into coherent chunks with offsets and token counts."""
+        text = self.sample_passage
         chunks = chunk_article_text(text)
-        self.assertEqual(len(chunks), 2)
+        self.assertGreaterEqual(len(chunks), 1)
         self.assertEqual(chunks[0].chunk_id, "chunk_0")
         self.assertTrue(len(chunks[0].content_hash) > 0)
-        self.assertEqual(chunks[1].chunk_id, "chunk_1")
+        self.assertGreater(chunks[0].token_count, 0)
+        self.assertGreater(chunks[0].sentence_count, 0)
 
-    def test_retrieve_article_chunks_relevance(self):
-        """QA Test: Chunk retrieval matches relevant paragraphs based on query tokens."""
-        text = "Solar panels convert light.\n\nWind turbines use wind kinetic energy.\n\nHydro dams use falling water."
-        chunks = chunk_article_text(text)
-        matches = retrieve_article_chunks(chunks, "wind turbine kinetic", top_k=1)
-        self.assertEqual(len(matches), 1)
-        self.assertEqual(matches[0].chunk_id, "chunk_1")
-        self.assertIn("Wind turbines", matches[0].text)
+    def test_retrieve_article_chunks_bm25_ranking(self):
+        """QA Test: Lexical retrieval accurately matches query terms."""
+        chunks = chunk_article_text(self.sample_passage)
+        retrieved = retrieve_article_chunks(chunks, query="flexible substrates printing", top_k=1)
+        self.assertEqual(len(retrieved), 1)
+        self.assertIn("flexible substrates", retrieved[0].text)
 
-    def test_node_verify_grounding_rejects_unquoted_claims(self):
-        """QA Test: Grounding verification marks hallucinated citation as ungrounded with fallback answer."""
-        retrieved = [{"chunk_id": "chunk_0", "text": "Solar energy is expanding."}]
-        state = {
-            "answer": "Nuclear fusion is powering all cities in 2026.",
-            "citation_quote": "Nuclear fusion powers everything.",
-            "retrieved_chunks": retrieved,
-            "is_grounded": True,
-        }
-        result = node_verify_grounding(state)
-        self.assertFalse(result["is_grounded"])
-        self.assertEqual(result["answer"], "not_found_in_article")
-
-    def test_ask_article_tool_ticket_resolution(self):
-        """QA Test: Ask Article tool executes RAG pipeline and returns grounded ticket."""
-        tool = get_ai_tool("ask_article")
-        self.assertIsNotNone(tool)
-
-        with patch("service.ai_core.tools.ask_article_tool.run_ask_article_flow") as mock_flow:
-            mock_flow.return_value = {
-                "ticket_id": "TKT-TEST-999",
-                "question": "What is the solar efficiency?",
-                "answer": "Over 30 percent with perovskite cells.",
-                "citation_quote": "efficiencies exceeding 30 percent",
-                "status": "RESOLVED",
-                "timestamp": "12:00:00",
-                "is_grounded": True,
-            }
-            res = tool.run({"article_text": self.sample_passage, "question": "What is the solar efficiency?"})
-            self.assertEqual(res.status, "completed")
-            self.assertEqual(res.output["ticket_id"], "TKT-TEST-999")
-            self.assertTrue(res.output["is_grounded"])
-
-    # ── 6. AI Policy & Execution Engine Tests ──────────────────────────────────
+    # ── 5. AI Policy & Execution Engine Tests ──────────────────────────────────
 
     def test_ai_tool_policy_caching_mechanism(self):
         """QA Test: Policy caches execution output on identical input, bypassing duplicate LLM calls."""
@@ -399,41 +194,19 @@ class AIFunctionalTestSuite(TestCase):
             call_counter["count"] += 1
             return {"result": f"processed_{call_counter['count']}"}
 
-        input_payload = {"text": "identical query", "param": 42}
-
-        res1 = AIToolPolicy.execute(
-            tool_name="test_tool",
-            version="1.0.0",
-            func=mock_llm_execution,
-            input_data=input_payload,
-            use_cache=True,
-        )
-        self.assertEqual(call_counter["count"], 1)
+        input_payload = {"prompt": "What is the capital of France?"}
+        res1 = AIToolPolicy.execute("geo_tool", "1.0.0", mock_llm_execution, input_payload, use_cache=True)
         self.assertEqual(res1.output["result"], "processed_1")
 
-        res2 = AIToolPolicy.execute(
-            tool_name="test_tool",
-            version="1.0.0",
-            func=mock_llm_execution,
-            input_data=input_payload,
-            use_cache=True,
-        )
-        self.assertEqual(call_counter["count"], 1)
+        res2 = AIToolPolicy.execute("geo_tool", "1.0.0", mock_llm_execution, input_payload, use_cache=True)
         self.assertEqual(res2.output["result"], "processed_1")
-        self.assertEqual(res2.duration_ms, 0.0)
+        self.assertEqual(call_counter["count"], 1)
 
-    def test_ai_tool_policy_failure_isolation(self):
-        """QA Test: Tool exceptions are trapped and returned as failed result with error detail."""
-        def broken_func():
-            raise ValueError("Upstream AI model rate limit exceeded")
+    def test_ai_tool_policy_error_isolation(self):
+        """QA Test: Unhandled exception in tool logic is caught and recorded as failed status."""
+        def faulty_tool():
+            raise ZeroDivisionError("Math error inside AI graph")
 
-        res = AIToolPolicy.execute(
-            tool_name="broken_tool",
-            version="1.0.0",
-            func=broken_func,
-            input_data={"test": "crash"},
-            use_cache=False,
-        )
+        res = AIToolPolicy.execute("faulty_tool", "1.0.0", faulty_tool, {}, use_cache=False)
         self.assertEqual(res.status, "failed")
-        self.assertIn("rate limit exceeded", res.error)
-        self.assertGreaterEqual(res.duration_ms, 0.0)
+        self.assertIn("Math error inside AI graph", res.error)

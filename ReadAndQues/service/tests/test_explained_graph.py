@@ -1,6 +1,6 @@
 import unittest
 
-from service.ai_core.graphs.explained.graph import (
+from service.ai_core.graphs import (
     run_explained_flow,
     stream_explained_tokens,
 )

@@ -13,7 +13,7 @@ class ExplainedTool(AITool):
 
     def run(self, input_data: dict[str, Any], user_id: int | None = None) -> AIToolRunResult:
         def _execute():
-            from service.ai_core.graphs.explained import run_explained_flow
+            from service.ai_core.graphs import run_explained_flow
             return run_explained_flow(
                 phrase=input_data.get("phrase", ""),
                 paragraph_context=input_data.get("paragraph_context", ""),

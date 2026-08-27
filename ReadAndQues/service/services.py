@@ -120,59 +120,6 @@ def run_daily_ingestion(max_articles: int = 10) -> dict[str, Any]:
     return {"status": "success", "crawled_count": len(new_links), "processed_count": processed_count}
 
 
-def smart_paraphrase(
-    article_id: str,
-    paragraph_text: str,
-    user_start_index: int = 0,
-    user_end_index: int = 0,
-    highlighted_text: str = "",
-) -> dict[str, Any]:
-    if not highlighted_text and paragraph_text and user_end_index > user_start_index:
-        highlighted_text = paragraph_text[user_start_index:user_end_index]
-    elif not highlighted_text:
-        highlighted_text = paragraph_text
-
-    import hashlib
-    p_hash = hashlib.md5(f"{paragraph_text}:{highlighted_text}".encode()).hexdigest()
-
-    cached = article_store.find_exact_paraphrase(
-        article_id=article_id,
-        paragraph_hash=p_hash,
-        user_start_index=user_start_index,
-        user_end_index=user_end_index,
-    )
-    if cached:
-        return cached
-
-    try:
-        from service.ai_core.graphs.smart_paraphrase.graph import run_smart_paraphrase_flow
-        result = run_smart_paraphrase_flow(
-            highlighted_text=highlighted_text,
-            paragraph_text=paragraph_text,
-            start_idx=user_start_index,
-            end_idx=user_end_index,
-        )
-        payload = {
-            "article_id": article_id,
-            "paragraph_hash": p_hash,
-            "user_start_index": user_start_index,
-            "user_end_index": user_end_index,
-            "paraphrased_text": result.get("paraphrased_text", highlighted_text),
-            "expanded_text": result.get("expanded_text", highlighted_text),
-            "explanation": result.get("explanation", ""),
-        }
-        article_store.save_smart_paraphrase(dict(payload))
-        return payload
-    except Exception as e:
-        logger.error(f"Smart paraphrase execution failed: {e}")
-        return {
-            "article_id": article_id,
-            "paragraph_hash": p_hash,
-            "paraphrased_text": highlighted_text,
-            "expanded_text": highlighted_text,
-            "explanation": f"Paraphrase service error: {str(e)}",
-        }
-
 
 def explain_phrase(
     article_id: str,
@@ -201,7 +148,7 @@ def explain_phrase(
         logger.error(f"Error using platform explained tool: {e}")
 
     try:
-        from service.ai_core.graphs.explained import run_explained_flow
+        from service.ai_core.graphs import run_explained_flow
         res = run_explained_flow(phrase=phrase, paragraph_context=paragraph_context)
         return {
             "article_id": article_id,

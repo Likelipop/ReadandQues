@@ -158,36 +158,6 @@ def submit_exam_attempt(request, pk):
     return JsonResponse({"status": "success", "id": res.get("attempt_id"), "related_articles": related})
 
 
-@require_POST
-@login_required(login_url='/login/')
-@api_error_handler
-def smart_paraphrase_api(request, pk: str):
-    data = json.loads(request.body)
-    paragraph_text = data.get("paragraph_text", "").strip()
-    highlighted_text = data.get("highlighted_text", "").strip()
-    start_idx = data.get("start_index") if "start_index" in data else data.get("start_idx", 0)
-    end_idx = data.get("end_index") if "end_index" in data else data.get("end_idx", 0)
-
-    if not paragraph_text:
-        return JsonResponse({"status": "error", "message": "Missing paragraph_text"}, status=400)
-
-    res = services.smart_paraphrase(
-        article_id=pk,
-        paragraph_text=paragraph_text,
-        user_start_index=start_idx,
-        user_end_index=end_idx,
-        highlighted_text=highlighted_text,
-    )
-
-    paraphrased = res.get("paraphrased_text", highlighted_text or paragraph_text)
-    expanded = res.get("expanded_text", paraphrased)
-    return JsonResponse({
-        "status": "success",
-        "paraphrased_text": paraphrased,
-        "expanded_text": expanded,
-        "explanation": res.get("explanation", ""),
-    })
-
 
 @require_POST
 @login_required(login_url='/login/')
@@ -263,7 +233,7 @@ def explain_stream_api(request, pk: str | None = None):
     if not phrase:
         return JsonResponse({"status": "error", "message": "Missing phrase"}, status=400)
 
-    from service.ai_core.graphs.explained.graph import stream_explained_tokens
+    from service.ai_core.graphs import stream_explained_tokens
 
     def event_stream():
         is_term = len(phrase.split()) <= 2

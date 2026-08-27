@@ -17,7 +17,7 @@ from service.domain.enums import AIStatus, ArticleStage
 
 logger = logging.getLogger(__name__)
 
-
+# ATTENTION: WHY THERES IS ONE FILE SIT LONELY HERE ? RESEARCH ABOUT THIS AND MOVE IT TO THE RIGHT PLACE OR DELETE IF IT SHOULD BE. MAKE SURE NO REINVENTED THE WHEEL.
 def _clean_and_validate(raw_doc: dict[str, Any]) -> tuple[bool, str, dict[str, Any]]:
     content = raw_doc.get("raw_text", "").strip()
     title = raw_doc.get("title", "").strip()
@@ -47,8 +47,8 @@ def _clean_and_validate(raw_doc: dict[str, Any]) -> tuple[bool, str, dict[str, A
 
 def _run_ai_enrichment(text: str) -> dict | None:
     try:
-        from service.ai_core.graphs.question_generator.graph import app as question_graph
-        final_state = question_graph.invoke({"original_text": text})
+        from service.ai_core.graphs import run_question_generator_flow
+        final_state = run_question_generator_flow(text)
         return {
             "status": "completed",
             "analysis": final_state.get("semantic_analysis", {}),

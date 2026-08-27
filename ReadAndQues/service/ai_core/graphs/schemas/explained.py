@@ -1,4 +1,8 @@
-from typing import Any, TypedDict
+"""
+service/ai_core/graphs/schemas/explained.py — Pydantic schemas for contextual explainer.
+"""
+
+from typing import TypedDict
 
 from pydantic import BaseModel, Field
 
@@ -11,12 +15,16 @@ class KeyTerm(BaseModel):
 class ExplainedOutput(BaseModel):
     phrase: str = Field(description="The phrase or sentence being explained.")
     summary: str = Field(description="A concise 1-sentence explanation of what this phrase means in this context.")
-    detailed_explanation: str = Field(description="Clear academic explanation of the phrase and how it relates to the paragraph context.")
-    simplified_version: str = Field(description="A simplified, plain English rewrite of the phrase.")
-    key_terms: list[KeyTerm] = Field(default_factory=list, description="Key vocabulary terms in the phrase with their contextual meanings.")
+    detailed_explanation: str = Field(
+        description="Clear explanation of the phrase and how it relates to the paragraph context."
+    )
+    simplified_version: str = Field(default="", description="A simplified, plain English rewrite of the phrase.")
+    key_terms: list[KeyTerm] = Field(
+        default_factory=list, description="Key vocabulary terms in the phrase with their contextual meanings."
+    )
 
 
-class ExplainedState(TypedDict):
+class ExplainedState(TypedDict, total=False):
     phrase: str
     paragraph_context: str
     summary: str

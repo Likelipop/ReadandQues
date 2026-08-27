@@ -1,7 +1,7 @@
 import logging
 from typing import Any
 
-from service.ai_core.graphs.question_generator.graph import run_question_generator_flow
+from service.ai_core.graphs import run_question_generator_flow
 from service.ai_core.platform import AITool, AIToolPolicy, AIToolRunResult, register_ai_tool
 
 logger = logging.getLogger(__name__)

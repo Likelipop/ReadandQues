@@ -25,8 +25,8 @@ class AIPlatformTests(TestCase):
             mock_get_llm.assert_called_once_with(temperature=0.1)
 
     def test_ai_tool_registry_and_invocation(self):
-        tool = get_ai_tool("smart_paraphrase")
-        self.assertEqual(tool.name, "smart_paraphrase")
+        tool = get_ai_tool("explained")
+        self.assertEqual(tool.name, "explained")
         self.assertEqual(tool.version, "1.0.0")
 
         quiz_tool = get_ai_tool("quiz_generator")
@@ -48,13 +48,13 @@ class AIPlatformTests(TestCase):
         self.assertEqual(res.status, "completed")
         self.assertEqual(res.output, {"summary": "dummy"})
 
-    def test_smart_paraphrase_tool_execution(self):
-        tool = get_ai_tool("smart_paraphrase")
-        with patch("service.ai_core.graphs.smart_paraphrase.run_smart_paraphrase_llm") as mock_flow:
+    def test_explained_tool_execution(self):
+        tool = get_ai_tool("explained")
+        with patch("service.ai_core.graphs.run_explained_flow") as mock_flow:
             mock_flow.return_value = {
-                "expanded_text": "expanded",
-                "paraphrased_text": "paraphrased",
+                "phrase": "quantum",
+                "detailed_explanation": "detailed explanation of quantum",
             }
-            res = tool.run({"highlighted_text": "text_abc", "paragraph_text": "full text abc"})
+            res = tool.run({"phrase": "quantum", "paragraph_context": "quantum mechanics"})
             self.assertEqual(res.status, "completed")
-            self.assertEqual(res.output["paraphrased_text"], "paraphrased")
+            self.assertEqual(res.output["detailed_explanation"], "detailed explanation of quantum")
