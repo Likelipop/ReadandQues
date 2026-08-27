@@ -13,9 +13,6 @@ class DataIntegrityContractsTests(TestCase):
         self.assertTrue(id1.startswith("art_"))
 
     def test_article_contract_defaults(self):
-        contract = ArticleContract(
-            article_id="art_123",
-            url="https://example.com/a"
-        )
+        contract = ArticleContract(article_id="art_123", url="https://example.com/a")
         self.assertEqual(contract.status, ArticleStatus.CRAWLING)
         self.assertEqual(contract.ai_status, AIStatus.PENDING_GENERATION)

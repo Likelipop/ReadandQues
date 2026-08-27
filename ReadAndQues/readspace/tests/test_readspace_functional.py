@@ -59,19 +59,17 @@ class ReadspaceFunctionalTestCase(TestCase):
         """Logged-in users can view full article reading workspace and questions."""
         self.client.login(username="reading_pro", password="SecurePassword123!")
 
-        with patch("service.selectors.get_article_detail", return_value=self.mock_article_detail), \
-             patch("service.selectors.get_related_articles", return_value=[]):
-            response = self.client.get(
-                reverse("readspace:readspace_detail", kwargs={"pk": self.article_id})
-            )
+        with (
+            patch("service.selectors.get_article_detail", return_value=self.mock_article_detail),
+            patch("service.selectors.get_related_articles", return_value=[]),
+        ):
+            response = self.client.get(reverse("readspace:readspace_detail", kwargs={"pk": self.article_id}))
             self.assertEqual(response.status_code, 200)
             self.assertContains(response, "The Impact of Microplastics on Marine Life")
 
     def test_readspace_detail_redirects_anonymous_user(self):
         """Unauthenticated requests to readspace detail redirect to login."""
-        response = self.client.get(
-            reverse("readspace:readspace_detail", kwargs={"pk": self.article_id})
-        )
+        response = self.client.get(reverse("readspace:readspace_detail", kwargs={"pk": self.article_id}))
         self.assertEqual(response.status_code, 302)
         self.assertIn("/login/", response.url)
 
@@ -100,9 +98,7 @@ class ReadspaceFunctionalTestCase(TestCase):
         self.client.login(username="reading_pro", password="SecurePassword123!")
 
         with patch("service.services.trigger_quiz_generation", return_value={"status": "triggered"}):
-            response = self.client.post(
-                reverse("readspace:trigger_quiz", kwargs={"pk": self.article_id})
-            )
+            response = self.client.post(reverse("readspace:trigger_quiz", kwargs={"pk": self.article_id}))
             self.assertEqual(response.status_code, 200)
             data = response.json()
             self.assertEqual(data["status"], "processing")
@@ -113,9 +109,7 @@ class ReadspaceFunctionalTestCase(TestCase):
             "service.selectors.get_article_status",
             return_value={"id": self.article_id, "status": "completed", "has_quiz": True, "error_message": ""},
         ):
-            response = self.client.get(
-                reverse("readspace:article_status", kwargs={"pk": self.article_id})
-            )
+            response = self.client.get(reverse("readspace:article_status", kwargs={"pk": self.article_id}))
             self.assertEqual(response.status_code, 200)
             data = response.json()
             self.assertEqual(data["status"], "completed")
@@ -142,8 +136,10 @@ class ReadspaceFunctionalTestCase(TestCase):
             "total_questions": 10,
         }
 
-        with patch("service.services.submit_exam_attempt", return_value=mock_attempt_result), \
-             patch("service.selectors.get_related_articles", return_value=[{"id": "art-002", "title": "Coral Reefs"}]):
+        with (
+            patch("service.services.submit_exam_attempt", return_value=mock_attempt_result),
+            patch("service.selectors.get_related_articles", return_value=[{"id": "art-002", "title": "Coral Reefs"}]),
+        ):
             response = self.client.post(
                 reverse("readspace:submit_exam_attempt", kwargs={"pk": self.article_id}),
                 data=json.dumps(submission_payload),
@@ -155,31 +151,6 @@ class ReadspaceFunctionalTestCase(TestCase):
             self.assertEqual(data["id"], "att-8888")
             self.assertIn("related_articles", data)
             self.assertEqual(data["related_articles"][0]["title"], "Coral Reefs")
-
-    def test_smart_paraphrase_functional(self):
-        """Smart paraphrase API returns contextual paraphrase and explanation."""
-        self.client.login(username="reading_pro", password="SecurePassword123!")
-
-        mock_paraphrase_response = {
-            "paraphrased_text": "Microscopic synthetic debris pollutes marine ecosystems.",
-            "explanation": "Replaced 'plastic particles' with 'synthetic debris'.",
-        }
-
-        with patch("service.services.smart_paraphrase", return_value=mock_paraphrase_response):
-            payload = {
-                "paragraph_text": "Microplastics are tiny plastic particles that pollute the ocean.",
-                "start_idx": 0,
-                "end_idx": 64,
-            }
-            response = self.client.post(
-                reverse("readspace:smart_paraphrase", kwargs={"pk": self.article_id}),
-                data=json.dumps(payload),
-                content_type="application/json",
-            )
-            self.assertEqual(response.status_code, 200)
-            data = response.json()
-            self.assertEqual(data["status"], "success")
-            self.assertIn("synthetic debris", data["paraphrased_text"])
 
     def test_save_markers_functional(self):
         """Save markers API persists user highlight annotations."""
@@ -211,10 +182,8 @@ class ReadspaceFunctionalTestCase(TestCase):
             "confidence_score": 0.95,
         }
 
-        with patch("service.passage_proof_service.get_passage_proof", return_value=mock_proof):
-            response = self.client.get(
-                reverse("readspace:passage_proof_api", kwargs={"pk": self.article_id, "idx": 0})
-            )
+        with patch("service.ai_core.grounding.get_passage_proof", return_value=mock_proof):
+            response = self.client.get(reverse("readspace:passage_proof_api", kwargs={"pk": self.article_id, "idx": 0}))
             self.assertEqual(response.status_code, 200)
             data = response.json()
             self.assertEqual(data["status"], "success")
@@ -256,9 +225,7 @@ class ReadspaceFunctionalTestCase(TestCase):
         ]
 
         with patch("service.selectors.search_articles_keyword", return_value=mock_search_results):
-            response = self.client.get(
-                reverse("readspace:search_bm25_api") + "?q=microplastics"
-            )
+            response = self.client.get(reverse("readspace:search_bm25_api") + "?q=microplastics")
             self.assertEqual(response.status_code, 200)
             data = response.json()
             self.assertEqual(data["status"], "success")
@@ -272,9 +239,7 @@ class ReadspaceFunctionalTestCase(TestCase):
         ]
 
         with patch("service.selectors.search_articles_semantic", return_value=mock_semantic_results):
-            response = self.client.get(
-                reverse("readspace:search_semantic_api") + "?q=plastic+debris+sea"
-            )
+            response = self.client.get(reverse("readspace:search_semantic_api") + "?q=plastic+debris+sea")
             self.assertEqual(response.status_code, 200)
             data = response.json()
             self.assertEqual(data["status"], "success")
@@ -294,8 +259,10 @@ class ReadspaceFunctionalTestCase(TestCase):
         """POST /readspace/v1/{pk}/submit/ validates payload and submits attempt."""
         self.client.login(username="reading_pro", password="SecurePassword123!")
 
-        with patch("service.services.submit_exam_attempt", return_value={"attempt_id": "att-ninja-99"}), \
-             patch("service.selectors.get_related_articles", return_value=[]):
+        with (
+            patch("service.services.submit_exam_attempt", return_value={"attempt_id": "att-ninja-99"}),
+            patch("service.selectors.get_related_articles", return_value=[]),
+        ):
             payload = {
                 "score": 10.0,
                 "total_questions": 10,

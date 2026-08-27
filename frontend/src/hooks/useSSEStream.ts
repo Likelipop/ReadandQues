@@ -5,6 +5,7 @@ export interface Citation {
   title: string;
   url?: string;
   theme?: string;
+  rrf_score?: number;
 }
 
 export interface StreamState {

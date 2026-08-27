@@ -1,4 +1,5 @@
 """Tests for offline NLTK WordNet dictionary service and API endpoint."""
+
 from django.test import TestCase
 from ninja.testing import TestClient
 

@@ -1,5 +1,5 @@
 """
-service/passage_proof_service.py — Passage Proof & Grounding Service.
+service/ai_core/grounding/passage_proof.py — Passage Proof & Grounding Service.
 
 Grounds quiz questions & correct answers to the exact paragraph chunk in ChromaDB.
 """

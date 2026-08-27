@@ -22,17 +22,15 @@ def hash_input(input_data: dict[str, Any]) -> str:
     return hashlib.sha256(serialized.encode("utf-8")).hexdigest()
 
 
-def log_ai_run(
-    run_result: AIToolRunResult,
-    input_payload: dict[str, Any],
-    user_id: int | None = None
-) -> None:
+def log_ai_run(run_result: AIToolRunResult, input_payload: dict[str, Any], user_id: int | None = None) -> None:
     """Persists an AIRunLog entry to PostgreSQL."""
     try:
         from django.conf import settings
+
         if not settings.configured:
             return
         from service.models import AIRunLog
+
         AIRunLog.objects.create(
             run_id=run_result.run_id,
             user_id=user_id,
@@ -45,7 +43,9 @@ def log_ai_run(
             total_tokens=run_result.total_tokens,
             duration_ms=run_result.duration_ms,
             input_payload=input_payload,
-            output_payload=run_result.output if isinstance(run_result.output, dict) else {"result": str(run_result.output)},
+            output_payload=run_result.output
+            if isinstance(run_result.output, dict)
+            else {"result": str(run_result.output)},
             error_message=run_result.error or "",
         )
         logger.info(f"Persisted AIRunLog run_id={run_result.run_id}")

@@ -13,7 +13,6 @@ import { Article } from '../../types';
 import { useHighlighter, HIGHLIGHT_THEMES } from '../../hooks/useHighlighter';
 import { useWorkspace, HighlightColor } from '../../store';
 import { api } from '../../api/client';
-import { SmartParaphraseModal } from './SmartParaphraseModal';
 
 export interface ArticleReaderProps {
   article: Article;
@@ -30,11 +29,10 @@ export const ArticleReader: React.FC<ArticleReaderProps> = ({
   const [selectedText, setSelectedText] = useState<string | null>(null);
   const [popoverPos, setPopoverPos] = useState<{ x: number; y: number } | null>(null);
   const [isCopied, setIsCopied] = useState(false);
-  const [paraphraseTargetText, setParaphraseTargetText] = useState<string | null>(null);
 
-  // In-place simplified sentences mapped by `p{pIdx}_s{sIdx}`
+  // In-place explained sentences mapped by `p{pIdx}_s{sIdx}`
   const [simplifiedSentences, setSimplifiedSentences] = useState<Record<string, string>>({});
-  // Loading status for inline sentence simplification
+  // Loading status for inline sentence explanation
   const [loadingSentences, setLoadingSentences] = useState<Record<string, boolean>>({});
 
   const {
@@ -102,8 +100,8 @@ export const ArticleReader: React.FC<ArticleReaderProps> = ({
     return () => document.removeEventListener('selectionchange', handleSelection);
   }, [activeTool]);
 
-  // Simplify a sentence in-place in the paragraph DOM
-  const simplifySentenceInPlace = async (
+  // Explain a sentence/phrase in-place in the paragraph DOM with Smart Ink
+  const explainSentenceInPlace = async (
     sentenceKey: string,
     sentenceText: string,
     paragraphText: string
@@ -113,37 +111,37 @@ export const ArticleReader: React.FC<ArticleReaderProps> = ({
 
     setLoadingSentences((prev) => ({ ...prev, [sentenceKey]: true }));
     if (onShowToast) {
-      onShowToast('✨ Simplifying sentence with Smart Ink...', 'info');
+      onShowToast('✨ Explaining with Smart Ink...', 'info');
     }
 
     try {
-      const res = await api.articles.smartParaphrase(articleId, {
-        paragraph_text: paragraphText,
-        highlighted_text: cleanSentence,
+      const res = await api.articles.explain(articleId, {
+        phrase: cleanSentence,
+        paragraph_context: paragraphText,
       });
 
-      const simplified =
-        res.paraphrased_text ||
+      const explanation =
+        res.detailed_explanation ||
+        res.summary ||
         res.simplified_version ||
-        res.explanation ||
         cleanSentence;
 
       setSimplifiedSentences((prev) => ({
         ...prev,
-        [sentenceKey]: simplified,
+        [sentenceKey]: explanation,
       }));
 
       if (onShowToast) {
-        onShowToast('Sentence simplified in-place!', 'success');
+        onShowToast('Contextual explanation generated!', 'success');
       }
     } catch {
-      // Fallback simplification if offline or mock
+      // Fallback explanation if offline
       setSimplifiedSentences((prev) => ({
         ...prev,
-        [sentenceKey]: `In simple terms: ${cleanSentence}`,
+        [sentenceKey]: `💡 Explanation: ${cleanSentence}`,
       }));
       if (onShowToast) {
-        onShowToast('Sentence simplified (offline)', 'info');
+        onShowToast('Contextual explanation (offline)', 'info');
       }
     } finally {
       setLoadingSentences((prev) => ({ ...prev, [sentenceKey]: false }));
@@ -226,16 +224,16 @@ export const ArticleReader: React.FC<ArticleReaderProps> = ({
       return;
     }
 
-    // 4. Smart Ink Mode: In-Place Simplification!
+    // 4. Smart Ink Mode: In-Place Contextual Explanation!
     if (activeTool === 'smart_ink') {
       if (simplifiedSentences[sentenceKey]) {
         return;
       }
-      simplifySentenceInPlace(sentenceKey, sentenceText, paragraphText);
+      explainSentenceInPlace(sentenceKey, sentenceText, paragraphText);
     }
   };
 
-  // Trigger Smart Ink simplification from HUD
+  // Trigger Smart Ink explanation from HUD
   const handleHudSmartInk = () => {
     if (!selectedText) return;
 
@@ -259,7 +257,7 @@ export const ArticleReader: React.FC<ArticleReaderProps> = ({
     }
 
     const key = targetKey || `p0_s0`;
-    simplifySentenceInPlace(key, targetSentence, targetParagraph);
+    explainSentenceInPlace(key, targetSentence, targetParagraph);
   };
 
   // Trigger Dictionary lookup from selection HUD
@@ -279,13 +277,6 @@ export const ArticleReader: React.FC<ArticleReaderProps> = ({
     highlightSelection(color || highlightColor);
     setPopoverPos(null);
     setSelectedText(null);
-  };
-
-  // Trigger Paraphrase Modal from selection HUD or shortcut
-  const handleTriggerParaphrase = () => {
-    if (!selectedText) return;
-    setParaphraseTargetText(selectedText);
-    setPopoverPos(null);
   };
 
   // Copy selection to clipboard
@@ -350,17 +341,6 @@ export const ArticleReader: React.FC<ArticleReaderProps> = ({
       if (key === 'd' && !e.metaKey && !e.ctrlKey) {
         e.preventDefault();
         setActiveTool(activeTool === 'dictionary' ? null : 'dictionary');
-        return;
-      }
-
-      // P: Paraphrase selection
-      if (key === 'p' && !e.metaKey && !e.ctrlKey) {
-        const sel = window.getSelection();
-        const text = sel ? sel.toString().trim() : '';
-        if (text.length >= 2) {
-          e.preventDefault();
-          setParaphraseTargetText(text);
-        }
         return;
       }
 
@@ -461,9 +441,9 @@ export const ArticleReader: React.FC<ArticleReaderProps> = ({
               <p className="flex-1 text-slate-200 leading-[1.85]">
                 {sentences.map((sent, sIdx) => {
                   const sentenceKey = `p${idx}_s${sIdx}`;
-                  const isSimplified = !!simplifiedSentences[sentenceKey];
-                  const isLoading = !!loadingSentences[sentenceKey];
-                  const displayedText = isSimplified ? simplifiedSentences[sentenceKey] : sent;
+                  const isLoading = loadingSentences[sentenceKey];
+                  const isExplained = !!simplifiedSentences[sentenceKey];
+                  const displayedText = simplifiedSentences[sentenceKey] || sent;
 
                   if (isLoading) {
                     return (
@@ -472,12 +452,12 @@ export const ArticleReader: React.FC<ArticleReaderProps> = ({
                         className="inline-flex items-center gap-1.5 bg-indigo-500/20 text-cyan-200 border border-indigo-500/40 rounded px-2 py-0.5 my-0.5 animate-pulse text-xs font-mono select-none"
                       >
                         <Loader2 className="w-3.5 h-3.5 animate-spin text-cyan-300" />
-                        <span>[⏳ Simplifying sentence...]</span>
+                        <span>[⏳ Explaining sentence...]</span>
                       </span>
                     );
                   }
 
-                  if (isSimplified) {
+                  if (isExplained) {
                     return (
                       <span
                         key={sIdx}
@@ -493,9 +473,9 @@ export const ArticleReader: React.FC<ArticleReaderProps> = ({
                       >
                         <span className="font-medium">{displayedText}</span>
 
-                        {/* Inline ✨ Simplified Badge */}
+                        {/* Inline 💡 Explained Badge */}
                         <span className="inline-flex items-center gap-0.5 ml-1.5 text-[10px] font-black uppercase tracking-wider text-emerald-300 bg-emerald-500/20 border border-emerald-500/30 rounded px-1.5 py-0.5 select-none align-middle">
-                          ✨ Simplified
+                          💡 Explained
                         </span>
 
                         {/* Quick Restore ↺ Original Button */}
@@ -520,7 +500,7 @@ export const ArticleReader: React.FC<ArticleReaderProps> = ({
                       onClick={(e) => handleSentenceClick(sentenceKey, sent, p, e)}
                       title={
                         activeTool === 'smart_ink'
-                          ? 'Click to simplify sentence in-place'
+                          ? 'Click to explain sentence in-place'
                           : activeTool === 'dictionary'
                           ? 'Click word to look up in WordNet Dictionary'
                           : undefined
@@ -602,24 +582,10 @@ export const ArticleReader: React.FC<ArticleReaderProps> = ({
             ) : (
               <Sparkles className="w-3.5 h-3.5 text-amber-300" />
             )}
-            <span>{isAnySentenceLoading ? 'Simplifying...' : 'Smart Ink'}</span>
+            <span>{isAnySentenceLoading ? 'Explaining...' : 'Smart Ink'}</span>
           </button>
 
-          {/* 4. Paraphrase Button */}
-          <button
-            onMouseDown={(e) => {
-              e.preventDefault();
-              handleTriggerParaphrase();
-            }}
-            title="Smart Paraphrase (P)"
-            aria-label="Paraphrase selection"
-            className="flex items-center gap-1 px-2.5 py-1 rounded-xl bg-purple-500/20 hover:bg-purple-500/30 text-purple-200 border border-purple-500/30 font-bold text-xs cursor-pointer transition"
-          >
-            <Sparkles className="w-3.5 h-3.5 text-purple-300" />
-            <span>Paraphrase</span>
-          </button>
-
-          {/* 5. Copy Button */}
+          {/* 4. Copy Button */}
           <button
             onMouseDown={(e) => {
               e.preventDefault();
@@ -633,15 +599,6 @@ export const ArticleReader: React.FC<ArticleReaderProps> = ({
             <span>{isCopied ? 'Copied' : 'Copy'}</span>
           </button>
         </div>
-      )}
-
-      {/* Smart Paraphrase Modal */}
-      {paraphraseTargetText && (
-        <SmartParaphraseModal
-          articleId={articleId}
-          selectedText={paraphraseTargetText}
-          onClose={() => setParaphraseTargetText(null)}
-        />
       )}
     </article>
   );

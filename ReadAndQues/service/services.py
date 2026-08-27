@@ -103,6 +103,7 @@ def submit_exam_attempt(
 def run_daily_ingestion(max_articles: int = 10) -> dict[str, Any]:
     """Run daily RSS feed crawling & batch ingestion for Today's Brief."""
     from service.crawler.feed_crawler import fetch_rss_feed_links
+
     new_links = fetch_rss_feed_links(max_per_feed=5)
     unprocessed = pipeline_store.get_unprocessed_rss_links(limit=max_articles)
 
@@ -120,7 +121,6 @@ def run_daily_ingestion(max_articles: int = 10) -> dict[str, Any]:
     return {"status": "success", "crawled_count": len(new_links), "processed_count": processed_count}
 
 
-
 def explain_phrase(
     article_id: str,
     phrase: str,
@@ -129,12 +129,15 @@ def explain_phrase(
     """Execute the explained AI tool on a phrase within its paragraph context."""
     try:
         from service.ai_core.platform import get_ai_tool
+
         tool = get_ai_tool("explained")
         if tool:
-            run_res = tool.run({
-                "phrase": phrase,
-                "paragraph_context": paragraph_context or phrase,
-            })
+            run_res = tool.run(
+                {
+                    "phrase": phrase,
+                    "paragraph_context": paragraph_context or phrase,
+                }
+            )
             if run_res.status == "completed" and isinstance(run_res.output, dict):
                 return {
                     "article_id": article_id,
@@ -149,6 +152,7 @@ def explain_phrase(
 
     try:
         from service.ai_core.graphs import run_explained_flow
+
         res = run_explained_flow(phrase=phrase, paragraph_context=paragraph_context)
         return {
             "article_id": article_id,
@@ -163,7 +167,7 @@ def explain_phrase(
         return {
             "article_id": article_id,
             "phrase": phrase,
-            "summary": f"Contextual meaning of \"{phrase[:50]}\"",
+            "summary": f'Contextual meaning of "{phrase[:50]}"',
             "detailed_explanation": f"In this passage, this phrase explains the core concept of {phrase}.",
             "simplified_version": phrase,
             "key_terms": [],
@@ -171,12 +175,15 @@ def explain_phrase(
 
 
 def save_user_highlights(user_id: int, article_id: str, highlighted_text: str, note: str = "") -> bool:
-    return activity_store.add_highlight(user_id=user_id, article_id=article_id, highlighted_text=highlighted_text, note=note)
+    return activity_store.add_highlight(
+        user_id=user_id, article_id=article_id, highlighted_text=highlighted_text, note=note
+    )
 
 
 def ask_rag_question(question: str, article_id: str | None = None) -> dict[str, Any]:
     try:
-        from service.rag.router import execute_rag_pipeline
+        from service.ai_core.rag import execute_rag_pipeline
+
         res = execute_rag_pipeline(question=question, article_id=article_id)
         return res.model_dump(mode="json")
     except Exception as e:

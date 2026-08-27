@@ -6,34 +6,32 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     initial = True
 
-    dependencies = [
-    ]
+    dependencies = []
 
     operations = [
         migrations.CreateModel(
-            name='AIRunLog',
+            name="AIRunLog",
             fields=[
-                ('run_id', models.CharField(default=uuid.uuid4, max_length=64, primary_key=True, serialize=False)),
-                ('user_id', models.IntegerField(blank=True, null=True)),
-                ('tool_name', models.CharField(max_length=64)),
-                ('tool_version', models.CharField(max_length=32)),
-                ('model_name', models.CharField(default='azure_gpt', max_length=64)),
-                ('status', models.CharField(default='completed', max_length=32)),
-                ('prompt_tokens', models.IntegerField(default=0)),
-                ('completion_tokens', models.IntegerField(default=0)),
-                ('total_tokens', models.IntegerField(default=0)),
-                ('duration_ms', models.FloatField(default=0.0)),
-                ('input_payload', models.JSONField(blank=True, default=dict)),
-                ('output_payload', models.JSONField(blank=True, default=dict)),
-                ('error_message', models.TextField(blank=True, default='')),
-                ('created_at', models.DateTimeField(auto_now_add=True)),
+                ("run_id", models.CharField(default=uuid.uuid4, max_length=64, primary_key=True, serialize=False)),
+                ("user_id", models.IntegerField(blank=True, null=True)),
+                ("tool_name", models.CharField(max_length=64)),
+                ("tool_version", models.CharField(max_length=32)),
+                ("model_name", models.CharField(default="azure_gpt", max_length=64)),
+                ("status", models.CharField(default="completed", max_length=32)),
+                ("prompt_tokens", models.IntegerField(default=0)),
+                ("completion_tokens", models.IntegerField(default=0)),
+                ("total_tokens", models.IntegerField(default=0)),
+                ("duration_ms", models.FloatField(default=0.0)),
+                ("input_payload", models.JSONField(blank=True, default=dict)),
+                ("output_payload", models.JSONField(blank=True, default=dict)),
+                ("error_message", models.TextField(blank=True, default="")),
+                ("created_at", models.DateTimeField(auto_now_add=True)),
             ],
             options={
-                'db_table': 'service_ai_run_log',
-                'ordering': ['-created_at'],
+                "db_table": "service_ai_run_log",
+                "ordering": ["-created_at"],
             },
         ),
     ]

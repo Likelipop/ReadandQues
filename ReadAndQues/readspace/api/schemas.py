@@ -14,6 +14,7 @@ class StatusResponse(Schema):
 
 # ── Interactive Workspace Schemas ─────────────────────────────────────────────
 
+
 class ExamSubmitIn(Schema):
     score: int = 0
     total_questions: int = 0
@@ -26,20 +27,6 @@ class ExamSubmitOut(Schema):
     status: str = "success"
     id: str
     related_articles: list[dict[str, Any]] = []
-
-
-class SmartParaphraseIn(Schema):
-    paragraph_text: str
-    start_index: int = 0
-    end_index: int = 0
-    highlighted_text: str = ""
-
-
-class SmartParaphraseOut(Schema):
-    status: str = "success"
-    paraphrased_text: str | None = None
-    expanded_text: str | None = None
-    explanation: str | None = None
 
 
 class KeyTermItem(Schema):
@@ -59,7 +46,6 @@ class ExplainPhraseOut(Schema):
     detailed_explanation: str = ""
     simplified_version: str = ""
     key_terms: list[KeyTermItem] = []
-
 
 
 class SaveMarkersIn(Schema):
@@ -84,6 +70,7 @@ class ArticleStatusOut(Schema):
 
 
 # ── Search & Discovery Schemas ────────────────────────────────────────────────
+
 
 class SearchResultItem(Schema):
     article_id: str | None = None
@@ -112,6 +99,7 @@ class GenericAiToolIn(Schema):
 
 
 # ── Article List & Detail Schemas ─────────────────────────────────────────────
+
 
 class ArticleCardOut(Schema):
     article_id: str
@@ -160,6 +148,7 @@ class ArticleImportOut(Schema):
 
 # ── Homepage Feed Schemas ─────────────────────────────────────────────────────
 
+
 class DailyVocabOut(Schema):
     word: str
     phonetic: str
@@ -168,17 +157,11 @@ class DailyVocabOut(Schema):
     example: str
 
 
-class ParaphraseDemoOut(Schema):
-    original: str
-    paraphrased: str
-
-
 class HomepageDataOut(Schema):
     status: str = "success"
     hero_articles: list[ArticleCardOut]
     trending_topics: list[dict[str, Any]]
     daily_vocab: DailyVocabOut
-    paraphrase_demo: ParaphraseDemoOut
     recommended_articles: list[ArticleCardOut]
     articles: list[ArticleCardOut]
     total_count: int
@@ -188,6 +171,7 @@ class HomepageDataOut(Schema):
 
 
 # ── Authentication Schemas ────────────────────────────────────────────────────
+
 
 class LoginIn(Schema):
     username: str
@@ -235,6 +219,7 @@ class AuthResponseOut(Schema):
 
 
 # ── Dictionary Tool Schemas ───────────────────────────────────────────────────
+
 
 class DictionaryDefinitionItem(Schema):
     part_of_speech: str = "noun"

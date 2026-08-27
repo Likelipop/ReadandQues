@@ -17,7 +17,7 @@ from service.domain.enums import AIStatus, ArticleStage
 
 logger = logging.getLogger(__name__)
 
-# ATTENTION: WHY THERES IS ONE FILE SIT LONELY HERE ? RESEARCH ABOUT THIS AND MOVE IT TO THE RIGHT PLACE OR DELETE IF IT SHOULD BE. MAKE SURE NO REINVENTED THE WHEEL.
+
 def _clean_and_validate(raw_doc: dict[str, Any]) -> tuple[bool, str, dict[str, Any]]:
     content = raw_doc.get("raw_text", "").strip()
     title = raw_doc.get("title", "").strip()
@@ -48,6 +48,7 @@ def _clean_and_validate(raw_doc: dict[str, Any]) -> tuple[bool, str, dict[str, A
 def _run_ai_enrichment(text: str) -> dict | None:
     try:
         from service.ai_core.graphs import run_question_generator_flow
+
         final_state = run_question_generator_flow(text)
         return {
             "status": "completed",
@@ -137,12 +138,27 @@ def ingest_and_enrich_article(article_id: str, url: str) -> dict:
 
     # Index in ChromaDB & BM25
     summary = gold_doc["summary"] or gold_doc["title"]
-    vector_store.add_article_vector(gold_id=article_id, summary=summary, title=gold_doc["title"], url=url, theme=gold_doc["theme"], genre=gold_doc["genre"])
-    vector_store.upsert_article_chunks(article_id=article_id, title=gold_doc["title"], full_text=clean_doc["original_text"], url=url, theme=gold_doc["theme"], genre=gold_doc["genre"])
-    
+    vector_store.add_article_vector(
+        gold_id=article_id,
+        summary=summary,
+        title=gold_doc["title"],
+        url=url,
+        theme=gold_doc["theme"],
+        genre=gold_doc["genre"],
+    )
+    vector_store.upsert_article_chunks(
+        article_id=article_id,
+        title=gold_doc["title"],
+        full_text=clean_doc["original_text"],
+        url=url,
+        theme=gold_doc["theme"],
+        genre=gold_doc["genre"],
+    )
+
     # Rebuild BM25 search index asynchronously
     try:
         from service.tasks import task_rebuild_bm25_index
+
         task_rebuild_bm25_index.delay()
     except Exception:
         bm25_conn.rebuild_index()
@@ -194,11 +210,26 @@ def enrich_article_only(article_id: str) -> dict:
     article_store.update_ai_status(article_id, AIStatus.COMPLETED)
 
     summary = gold_doc["summary"] or gold_doc["title"]
-    vector_store.add_article_vector(gold_id=article_id, summary=summary, title=gold_doc["title"], url=url, theme=gold_doc["theme"], genre=gold_doc["genre"])
-    vector_store.upsert_article_chunks(article_id=article_id, title=gold_doc["title"], full_text=clean_doc["original_text"], url=url, theme=gold_doc["theme"], genre=gold_doc["genre"])
+    vector_store.add_article_vector(
+        gold_id=article_id,
+        summary=summary,
+        title=gold_doc["title"],
+        url=url,
+        theme=gold_doc["theme"],
+        genre=gold_doc["genre"],
+    )
+    vector_store.upsert_article_chunks(
+        article_id=article_id,
+        title=gold_doc["title"],
+        full_text=clean_doc["original_text"],
+        url=url,
+        theme=gold_doc["theme"],
+        genre=gold_doc["genre"],
+    )
     # Rebuild BM25 search index asynchronously
     try:
         from service.tasks import task_rebuild_bm25_index
+
         task_rebuild_bm25_index.delay()
     except Exception:
         bm25_conn.rebuild_index()

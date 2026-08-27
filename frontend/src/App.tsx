@@ -8,7 +8,7 @@ import { AllTestsPage } from './features/discovery/AllTestsPage';
 import { ReadingSpacePage } from './features/workspace/ReadingSpacePage';
 import { ProfilePage } from './features/auth/ProfilePage';
 import { AuthModal } from './features/auth/AuthModal';
-import { StudyBuddyWidget } from './features/rag/StudyBuddyWidget';
+import { BottomChatDock } from './features/rag/BottomChatDock';
 import { useAuth } from './store';
 import { api } from './api/client';
 import { NavTheme } from './types';
@@ -143,8 +143,8 @@ export default function App() {
         onNavigate={handleNavigate}
       />
 
-      {/* 5. Floating RAG Study Buddy Widget */}
-      <StudyBuddyWidget
+      {/* 5. VS Code-Style Bottom RAG Chat Dock */}
+      <BottomChatDock
         activeArticleId={currentView === 'readspace' ? selectedArticleId || undefined : undefined}
       />
 

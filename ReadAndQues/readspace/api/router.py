@@ -21,9 +21,9 @@ import service.selectors as selectors
 import service.services as services
 from accounts.emails import send_verification_email
 from accounts.models import EmailVerification, UserProfile
+from service.ai_core.grounding import get_passage_proof
 from service.dictionary import lookup_word
 from service.domain.enums import ThemeCategory
-from service.passage_proof_service import get_passage_proof
 
 from .schemas import (
     ArticleCardOut,
@@ -44,13 +44,10 @@ from .schemas import (
     GenericAiToolIn,
     HomepageDataOut,
     LoginIn,
-    ParaphraseDemoOut,
     PassageProofOut,
     RegisterIn,
     SaveMarkersIn,
     SearchResponseOut,
-    SmartParaphraseIn,
-    SmartParaphraseOut,
     StatusResponse,
     UserProfileOut,
     VerifyEmailIn,
@@ -69,6 +66,7 @@ router = Router()
 
 
 # ── Helper for User Profile Extraction ────────────────────────────────────────
+
 
 def _extract_user_profile(user: User) -> UserProfileOut:
     if not user or not user.is_authenticated:
@@ -98,6 +96,7 @@ def _extract_user_profile(user: User) -> UserProfileOut:
 
 # ── 1. Discovery & Homepage Endpoints ─────────────────────────────────────────
 
+
 @router.get("/homepage/", response=HomepageDataOut, summary="Get Homepage Bundle")
 def get_homepage_data(request: HttpRequest):
     """Returns complete bundle of hero news, daily vocab, recommendations, and test catalog."""
@@ -108,20 +107,11 @@ def get_homepage_data(request: HttpRequest):
     themes = selectors.get_theme_choices()
     genres = selectors.get_genre_choices()
 
-    nav_themes = [
-        {"id": t.name, "name": t.value}
-        for t in ThemeCategory
-        if t.name != "GENERAL"
-    ]
+    nav_themes = [{"id": t.name, "name": t.value} for t in ThemeCategory if t.name != "GENERAL"]
 
     trending_articles = selectors.get_hot_news(limit=6)
     recommended_articles = selectors.get_recommendations(user=user, limit=4)
     daily_vocab_data = selectors.get_daily_vocab(user_id=user_id)
-
-    paraphrase_demo_data = {
-        "original": "Climate change poses severe threats to global food security.",
-        "paraphrased": "Global food production is gravely endangered by shifts in world climate.",
-    }
 
     all_tests_res = selectors.list_completed_articles(theme="All", genre="All", limit=12)
     all_articles = all_tests_res.get("articles", [])
@@ -142,8 +132,7 @@ def get_homepage_data(request: HttpRequest):
     grid_items = mark_attempted(all_articles)
 
     trending_topics = [
-        {"id": a.get("article_id") or a.get("id"), "title": a.get("title")}
-        for a in trending_articles[:5]
+        {"id": a.get("article_id") or a.get("id"), "title": a.get("title")} for a in trending_articles[:5]
     ]
 
     return {
@@ -151,7 +140,6 @@ def get_homepage_data(request: HttpRequest):
         "hero_articles": hero_items,
         "trending_topics": trending_topics,
         "daily_vocab": DailyVocabOut(**daily_vocab_data),
-        "paraphrase_demo": ParaphraseDemoOut(**paraphrase_demo_data),
         "recommended_articles": rec_items,
         "articles": grid_items,
         "total_count": all_tests_res.get("total_count", len(grid_items)),
@@ -162,6 +150,7 @@ def get_homepage_data(request: HttpRequest):
 
 
 # ── 2. Articles Catalog & Detail Endpoints ────────────────────────────────────
+
 
 @router.get("/articles/", response=ArticleListResponseOut, summary="List Articles")
 def list_articles(
@@ -185,7 +174,9 @@ def list_articles(
         if genre and genre != "All":
             raw_articles = [a for a in raw_articles if a.get("genre", "").lower() == genre.lower()]
         if date_filter and date_filter.lower() not in ("all", "all time", ""):
-            raw_articles = [a for a in raw_articles if selectors._is_within_date_filter(a.get("published_at"), date_filter)]
+            raw_articles = [
+                a for a in raw_articles if selectors._is_within_date_filter(a.get("published_at"), date_filter)
+            ]
         total_count = len(raw_articles)
         start = (page - 1) * limit
         end = start + limit
@@ -193,7 +184,9 @@ def list_articles(
         has_next = end < total_count
         has_prev = page > 1
     else:
-        res = selectors.list_completed_articles(theme=theme, genre=genre, date_filter=date_filter, page=page, limit=limit)
+        res = selectors.list_completed_articles(
+            theme=theme, genre=genre, date_filter=date_filter, page=page, limit=limit
+        )
         articles = res.get("articles", [])
         total_count = res.get("total_count", len(articles))
         has_next = res.get("has_next", False)
@@ -269,6 +262,7 @@ def import_article(request: HttpRequest, data: ArticleImportIn):
 
 # ── 3. Status & Background Task Polling ───────────────────────────────────────
 
+
 @router.get("/status/{pk}/", response=dict[str, Any], summary="Get Article Pipeline Status")
 @router.get("/articles/{pk}/status/", response=dict[str, Any], summary="Get Article Pipeline Status (Alias)")
 def get_article_status(request: HttpRequest, pk: str):
@@ -289,6 +283,7 @@ def trigger_quiz(request: HttpRequest, pk: str):
 
 # ── 4. Interactive Workspace & Practice Endpoints ────────────────────────────
 
+
 @router.post("/{pk}/submit/", response=ExamSubmitOut, summary="Submit Quiz Attempt")
 @router.post("/articles/{pk}/submit/", response=ExamSubmitOut, summary="Submit Quiz Attempt (Alias)")
 def submit_exam_attempt(request: HttpRequest, pk: str, data: ExamSubmitIn):
@@ -308,29 +303,6 @@ def submit_exam_attempt(request: HttpRequest, pk: str, data: ExamSubmitIn):
         "status": "success",
         "id": str(res.get("attempt_id", "")),
         "related_articles": related,
-    }
-
-
-@router.post("/{pk}/smart_paraphrase/", response=SmartParaphraseOut, summary="Smart Paraphrase Selection")
-@router.post("/articles/{pk}/smart_paraphrase/", response=SmartParaphraseOut, summary="Smart Paraphrase Selection (Alias)")
-def smart_paraphrase(request: HttpRequest, pk: str, data: SmartParaphraseIn):
-    """Generate CEFR-level explanation and contextual paraphrase for selected text."""
-    target_text = data.paragraph_text.strip() or data.highlighted_text.strip()
-    if not target_text:
-        raise HttpError(400, "Missing paragraph_text or highlighted_text")
-
-    res = services.smart_paraphrase(
-        article_id=pk,
-        paragraph_text=data.paragraph_text.strip() or target_text,
-        user_start_index=data.start_index,
-        user_end_index=data.end_index,
-        highlighted_text=data.highlighted_text.strip() or target_text,
-    )
-    return {
-        "status": "success",
-        "paraphrased_text": res.get("paraphrased_text", target_text),
-        "expanded_text": res.get("expanded_text", res.get("paraphrased_text", target_text)),
-        "explanation": res.get("explanation", ""),
     }
 
 
@@ -382,6 +354,7 @@ def get_passage_proof_endpoint(request: HttpRequest, pk: str, idx: int):
 
 # ── 5. Search & AI Tool Endpoints ────────────────────────────────────────────
 
+
 @router.get("/search/keyword/", response=SearchResponseOut, summary="BM25 Keyword Search")
 def search_keyword(request: HttpRequest, q: str):
     """Perform BM25 tokenized keyword search across articles."""
@@ -420,6 +393,7 @@ def dictionary_lookup(request: HttpRequest, word: str):
 
 
 # ── 6. Authentication REST Endpoints ──────────────────────────────────────────
+
 
 @router.post("/auth/login/", response=AuthResponseOut, summary="User Login")
 def auth_login(request: HttpRequest, data: LoginIn):
@@ -476,9 +450,7 @@ def auth_register(request: HttpRequest, data: RegisterIn):
 
     code = f"{random.randint(100000, 999999):06d}"
     expires_at = timezone.now() + datetime.timedelta(minutes=5)
-    EmailVerification.objects.update_or_create(
-        user=user, defaults={"code": code, "expires_at": expires_at}
-    )
+    EmailVerification.objects.update_or_create(user=user, defaults={"code": code, "expires_at": expires_at})
 
     send_verification_email(email, code)
     request.session["verification_user_id"] = user.id

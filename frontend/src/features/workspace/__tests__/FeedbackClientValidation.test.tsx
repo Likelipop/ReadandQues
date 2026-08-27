@@ -16,7 +16,7 @@ vi.mock('../../../api/client', () => ({
       status: vi.fn(),
       submitExam: vi.fn(),
       saveMarkers: vi.fn(),
-      smartParaphrase: vi.fn(),
+      explain: vi.fn(),
       getPassageProof: vi.fn(),
     },
     dictionary: {
@@ -97,15 +97,15 @@ describe('QA Validation Suite: Client 4 Feedback Items', () => {
   // FEEDBACK ITEM 1: Smart Ink In-Place Simplification & Eraser Revert
   // ══════════════════════════════════════════════════════════════════════════════
 
-  describe('Feedback Item 1: Smart Ink In-Place Simplification & Eraser Revert', () => {
-    it('simplifies sentence directly in paragraph with ✨ Simplified badge and ↺ Original chip when Smart Ink is active', async () => {
-      vi.mocked(api.articles.smartParaphrase).mockResolvedValueOnce({
+  describe('Feedback Item 1: Smart Ink In-Place Explanation & Eraser Revert', () => {
+    it('explains sentence directly in paragraph with 💡 Explained badge and ↺ Original chip when Smart Ink is active', async () => {
+      vi.mocked(api.articles.explain).mockResolvedValueOnce({
         status: 'success',
-        original_text:
-          'Autonomous robots utilize multi-modal sensor fusion to build spatial representations of dynamic environments.',
-        paraphrased_text:
-          'Self-driving robots combine data from cameras and sensors to map changing surroundings.',
-        explanation: 'Simplified complex robotics jargon into plain language.',
+        phrase: 'Autonomous robots utilize multi-modal sensor fusion to build spatial representations of dynamic environments.',
+        summary: 'Sensor fusion robotics explanation.',
+        detailed_explanation: 'Self-driving robots combine data from cameras and sensors to map changing surroundings.',
+        simplified_version: 'Robots use sensors to see.',
+        key_terms: [],
       });
 
       const handleToast = vi.fn();
@@ -122,40 +122,40 @@ describe('QA Validation Suite: Client 4 Feedback Items', () => {
       fireEvent.click(firstSentence);
 
       expect(handleToast).toHaveBeenCalledWith(
-        '✨ Simplifying sentence with Smart Ink...',
+        '✨ Explaining with Smart Ink...',
         'info'
       );
 
-      // Verify API was called with the sentence and paragraph
-      expect(api.articles.smartParaphrase).toHaveBeenCalledWith(
+      // Verify API was called with the phrase and paragraph context
+      expect(api.articles.explain).toHaveBeenCalledWith(
         'art-feedback-val-1',
         expect.objectContaining({
-          highlighted_text: expect.stringContaining('Autonomous robots utilize multi-modal sensor fusion'),
+          phrase: expect.stringContaining('Autonomous robots utilize multi-modal sensor fusion'),
         })
       );
 
-      // Verify in-place simplified text, badge, and restore button appear
+      // Verify in-place explained text, badge, and restore button appear
       await waitFor(() => {
         expect(
           screen.getByText(
             'Self-driving robots combine data from cameras and sensors to map changing surroundings.'
           )
         ).toBeInTheDocument();
-        expect(screen.getByText('✨ Simplified')).toBeInTheDocument();
+        expect(screen.getByText('💡 Explained')).toBeInTheDocument();
         expect(screen.getByRole('button', { name: /Restore original sentence/i })).toBeInTheDocument();
       });
 
-      expect(handleToast).toHaveBeenCalledWith('Sentence simplified in-place!', 'success');
+      expect(handleToast).toHaveBeenCalledWith('Contextual explanation generated!', 'success');
     });
 
-    it('reverts simplified sentence to original text when clicking ↺ Original chip', async () => {
-      vi.mocked(api.articles.smartParaphrase).mockResolvedValueOnce({
+    it('reverts explained sentence to original text when clicking ↺ Original chip', async () => {
+      vi.mocked(api.articles.explain).mockResolvedValueOnce({
         status: 'success',
-        original_text:
-          'Autonomous robots utilize multi-modal sensor fusion to build spatial representations of dynamic environments.',
-        paraphrased_text:
-          'Robots combine sensors to map rooms.',
-        explanation: 'Simplified.',
+        phrase: 'Autonomous robots utilize multi-modal sensor fusion to build spatial representations of dynamic environments.',
+        summary: 'Summary',
+        detailed_explanation: 'Robots combine sensors to map rooms.',
+        simplified_version: 'Robots use sensors.',
+        key_terms: [],
       });
 
       const handleToast = vi.fn();
@@ -163,12 +163,12 @@ describe('QA Validation Suite: Client 4 Feedback Items', () => {
 
       render(<ArticleReader article={mockArticle} onShowToast={handleToast} />);
 
-      // Simplify sentence
+      // Explain sentence
       const firstSentence = screen.getByText(/Autonomous robots utilize multi-modal sensor fusion/i);
       fireEvent.click(firstSentence);
 
       await waitFor(() => {
-        expect(screen.getByText('✨ Simplified')).toBeInTheDocument();
+        expect(screen.getByText('💡 Explained')).toBeInTheDocument();
       });
 
       // Click "Original" restore button
@@ -177,7 +177,7 @@ describe('QA Validation Suite: Client 4 Feedback Items', () => {
 
       // Verify restored to original text and badge removed
       await waitFor(() => {
-        expect(screen.queryByText('✨ Simplified')).not.toBeInTheDocument();
+        expect(screen.queryByText('💡 Explained')).not.toBeInTheDocument();
         expect(screen.queryByText('Robots combine sensors to map rooms.')).not.toBeInTheDocument();
         expect(
           screen.getByText(/Autonomous robots utilize multi-modal sensor fusion/i)
@@ -187,14 +187,14 @@ describe('QA Validation Suite: Client 4 Feedback Items', () => {
       expect(handleToast).toHaveBeenCalledWith('Restored original sentence', 'info');
     });
 
-    it('reverts simplified sentence when clicked with Eraser tool active', async () => {
-      vi.mocked(api.articles.smartParaphrase).mockResolvedValueOnce({
+    it('reverts explained sentence when clicked with Eraser tool active', async () => {
+      vi.mocked(api.articles.explain).mockResolvedValueOnce({
         status: 'success',
-        original_text:
-          'Autonomous robots utilize multi-modal sensor fusion to build spatial representations of dynamic environments.',
-        paraphrased_text:
-          'Robots combine sensors to map rooms.',
-        explanation: 'Simplified.',
+        phrase: 'Autonomous robots utilize multi-modal sensor fusion to build spatial representations of dynamic environments.',
+        summary: 'Summary',
+        detailed_explanation: 'Robots combine sensors to map rooms.',
+        simplified_version: 'Robots use sensors.',
+        key_terms: [],
       });
 
       const handleToast = vi.fn();
@@ -202,25 +202,25 @@ describe('QA Validation Suite: Client 4 Feedback Items', () => {
 
       const { rerender } = render(<ArticleReader article={mockArticle} onShowToast={handleToast} />);
 
-      // 1. Simplify sentence with Smart Ink
+      // 1. Explain sentence with Smart Ink
       fireEvent.click(screen.getByText(/Autonomous robots utilize multi-modal sensor fusion/i));
 
       await waitFor(() => {
-        expect(screen.getByText('✨ Simplified')).toBeInTheDocument();
+        expect(screen.getByText('💡 Explained')).toBeInTheDocument();
       });
 
       // 2. Switch to Eraser tool
       workspaceStore.setState({ activeTool: 'eraser' });
       rerender(<ArticleReader article={mockArticle} onShowToast={handleToast} />);
 
-      // 3. Click the simplified sentence with Eraser
-      const simplifiedContainer = screen.getByText('Robots combine sensors to map rooms.').closest('span');
-      expect(simplifiedContainer).toBeInTheDocument();
-      fireEvent.click(simplifiedContainer!);
+      // 3. Click the explained sentence with Eraser
+      const explainedContainer = screen.getByText('Robots combine sensors to map rooms.').closest('span');
+      expect(explainedContainer).toBeInTheDocument();
+      fireEvent.click(explainedContainer!);
 
       // Verify restored
       await waitFor(() => {
-        expect(screen.queryByText('✨ Simplified')).not.toBeInTheDocument();
+        expect(screen.queryByText('💡 Explained')).not.toBeInTheDocument();
         expect(screen.queryByText('Robots combine sensors to map rooms.')).not.toBeInTheDocument();
         expect(
           screen.getByText(/Autonomous robots utilize multi-modal sensor fusion/i)
@@ -242,8 +242,8 @@ describe('QA Validation Suite: Client 4 Feedback Items', () => {
       expect(screen.queryByText(/Streaming explanation/i)).not.toBeInTheDocument();
     });
 
-    it('gracefully handles offline/network failure with fallback in-place simplification', async () => {
-      vi.mocked(api.articles.smartParaphrase).mockRejectedValueOnce(new Error('Network error'));
+    it('gracefully handles offline/network failure with fallback in-place explanation', async () => {
+      vi.mocked(api.articles.explain).mockRejectedValueOnce(new Error('Network error'));
 
       const handleToast = vi.fn();
       workspaceStore.setState({ activeTool: 'smart_ink' });
@@ -254,11 +254,11 @@ describe('QA Validation Suite: Client 4 Feedback Items', () => {
       fireEvent.click(secondSentence);
 
       await waitFor(() => {
-        expect(screen.getByText(/In simple terms: Path planning algorithms/i)).toBeInTheDocument();
-        expect(screen.getByText('✨ Simplified')).toBeInTheDocument();
+        expect(screen.getByText(/💡 Explanation: Path planning algorithms/i)).toBeInTheDocument();
+        expect(screen.getByText('💡 Explained')).toBeInTheDocument();
       });
 
-      expect(handleToast).toHaveBeenCalledWith('Sentence simplified (offline)', 'info');
+      expect(handleToast).toHaveBeenCalledWith('Contextual explanation (offline)', 'info');
     });
   });
 

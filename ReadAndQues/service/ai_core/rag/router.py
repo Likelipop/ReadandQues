@@ -12,10 +12,10 @@ from langchain_core.messages import HumanMessage
 from langgraph.graph import END, StateGraph
 
 from service.ai_core.platform.gateway import ModelGateway
+from service.ai_core.rag.agents.news.agent import run_news_agent
+from service.ai_core.rag.prompts import ROUTER_INTENT_CLASSIFIER_PROMPT
+from service.ai_core.rag.schemas import RAGResponse
 from service.domain.enums import AgentIntent
-from service.rag.agents.news.agent import run_news_agent
-from service.rag.prompts import ROUTER_INTENT_CLASSIFIER_PROMPT
-from service.rag.schemas import RAGResponse
 
 logger = logging.getLogger(__name__)
 
@@ -41,11 +41,11 @@ def classify_intent_node(state: RouterState) -> RouterState:
         prompt = ROUTER_INTENT_CLASSIFIER_PROMPT.format(question=question, article_id=article_id)
         resp = llm.invoke([HumanMessage(content=prompt)])
         content = resp.content if hasattr(resp, "content") else str(resp)
-        
+
         # Clean potential markdown formatting
         if "```" in content:
             content = re.sub(r"^```(?:json)?|```$", "", content.strip(), flags=re.MULTILINE).strip()
-            
+
         parsed = json.loads(content)
 
         raw_intent = parsed.get("intent", "news").lower()

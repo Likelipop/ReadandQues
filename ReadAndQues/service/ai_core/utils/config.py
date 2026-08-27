@@ -21,4 +21,3 @@ class ExamConfig(BaseModel):
         else:
             total = 10
         return cls(word_count=wc, total_questions=total)
-

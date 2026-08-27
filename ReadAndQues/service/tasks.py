@@ -14,10 +14,12 @@ logger = logging.getLogger(__name__)
 
 # ── Celery Shared Tasks ───────────────────────────────────────────────────────
 
+
 @shared_task(bind=True, max_retries=2, default_retry_delay=30, name="service.tasks.ingest_and_enrich_article")
 def task_ingest_and_enrich_article(self, article_id: str, url: str) -> dict[str, Any]:
     """Celery worker task to crawl, parse, and generate IELTS quizzes with LangGraph."""
     from service.pipelines import ingest_and_enrich_article
+
     try:
         logger.info(f"⚡ [Celery] Ingesting article {article_id} from {url}")
         result = ingest_and_enrich_article(article_id=article_id, url=url)
@@ -32,6 +34,7 @@ def task_ingest_and_enrich_article(self, article_id: str, url: str) -> dict[str,
 def task_enrich_article_only(self, article_id: str) -> dict[str, Any]:
     """Celery worker task to re-run AI quiz generation for an existing article."""
     from service.pipelines import enrich_article_only
+
     try:
         logger.info(f"⚡ [Celery] Generating quiz for article {article_id}")
         result = enrich_article_only(article_id=article_id)
@@ -46,11 +49,13 @@ def task_enrich_article_only(self, article_id: str) -> dict[str, Any]:
 def task_rebuild_bm25_index() -> None:
     """Celery worker task to rebuild the BM25 search index."""
     import service.infrastructure.bm25.connection as bm25_conn
+
     logger.info("⚡ [Celery] Rebuilding BM25 search index")
     bm25_conn.rebuild_index()
 
 
 # ── Unified Dispatcher ────────────────────────────────────────────────────────
+
 
 def run_in_background(func: Callable, *args, **kwargs) -> Any:
     """

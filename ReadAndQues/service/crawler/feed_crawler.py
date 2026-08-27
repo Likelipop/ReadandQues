@@ -30,13 +30,15 @@ def fetch_rss_feed_links(feed_urls: list[str] = None, max_per_feed: int = 5) -> 
                 link = entry.get("link", "")
                 title = entry.get("title", "")
                 if link and title:
-                    collected_links.append({
-                        "link": link,
-                        "title": title,
-                        "pubDate": entry.get("published", str(datetime.now(UTC))),
-                        "is_extracted": False,
-                        "insert_date": datetime.now(UTC),
-                    })
+                    collected_links.append(
+                        {
+                            "link": link,
+                            "title": title,
+                            "pubDate": entry.get("published", str(datetime.now(UTC))),
+                            "is_extracted": False,
+                            "insert_date": datetime.now(UTC),
+                        }
+                    )
         except Exception as e:
             logger.warning(f"Error parsing RSS feed '{feed_url}': {e}")
 

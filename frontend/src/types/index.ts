@@ -136,15 +136,6 @@ export interface SearchResultItem {
   word_count?: number;
 }
 
-export interface SmartParaphraseResult {
-  status: string;
-  original_text?: string;
-  paraphrased_text?: string;
-  simplified_version?: string;
-  expanded_text?: string;
-  explanation?: string;
-}
-
 export interface KeyTerm {
   term: string;
   meaning: string;

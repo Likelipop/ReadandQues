@@ -110,10 +110,15 @@ class ReadspaceLiveRegressionTestSuite(TestCase):
 
     def test_get_article_detail_full_payload(self):
         """Successfully parses all IELTS question types (MCQ, YNNG, FIB) into Article."""
-        with patch("service.infrastructure.mongo.article_store.get_article_index", return_value=self.mock_mongo_index_doc), \
-             patch("service.infrastructure.minio.object_store.read_silver_clean", return_value=self.mock_minio_clean_doc), \
-             patch("service.infrastructure.mongo.exam_store.get_exam", return_value=self.mock_mongo_exam_doc):
-            
+        with (
+            patch(
+                "service.infrastructure.mongo.article_store.get_article_index", return_value=self.mock_mongo_index_doc
+            ),
+            patch(
+                "service.infrastructure.minio.object_store.read_silver_clean", return_value=self.mock_minio_clean_doc
+            ),
+            patch("service.infrastructure.mongo.exam_store.get_exam", return_value=self.mock_mongo_exam_doc),
+        ):
             detail = get_article_detail(self.article_id)
             self.assertIsNotNone(detail)
             self.assertEqual(detail["article_id"], self.article_id)
@@ -124,10 +129,13 @@ class ReadspaceLiveRegressionTestSuite(TestCase):
 
     def test_get_article_detail_when_minio_or_exam_is_none(self):
         """Handles missing MinIO silver object and missing MongoDB exam without exception."""
-        with patch("service.infrastructure.mongo.article_store.get_article_index", return_value=self.mock_mongo_index_doc), \
-             patch("service.infrastructure.minio.object_store.read_silver_clean", return_value=None), \
-             patch("service.infrastructure.mongo.exam_store.get_exam", return_value=None):
-            
+        with (
+            patch(
+                "service.infrastructure.mongo.article_store.get_article_index", return_value=self.mock_mongo_index_doc
+            ),
+            patch("service.infrastructure.minio.object_store.read_silver_clean", return_value=None),
+            patch("service.infrastructure.mongo.exam_store.get_exam", return_value=None),
+        ):
             detail = get_article_detail(self.article_id)
             self.assertIsNotNone(detail)
             self.assertEqual(detail["has_quiz"], False)
@@ -146,12 +154,17 @@ class ReadspaceLiveRegressionTestSuite(TestCase):
         """Logged in user GET /readspace/<pk>/ returns 200 and renders HTML templates cleanly."""
         self.client.login(username="student_reader", password="SecurePassword123!")
 
-        with patch("service.infrastructure.mongo.article_store.get_article_index", return_value=self.mock_mongo_index_doc), \
-             patch("service.infrastructure.minio.object_store.read_silver_clean", return_value=self.mock_minio_clean_doc), \
-             patch("service.infrastructure.mongo.exam_store.get_exam", return_value=self.mock_mongo_exam_doc), \
-             patch("service.infrastructure.mongo.article_store.list_completed_articles", return_value=[]), \
-             patch("service.infrastructure.mongo.exam_store.get_exams_by_article_ids", return_value={}):
-            
+        with (
+            patch(
+                "service.infrastructure.mongo.article_store.get_article_index", return_value=self.mock_mongo_index_doc
+            ),
+            patch(
+                "service.infrastructure.minio.object_store.read_silver_clean", return_value=self.mock_minio_clean_doc
+            ),
+            patch("service.infrastructure.mongo.exam_store.get_exam", return_value=self.mock_mongo_exam_doc),
+            patch("service.infrastructure.mongo.article_store.list_completed_articles", return_value=[]),
+            patch("service.infrastructure.mongo.exam_store.get_exams_by_article_ids", return_value={}),
+        ):
             response = self.client.get(f"/readspace/{self.article_id}/")
             self.assertEqual(response.status_code, 200)
             self.assertContains(response, "Global Agricultural Shifts in 2026")
@@ -179,9 +192,10 @@ class ReadspaceLiveRegressionTestSuite(TestCase):
     def test_get_article_status_in_progress(self):
         """Status polling for in-progress article returns status payload."""
         pending_index_doc = {**self.mock_mongo_index_doc, "ai_status": "processing"}
-        with patch("service.infrastructure.mongo.article_store.get_article_index", return_value=pending_index_doc), \
-             patch("service.infrastructure.mongo.exam_store.get_exam", return_value=None):
-            
+        with (
+            patch("service.infrastructure.mongo.article_store.get_article_index", return_value=pending_index_doc),
+            patch("service.infrastructure.mongo.exam_store.get_exam", return_value=None),
+        ):
             status_data = get_article_status(self.article_id)
             self.assertEqual(status_data["status"], "processing")
             self.assertEqual(status_data["has_quiz"], False)
@@ -194,9 +208,10 @@ class ReadspaceLiveRegressionTestSuite(TestCase):
             "ai_status": "failed",
             "error_message": "Upstream LLM timeout",
         }
-        with patch("service.infrastructure.mongo.article_store.get_article_index", return_value=error_index_doc), \
-             patch("service.infrastructure.mongo.exam_store.get_exam", return_value=None):
-            
+        with (
+            patch("service.infrastructure.mongo.article_store.get_article_index", return_value=error_index_doc),
+            patch("service.infrastructure.mongo.exam_store.get_exam", return_value=None),
+        ):
             status_data = get_article_status(self.article_id)
             self.assertEqual(status_data["status"], "failed")
             self.assertEqual(status_data["error_message"], "Upstream LLM timeout")
@@ -208,9 +223,13 @@ class ReadspaceLiveRegressionTestSuite(TestCase):
             {"_id": "art_other_001", "title": "Other Article 1", "url": "https://b.com"},
             {"_id": "art_other_002", "title": "Other Article 2", "url": "https://c.com"},
         ]
-        with patch("service.infrastructure.mongo.article_store.list_completed_articles", return_value=mock_completed_indexes), \
-             patch("service.infrastructure.mongo.exam_store.get_exams_by_article_ids", return_value={}):
-            
+        with (
+            patch(
+                "service.infrastructure.mongo.article_store.list_completed_articles",
+                return_value=mock_completed_indexes,
+            ),
+            patch("service.infrastructure.mongo.exam_store.get_exams_by_article_ids", return_value={}),
+        ):
             related = get_related_articles(self.article_id, limit=3)
             self.assertEqual(len(related), 2)
             for r in related:

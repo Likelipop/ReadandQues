@@ -76,72 +76,16 @@ class APIContractsTestCase(TestCase):
                 highlighted_text="==Ninja Highlight==",
             )
 
-    # ── 2. smart_paraphrase Contract Tests ─────────────────────────────────────
-
-    def test_smart_paraphrase_with_start_index_end_index(self):
-        """smart_paraphrase accepts 'start_index' / 'end_index' and returns expanded_text alias."""
-        self.client.login(username="contract_user", password="SecurePassword123!")
-
-        mock_result = {
-            "paraphrased_text": "Paraphrased version.",
-            "explanation": "Simplified sentence.",
-        }
-
-        with patch("service.services.smart_paraphrase", return_value=mock_result) as mock_para:
-            payload = {
-                "paragraph_text": "Original text passage.",
-                "start_index": 5,
-                "end_index": 15,
-            }
-            response = self.client.post(
-                reverse("readspace:smart_paraphrase", kwargs={"pk": self.article_id}),
-                data=json.dumps(payload),
-                content_type="application/json",
-            )
-            self.assertEqual(response.status_code, 200)
-            data = response.json()
-            self.assertEqual(data["paraphrased_text"], "Paraphrased version.")
-            self.assertEqual(data["expanded_text"], "Paraphrased version.")
-            mock_para.assert_called_once_with(
-                article_id=self.article_id,
-                paragraph_text="Original text passage.",
-                user_start_index=5,
-                user_end_index=15,
-                highlighted_text="",
-            )
-
-    def test_smart_paraphrase_with_start_idx_end_idx(self):
-        """smart_paraphrase accepts 'start_idx' / 'end_idx' shorthand."""
-        self.client.login(username="contract_user", password="SecurePassword123!")
-
-        with patch("service.services.smart_paraphrase", return_value={"paraphrased_text": "P"}) as mock_para:
-            payload = {
-                "paragraph_text": "Sample text.",
-                "start_idx": 2,
-                "end_idx": 8,
-            }
-            response = self.client.post(
-                reverse("readspace:smart_paraphrase", kwargs={"pk": self.article_id}),
-                data=json.dumps(payload),
-                content_type="application/json",
-            )
-            self.assertEqual(response.status_code, 200)
-            mock_para.assert_called_once_with(
-                article_id=self.article_id,
-                paragraph_text="Sample text.",
-                user_start_index=2,
-                user_end_index=8,
-                highlighted_text="",
-            )
-
     # ── 3. submit_exam_attempt Contract Tests ───────────────────────────────────
 
     def test_submit_exam_with_elapsed_time_and_time_taken_seconds(self):
         """submit_exam_attempt parses elapsed_time and falls back to time_taken_seconds."""
         self.client.login(username="contract_user", password="SecurePassword123!")
 
-        with patch("service.services.submit_exam_attempt", return_value={"attempt_id": "att-1"}) as mock_submit, \
-             patch("service.selectors.get_related_articles", return_value=[]):
+        with (
+            patch("service.services.submit_exam_attempt", return_value={"attempt_id": "att-1"}) as mock_submit,
+            patch("service.selectors.get_related_articles", return_value=[]),
+        ):
             # Test time_taken_seconds alias
             payload = {
                 "score": 8,
@@ -214,7 +158,6 @@ class APIContractsTestCase(TestCase):
         self.assertEqual(data["status"], "success")
         self.assertIn("hero_articles", data)
         self.assertIn("daily_vocab", data)
-        self.assertIn("paraphrase_demo", data)
         self.assertIn("themes", data)
 
     def test_articles_list_api(self):
@@ -248,4 +191,3 @@ class APIContractsTestCase(TestCase):
         logout_res = self.client.post("/api/v1/auth/logout/")
         self.assertEqual(logout_res.status_code, 200)
         self.assertEqual(logout_res.json()["status"], "success")
-

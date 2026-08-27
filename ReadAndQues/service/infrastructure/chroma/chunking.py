@@ -40,21 +40,23 @@ def chunk_article_with_hierarchy(
     def _flush_parent(paras: list[str], p_idx: int) -> str:
         parent_text = "\n\n".join(paras)
         parent_id = f"{article_id}_parent_{p_idx}"
-        chunks_to_index.append({
-            "id": parent_id,
-            "text": parent_text,
-            "metadata": {
-                "article_id": str(article_id),
-                "title": title or "Untitled",
-                "url": url or "",
-                "theme": theme or "General",
-                "genre": genre or "general",
-                "published_at": published_at or "",
-                "chunk_type": "parent",
-                "parent_index": p_idx,
-                "child_count": len(paras),
-            },
-        })
+        chunks_to_index.append(
+            {
+                "id": parent_id,
+                "text": parent_text,
+                "metadata": {
+                    "article_id": str(article_id),
+                    "title": title or "Untitled",
+                    "url": url or "",
+                    "theme": theme or "General",
+                    "genre": genre or "general",
+                    "published_at": published_at or "",
+                    "chunk_type": "parent",
+                    "parent_index": p_idx,
+                    "child_count": len(paras),
+                },
+            }
+        )
         return parent_id
 
     # Build parent and child chunks
@@ -74,22 +76,24 @@ def chunk_article_with_hierarchy(
 
         # Add child chunk
         child_id = f"{article_id}_child_{parent_index}_{child_index_in_parent}"
-        chunks_to_index.append({
-            "id": child_id,
-            "text": p,
-            "metadata": {
-                "article_id": str(article_id),
-                "title": title or "Untitled",
-                "url": url or "",
-                "theme": theme or "General",
-                "genre": genre or "general",
-                "published_at": published_at or "",
-                "chunk_type": "child",
-                "parent_id": parent_id,
-                "parent_index": parent_index,
-                "child_index": child_index_in_parent,
-            },
-        })
+        chunks_to_index.append(
+            {
+                "id": child_id,
+                "text": p,
+                "metadata": {
+                    "article_id": str(article_id),
+                    "title": title or "Untitled",
+                    "url": url or "",
+                    "theme": theme or "General",
+                    "genre": genre or "general",
+                    "published_at": published_at or "",
+                    "chunk_type": "child",
+                    "parent_id": parent_id,
+                    "parent_index": parent_index,
+                    "child_index": child_index_in_parent,
+                },
+            }
+        )
         child_index_in_parent += 1
 
     if current_parent_paragraphs:

@@ -17,6 +17,7 @@ def db_safe(default_return: Any = None) -> Callable:
     - Logs traceback with exc_info=True.
     - Returns default_return safely.
     """
+
     def decorator(func: Callable) -> Callable:
         @wraps(func)
         def wrapper(*args, **kwargs):
@@ -28,5 +29,7 @@ def db_safe(default_return: Any = None) -> Callable:
                     exc_info=True,
                 )
                 return default_return
+
         return wrapper
+
     return decorator

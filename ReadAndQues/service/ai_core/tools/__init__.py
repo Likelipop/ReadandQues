@@ -7,5 +7,3 @@ __all__ = [
     "quiz_generator_tool",
     "explained_tool",
 ]
-
-

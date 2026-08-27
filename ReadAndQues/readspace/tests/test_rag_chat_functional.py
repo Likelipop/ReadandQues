@@ -10,15 +10,15 @@ from unittest.mock import patch
 from django.test import Client, TestCase
 from django.urls import reverse
 
-from service.domain.enums import AgentIntent
-from service.rag.router import (
+from service.ai_core.rag.router import (
     RouterState,
     build_rag_router_graph,
     classify_intent_node,
     execute_rag_pipeline,
     route_intent_edge,
 )
-from service.rag.schemas import Citation, RAGResponse
+from service.ai_core.rag.schemas import Citation, RAGResponse
+from service.domain.enums import AgentIntent
 
 
 class RAGChatFunctionalTestCase(TestCase):
@@ -69,10 +69,12 @@ class RAGChatFunctionalTestCase(TestCase):
         with patch("service.services.ask_rag_question", return_value=self.mock_rag_response):
             response = self.client.post(
                 reverse("readspace:rag_stream_api"),
-                data=json.dumps({
-                    "question": "What are the main causes of ocean microplastics?",
-                    "article_id": self.article_id,
-                }),
+                data=json.dumps(
+                    {
+                        "question": "What are the main causes of ocean microplastics?",
+                        "article_id": self.article_id,
+                    }
+                ),
                 content_type="application/json",
             )
             self.assertEqual(response.status_code, 200)
@@ -82,9 +84,7 @@ class RAGChatFunctionalTestCase(TestCase):
 
             # Collect streaming content chunks
             streamed_lines = [
-                line.decode("utf-8")
-                for line in response.streaming_content
-                if line.decode("utf-8").strip()
+                line.decode("utf-8") for line in response.streaming_content if line.decode("utf-8").strip()
             ]
 
             # Verify first event is metadata with citations
@@ -98,9 +98,7 @@ class RAGChatFunctionalTestCase(TestCase):
             # Verify intermediate delta events contain words
             delta_lines = [line for line in streamed_lines if '"type": "delta"' in line]
             self.assertGreater(len(delta_lines), 0)
-            full_reconstructed_text = "".join(
-                json.loads(line.replace("data: ", ""))["text"] for line in delta_lines
-            )
+            full_reconstructed_text = "".join(json.loads(line.replace("data: ", ""))["text"] for line in delta_lines)
             self.assertIn("Microplastics mainly originate from synthetic textiles", full_reconstructed_text)
 
             # Verify terminal event
@@ -111,7 +109,7 @@ class RAGChatFunctionalTestCase(TestCase):
 
     def test_classify_intent_node_fallback_when_no_api_key(self):
         """Intent classifier defaults to NEWS with confidence when LLM fails or is unavailable."""
-        with patch("service.rag.router.ModelGateway.get_llm", side_effect=RuntimeError("No LLM provider")):
+        with patch("service.ai_core.rag.router.ModelGateway.get_llm", side_effect=RuntimeError("No LLM provider")):
             initial_state: RouterState = {
                 "question": "Explain paragraph 1",
                 "article_id": self.article_id,
@@ -142,9 +140,7 @@ class RAGChatFunctionalTestCase(TestCase):
 
     def test_execute_rag_pipeline_end_to_end_mocked(self):
         """Full LangGraph pipeline returns typed RAGResponse with answer and citations."""
-        mock_citations = [
-            Citation(article_id="art-1", title="Ocean Plastic", url="https://example.com/art-1")
-        ]
+        mock_citations = [Citation(article_id="art-1", title="Ocean Plastic", url="https://example.com/art-1")]
         mock_news_response = RAGResponse(
             status="success",
             query="Tell me about ocean plastic",
@@ -155,7 +151,7 @@ class RAGChatFunctionalTestCase(TestCase):
             model_used="gpt-4o-mini",
         )
 
-        with patch("service.rag.router.run_news_agent", return_value=mock_news_response):
+        with patch("service.ai_core.rag.router.run_news_agent", return_value=mock_news_response):
             response = execute_rag_pipeline(
                 question="Tell me about ocean plastic",
                 article_id=self.article_id,
@@ -171,7 +167,9 @@ class RAGChatFunctionalTestCase(TestCase):
         """When RAG pipeline encounters unexpected error, service returns structured error response."""
         from service.services import ask_rag_question
 
-        with patch("service.rag.router.execute_rag_pipeline", side_effect=RuntimeError("ChromaDB connection timeout")):
+        with patch(
+            "service.ai_core.rag.execute_rag_pipeline", side_effect=RuntimeError("ChromaDB connection timeout")
+        ):
             result = ask_rag_question(question="What is this?", article_id=self.article_id)
             self.assertEqual(result["status"], "error")
             self.assertIn("Error executing RAG", result["answer"])

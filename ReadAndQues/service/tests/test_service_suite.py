@@ -19,7 +19,7 @@ from django.test import Client, TestCase
 
 from accounts.models import UserProfile
 from readspace.utils import StarDeductionError, consume_user_star
-from service.passage_proof_service import get_passage_proof
+from service.ai_core.grounding.passage_proof import get_passage_proof
 from service.pipelines import enrich_article_only, ingest_and_enrich_article
 from service.selectors import (
     get_article_detail,
@@ -99,19 +99,20 @@ class ServiceTestSuite(TestCase):
             "exams": [{"exam_id": "EXAM_QC_101", "quizzes": [{"question": "Q1", "correct_answer": "A"}]}],
         }
 
-        with patch("service.pipelines.crawl_article_content", return_value=mock_crawl), \
-             patch("service.pipelines.object_store.save_bronze_html"), \
-             patch("service.pipelines.object_store.save_bronze_meta"), \
-             patch("service.pipelines.object_store.save_silver_clean"), \
-             patch("service.pipelines.object_store.save_gold_enriched"), \
-             patch("service.pipelines.article_store.update_article_stage"), \
-             patch("service.pipelines.article_store.update_ai_status"), \
-             patch("service.pipelines._run_ai_enrichment", return_value=mock_ai_result), \
-             patch("service.pipelines.exam_store.save_exam"), \
-             patch("service.pipelines.vector_store.add_article_vector"), \
-             patch("service.pipelines.vector_store.upsert_article_chunks"), \
-             patch("service.pipelines.bm25_conn.rebuild_index"):
-
+        with (
+            patch("service.pipelines.crawl_article_content", return_value=mock_crawl),
+            patch("service.pipelines.object_store.save_bronze_html"),
+            patch("service.pipelines.object_store.save_bronze_meta"),
+            patch("service.pipelines.object_store.save_silver_clean"),
+            patch("service.pipelines.object_store.save_gold_enriched"),
+            patch("service.pipelines.article_store.update_article_stage"),
+            patch("service.pipelines.article_store.update_ai_status"),
+            patch("service.pipelines._run_ai_enrichment", return_value=mock_ai_result),
+            patch("service.pipelines.exam_store.save_exam"),
+            patch("service.pipelines.vector_store.add_article_vector"),
+            patch("service.pipelines.vector_store.upsert_article_chunks"),
+            patch("service.pipelines.bm25_conn.rebuild_index"),
+        ):
             result = ingest_and_enrich_article(article_id="art-test-123", url="https://example.com/quantum")
 
             self.assertIn("article_id", result)
@@ -121,10 +122,11 @@ class ServiceTestSuite(TestCase):
         """QA Test: When scraper fails or encounters 404, pipeline records failure status."""
         mock_crawl_fail = {"success": False, "error": "404 Not Found"}
 
-        with patch("service.pipelines.crawl_article_content", return_value=mock_crawl_fail), \
-             patch("service.pipelines.article_store.update_ai_status") as mock_update_ai, \
-             patch("service.pipelines.pipeline_store.insert_pipeline_log"):
-
+        with (
+            patch("service.pipelines.crawl_article_content", return_value=mock_crawl_fail),
+            patch("service.pipelines.article_store.update_ai_status") as mock_update_ai,
+            patch("service.pipelines.pipeline_store.insert_pipeline_log"),
+        ):
             result = ingest_and_enrich_article(article_id="art-fail-404", url="https://invalid-url.com")
 
             self.assertEqual(result["status"], "failed")
@@ -144,8 +146,10 @@ class ServiceTestSuite(TestCase):
 
     def test_get_article_detail_nonexistent_returns_none(self):
         """QA Test: get_article_detail handles non-existent article gracefully returning None when no sample fallback."""
-        with patch("service.selectors.SAMPLE_ARTICLES", []), \
-             patch("service.selectors.article_store.get_article_index", return_value=None):
+        with (
+            patch("service.selectors.SAMPLE_ARTICLES", []),
+            patch("service.selectors.article_store.get_article_index", return_value=None),
+        ):
             doc = get_article_detail("nonexistent-article-id-999")
             self.assertIsNone(doc)
 
@@ -194,8 +198,10 @@ class ServiceTestSuite(TestCase):
                 "score": 0.95,
             }
         ]
-        with patch("service.passage_proof_service.exam_store.get_exam", return_value=self.mock_mongo_doc), \
-             patch("service.passage_proof_service.vector_store.vector_search_chunks", return_value=mock_hits):
+        with (
+            patch("service.ai_core.grounding.passage_proof.exam_store.get_exam", return_value=self.mock_mongo_doc),
+            patch("service.ai_core.grounding.passage_proof.vector_store.vector_search_chunks", return_value=mock_hits),
+        ):
             proof = get_passage_proof(self.sample_article_id, question_idx=0)
 
             self.assertIsNotNone(proof)
@@ -206,7 +212,7 @@ class ServiceTestSuite(TestCase):
 
     def test_passage_proof_unmatched_fallback(self):
         """QA Test: When question index is invalid or proof cannot be found, returns safe fallback."""
-        with patch("service.passage_proof_service.exam_store.get_exam", return_value=self.mock_mongo_doc):
+        with patch("service.ai_core.grounding.passage_proof.exam_store.get_exam", return_value=self.mock_mongo_doc):
             proof = get_passage_proof(self.sample_article_id, question_idx=999)
 
             self.assertIsNone(proof)
@@ -234,9 +240,10 @@ class ServiceTestSuite(TestCase):
 
     def test_submit_exam_attempt_persists_log_and_updates_proficiency(self):
         """QA Test: Submitting an exam creates ExamAttemptLog and updates topic proficiency."""
-        with patch("service.services.activity_store.log_reading_session"), \
-             patch("service.services.exam_store.get_exam", return_value={"theme": "Technology"}):
-
+        with (
+            patch("service.services.activity_store.log_reading_session"),
+            patch("service.services.exam_store.get_exam", return_value={"theme": "Technology"}),
+        ):
             res = submit_exam_attempt(
                 user_id=self.user.id,
                 article_id=self.sample_article_id,
@@ -289,13 +296,17 @@ class ServiceTestSuite(TestCase):
             "example": "A paradigm shift in physics.",
         }
 
-        with patch("readspace.api.router.selectors.get_hot_news", return_value=[mock_article_item]), \
-             patch("readspace.api.router.selectors.get_daily_vocab", return_value=mock_vocab), \
-             patch("readspace.api.router.selectors.get_recommendations", return_value=[mock_article_item]), \
-             patch("readspace.api.router.selectors.list_completed_articles", return_value={"articles": [mock_article_item], "total_count": 1, "page": 1, "total_pages": 1}), \
-             patch("readspace.api.router.selectors.get_theme_choices", return_value=["Science"]), \
-             patch("readspace.api.router.selectors.get_genre_choices", return_value=["academic"]):
-
+        with (
+            patch("readspace.api.router.selectors.get_hot_news", return_value=[mock_article_item]),
+            patch("readspace.api.router.selectors.get_daily_vocab", return_value=mock_vocab),
+            patch("readspace.api.router.selectors.get_recommendations", return_value=[mock_article_item]),
+            patch(
+                "readspace.api.router.selectors.list_completed_articles",
+                return_value={"articles": [mock_article_item], "total_count": 1, "page": 1, "total_pages": 1},
+            ),
+            patch("readspace.api.router.selectors.get_theme_choices", return_value=["Science"]),
+            patch("readspace.api.router.selectors.get_genre_choices", return_value=["academic"]),
+        ):
             response = self.client.get("/api/v1/homepage/")
             self.assertEqual(response.status_code, 200)
             data = response.json()

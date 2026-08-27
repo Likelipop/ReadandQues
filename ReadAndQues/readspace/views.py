@@ -21,8 +21,9 @@ logger = logging.getLogger(__name__)
 
 # ── Core Reading Workspace Views ──────────────────────────────────────────────
 
+
 @require_GET
-@login_required(login_url='/login/')
+@login_required(login_url="/login/")
 @never_cache
 def readspace_view(request, pk):
     """Displays the article in the 3-column Reading Space layout."""
@@ -40,7 +41,7 @@ def readspace_view(request, pk):
 
 
 @require_http_methods(["POST"])
-@login_required(login_url='/login/')
+@login_required(login_url="/login/")
 @rate_limit(requests=5, timeout=60)
 def import_article_view(request):
     """Import article URL and trigger background ingestion."""
@@ -57,6 +58,7 @@ def import_article_view(request):
         from django.db import transaction
 
         from accounts.models import UserProfile
+
         try:
             with transaction.atomic():
                 profile = UserProfile.objects.select_for_update().get(user=request.user)
@@ -75,7 +77,7 @@ def import_article_view(request):
 
 
 @require_POST
-@login_required(login_url='/login/')
+@login_required(login_url="/login/")
 @api_error_handler
 def trigger_quiz(request, pk):
     res = services.trigger_quiz_generation(pk)
@@ -133,7 +135,7 @@ def all_tests_view(request):
 
 
 @require_POST
-@login_required(login_url='/login/')
+@login_required(login_url="/login/")
 @api_error_handler
 def submit_exam_attempt(request, pk):
     data = json.loads(request.body)
@@ -158,9 +160,8 @@ def submit_exam_attempt(request, pk):
     return JsonResponse({"status": "success", "id": res.get("attempt_id"), "related_articles": related})
 
 
-
 @require_POST
-@login_required(login_url='/login/')
+@login_required(login_url="/login/")
 @api_error_handler
 def save_markers_api(request, pk: str):
     data = json.loads(request.body)
@@ -249,11 +250,11 @@ def explain_stream_api(request, pk: str | None = None):
     return response
 
 
-
 @require_GET
 @api_error_handler
 def passage_proof_api(request, pk: str, idx: int):
-    from service.passage_proof_service import get_passage_proof
+    from service.ai_core.grounding import get_passage_proof
+
     proof = get_passage_proof(article_id=pk, question_idx=idx)
     if not proof:
         return JsonResponse({"status": "error", "message": "Proof not found"}, status=404)
@@ -292,7 +293,11 @@ def run_ai_tool_api(request):
     except Exception:
         return JsonResponse({"error": "Invalid JSON body"}, status=400)
 
-    question = body.get("question") or (body.get("input_data", {}).get("question") if isinstance(body.get("input_data"), dict) else "") or ""
+    question = (
+        body.get("question")
+        or (body.get("input_data", {}).get("question") if isinstance(body.get("input_data"), dict) else "")
+        or ""
+    )
     article_id = body.get("article_id")
 
     res = services.ask_rag_question(question=question, article_id=article_id)
@@ -300,13 +305,15 @@ def run_ai_tool_api(request):
     citations = res.get("citations", [])
     first_quote = citations[0].get("quote", "") if citations and isinstance(citations[0], dict) else ""
 
-    return JsonResponse({
-        "status": "success",
-        "answer": answer,
-        "citations": citations,
-        "output": {
+    return JsonResponse(
+        {
+            "status": "success",
             "answer": answer,
-            "citation_quote": first_quote,
-            "status": "RESOLVED",
-        },
-    })
+            "citations": citations,
+            "output": {
+                "answer": answer,
+                "citation_quote": first_quote,
+                "status": "RESOLVED",
+            },
+        }
+    )

@@ -14,6 +14,7 @@ from pydantic import BaseModel, Field
 
 # ── 1. Path & ID Helpers ──────────────────────────────────────────────────────
 
+
 def generate_article_id(url: str | None = None) -> str:
     """
     Generates a stable, canonical article identifier.
@@ -39,8 +40,10 @@ def minio_gold_prefix(article_id: str) -> str:
 
 # ── 2. Enums ──────────────────────────────────────────────────────────────────
 
+
 class Stage(str, Enum):
     """Medallion storage layer stage."""
+
     BRONZE = "bronze"
     SILVER = "silver"
     GOLD = "gold"
@@ -48,6 +51,7 @@ class Stage(str, Enum):
 
 class Status(str, Enum):
     """Pipeline processing status."""
+
     PENDING = "pending"
     PROCESSING = "processing"
     COMPLETED = "completed"
@@ -73,14 +77,17 @@ class ThemeCategory(str, Enum):
 
 # ── 3. Exam & Quiz Models ─────────────────────────────────────────────────────
 
+
 class Option(BaseModel):
     """A quiz option."""
+
     id: str = ""
     text: str = ""
 
 
 class Question(BaseModel):
     """A quiz question item supporting both raw generator and structured representations."""
+
     id: str | None = None
     quiz_type: str = "multiple_choice"
     question_type: str | None = None
@@ -104,28 +111,21 @@ class Question(BaseModel):
 
 class Exam(BaseModel):
     """An exam containing a set of quiz questions."""
+
     exam_id: str = ""
     title: str | None = ""
     quizzes: list[Question] = Field(default_factory=list)
 
 
-class Paraphrase(BaseModel):
-    """Smart paraphrase result."""
-    selected_text: str
-    surrounding_context: str | None = ""
-    expanded_text: str | None = ""
-    paraphrased_text: str
-    start_index: int = 0
-    end_index: int = 0
-
-
 # ── 4. Core Article Model ─────────────────────────────────────────────────────
+
 
 class Article(BaseModel):
     """
     Single unified model representing an Article across the entire application.
     Replaces ArticleIndexContract, ExamDocContract, and ArticleContract.
     """
+
     article_id: str
     id: str = ""  # Alias for article_id for UI template compatibility
     url: str
@@ -149,7 +149,6 @@ class Article(BaseModel):
     language: str = "en"
     user_id: int = 0
     exams: list[Exam] = Field(default_factory=list)
-    smart_paraphrases: list[Paraphrase] = Field(default_factory=list)
 
     # Timestamps
     created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
@@ -167,8 +166,10 @@ class Article(BaseModel):
 
 # ── 5. User Interaction Models ────────────────────────────────────────────────
 
+
 class ExamAttempt(BaseModel):
     """User's exam attempt submission."""
+
     attempt_id: str | None = None
     user_id: int
     article_id: str
@@ -182,6 +183,7 @@ class ExamAttempt(BaseModel):
 
 class RawSourceManifest(BaseModel):
     """SHA-256 Manifest for raw crawled content in MinIO Bronze."""
+
     manifest_version: str = "1.0"
     article_id: str
     url: str

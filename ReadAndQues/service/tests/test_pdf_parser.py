@@ -12,7 +12,6 @@ from service.crawler.pdf_parser import (
 
 
 class PdfParserTests(unittest.TestCase):
-
     def test_is_pdf_url_or_content(self):
         self.assertTrue(is_pdf_url_or_content("https://arxiv.org/pdf/2301.12345.pdf", "text/html"))
         self.assertTrue(is_pdf_url_or_content("https://example.com/download", "application/pdf"))

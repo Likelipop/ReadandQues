@@ -153,7 +153,7 @@ describe('Workspace Components & Unified Reading Suite', () => {
     expect(handleToast).not.toHaveBeenCalled();
   });
 
-  it('performs in-place Smart Ink sentence simplification and Eraser restore cycle', async () => {
+  it('performs in-place Smart Ink sentence explanation and Eraser restore cycle', async () => {
     const handleToast = vi.fn();
     workspaceStore.setState({ activeTool: 'smart_ink' });
 
@@ -162,9 +162,9 @@ describe('Workspace Components & Unified Reading Suite', () => {
     const sentence = screen.getByText(/Artificial intelligence is reshaping pedagogy/);
     fireEvent.click(sentence);
 
-    // Should display in-place simplified sentence with badge and restore button
+    // Should display in-place explained sentence with badge and restore button
     await waitFor(() => {
-      expect(screen.getByText('✨ Simplified')).toBeInTheDocument();
+      expect(screen.getByText('💡 Explained')).toBeInTheDocument();
       expect(screen.getByText('Original')).toBeInTheDocument();
     });
 
@@ -173,7 +173,7 @@ describe('Workspace Components & Unified Reading Suite', () => {
     fireEvent.click(restoreBtn);
 
     await waitFor(() => {
-      expect(screen.queryByText('✨ Simplified')).not.toBeInTheDocument();
+      expect(screen.queryByText('💡 Explained')).not.toBeInTheDocument();
       expect(screen.getByText(/Artificial intelligence is reshaping pedagogy/)).toBeInTheDocument();
     });
   });
