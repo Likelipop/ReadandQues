@@ -1,4 +1,5 @@
 import unittest
+
 from service.crawler.scraper import CrawlError, _validate_public_http_url, crawl_article_content
 
 

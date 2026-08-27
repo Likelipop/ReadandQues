@@ -49,11 +49,15 @@ class AIFunctionalTestSuite(TestCase):
 
     def test_model_router_fallback_to_openai_when_azure_offline(self):
         """QA Test: Router cascades to next available provider if primary raises error."""
+
         def faulty_azure(temp):
             raise ConnectionError("Azure down")
 
         mock_openai = Mock(return_value=Mock())
-        with patch("service.ai_core.connection.router.get_all_providers", return_value={"azure": faulty_azure, "openai": mock_openai}):
+        with patch(
+            "service.ai_core.connection.router.get_all_providers",
+            return_value={"azure": faulty_azure, "openai": mock_openai},
+        ):
             router = ModelRouter(fallback_order=["azure", "openai"])
             llm = router.get_llm(temperature=0.7)
             self.assertIsNotNone(llm)
@@ -61,11 +65,15 @@ class AIFunctionalTestSuite(TestCase):
 
     def test_model_router_fallback_to_local_ollama_when_cloud_offline(self):
         """QA Test: Router cascades to self-hosted Ollama if cloud providers fail."""
+
         def faulty_provider(temp):
             raise ConnectionError("Cloud offline")
 
         mock_ollama = Mock(return_value=Mock())
-        with patch("service.ai_core.connection.router.get_all_providers", return_value={"azure": faulty_provider, "openai": faulty_provider, "ollama": mock_ollama}):
+        with patch(
+            "service.ai_core.connection.router.get_all_providers",
+            return_value={"azure": faulty_provider, "openai": faulty_provider, "ollama": mock_ollama},
+        ):
             router = ModelRouter(fallback_order=["azure", "openai", "ollama"])
             llm = router.get_llm(temperature=0.0)
             self.assertIsNotNone(llm)
@@ -139,12 +147,17 @@ class AIFunctionalTestSuite(TestCase):
 
     def test_stream_explained_token_generation(self):
         """QA Test: Explainer stream yields markdown tokens for clicked phrase."""
-        mock_chunks = [MagicMock(content="**💡 In Simple Words:**\n"), MagicMock(content="Solar power is clean energy.")]
+        mock_chunks = [
+            MagicMock(content="**💡 In Simple Words:**\n"),
+            MagicMock(content="Solar power is clean energy."),
+        ]
         mock_chain = MagicMock()
         mock_chain.stream.return_value = iter(mock_chunks)
 
-        with patch("service.ai_core.graphs.model.explained.get_llm", return_value=MagicMock()), \
-             patch("langchain_core.prompts.PromptTemplate.__or__", return_value=mock_chain):
+        with (
+            patch("service.ai_core.graphs.model.explained.get_llm", return_value=MagicMock()),
+            patch("langchain_core.prompts.PromptTemplate.__or__", return_value=mock_chain),
+        ):
             tokens = list(stream_explained_tokens("solar power", paragraph_context=self.sample_passage))
             full_text = "".join(tokens)
             self.assertIn("In Simple Words", full_text)
@@ -160,7 +173,10 @@ class AIFunctionalTestSuite(TestCase):
 
     def test_run_explained_flow_synchronous_wrapper(self):
         """QA Test: Synchronous explained wrapper aggregates stream into structured response."""
-        with patch("service.ai_core.graphs.model.explained.stream_explained_tokens", return_value=iter(["**💡 In Simple Words:**\n", "Simplified text."])):
+        with patch(
+            "service.ai_core.graphs.model.explained.stream_explained_tokens",
+            return_value=iter(["**💡 In Simple Words:**\n", "Simplified text."]),
+        ):
             res = run_explained_flow("perovskite", paragraph_context=self.sample_passage)
             self.assertEqual(res["phrase"], "perovskite")
             self.assertIn("Simplified text", res["detailed_explanation"])
@@ -204,6 +220,7 @@ class AIFunctionalTestSuite(TestCase):
 
     def test_ai_tool_policy_error_isolation(self):
         """QA Test: Unhandled exception in tool logic is caught and recorded as failed status."""
+
         def faulty_tool():
             raise ZeroDivisionError("Math error inside AI graph")
 

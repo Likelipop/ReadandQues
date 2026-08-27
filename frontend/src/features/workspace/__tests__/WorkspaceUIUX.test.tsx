@@ -3,8 +3,8 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import React from 'react';
 import { ReadingSpacePage } from '../ReadingSpacePage';
 import { QuizSidebar } from '../QuizSidebar';
-import { SmartParaphraseModal } from '../SmartParaphraseModal';
-import { StudyBuddyWidget } from '../../rag/StudyBuddyWidget';
+import { ArticleReader } from '../ArticleReader';
+import { BottomChatDock } from '../../rag/BottomChatDock';
 import { Article } from '../../../types';
 import { api } from '../../../api/client';
 import { workspaceStore } from '../../../store';
@@ -16,7 +16,7 @@ vi.mock('../../../api/client', () => ({
       status: vi.fn(),
       submitExam: vi.fn(),
       saveMarkers: vi.fn(),
-      smartParaphrase: vi.fn(),
+      explain: vi.fn(),
       getPassageProof: vi.fn(),
     },
   },
@@ -161,56 +161,46 @@ describe('Reading Workspace UI/UX Test Suite (Senior QA)', () => {
     });
   });
 
-  // ── 3. Smart Paraphrase Modal UX ────────────────────────────────────
-
-  it('renders SmartParaphraseModal with simplified text and closes on click', async () => {
-    const handleClose = vi.fn();
-    vi.mocked(api.articles.smartParaphrase).mockResolvedValueOnce({
+  // ── 3. Smart Ink In-Place Contextual Explanation UX ────────────────
+  it('triggers Smart Ink explanation in paragraph and displays 💡 Explained badge', async () => {
+    vi.mocked(api.articles.explain).mockResolvedValueOnce({
       status: 'success',
-      original_text: 'Deep neural networks mimic biological synapses',
-      paraphrased_text: 'Advanced AI systems copy the way human brain cells connect',
-      explanation: "Simplified 'mimic biological synapses' to 'copy how brain cells connect'.",
-      expanded_text: 'Deep neural networks mimic biological synapses',
+      phrase: 'Deep neural networks mimic biological synapses to process non-linear representations.',
+      summary: 'Cognitive computing explanation',
+      detailed_explanation: 'Advanced AI systems copy the way human brain cells connect to learn patterns.',
+      simplified_version: 'AI copies brain neurons.',
+      key_terms: [],
     });
 
-    render(
-      <SmartParaphraseModal
-        articleId="art-workspace-qa-1"
-        selectedText="Deep neural networks mimic biological synapses"
-        onClose={handleClose}
-      />
-    );
+    workspaceStore.setState({ activeTool: 'smart_ink' });
+    render(<ArticleReader article={mockArticle} />);
 
-    expect(screen.getByRole('dialog', { name: /Smart Paraphrase Popover/i })).toBeInTheDocument();
+    const sentence = screen.getByText(/Deep neural networks mimic biological synapses/i);
+    fireEvent.click(sentence);
 
     await waitFor(() => {
       expect(
-        screen.getByText('Advanced AI systems copy the way human brain cells connect')
+        screen.getByText('Advanced AI systems copy the way human brain cells connect to learn patterns.')
       ).toBeInTheDocument();
+      expect(screen.getByText('💡 Explained')).toBeInTheDocument();
     });
-
-    expect(screen.getByText(/Simplified 'mimic biological synapses'/i)).toBeInTheDocument();
-
-    const closeBtn = screen.getByLabelText(/Close paraphrase popover/i);
-    fireEvent.click(closeBtn);
-    expect(handleClose).toHaveBeenCalled();
   });
 
-  // ── 4. StudyBuddy AI RAG Chat Widget UX ─────────────────────────────────────
+  // ── 4. StudyBuddy AI RAG Chat Dock UX ──────────────────────────────────────
 
-  it('opens and closes StudyBuddy RAG drawer and handles input typing', () => {
-    render(<StudyBuddyWidget activeArticleId="art-workspace-qa-1" />);
+  it('opens and closes StudyDock RAG bottom dock and handles input typing', () => {
+    render(<BottomChatDock activeArticleId="art-workspace-qa-1" />);
 
-    const openBtn = screen.getByLabelText('Open AI Study Buddy Chat');
-    fireEvent.click(openBtn);
+    const bar = screen.getByText('Ask AI Study Dock anything about news & comprehension...');
+    fireEvent.click(bar);
 
-    expect(screen.getByText('Study Buddy RAG')).toBeInTheDocument();
-    const input = screen.getByPlaceholderText('Ask a question...');
+    expect(screen.getByText('AI Study Dock')).toBeInTheDocument();
+    const input = screen.getByPlaceholderText('Ask a question about current news or reading comprehension...');
     fireEvent.change(input, { target: { value: 'Explain TPUs in simple terms' } });
     expect(input).toHaveValue('Explain TPUs in simple terms');
 
-    const closeBtn = screen.getByLabelText('Close Chat');
-    fireEvent.click(closeBtn);
+    const collapseBtn = screen.getByLabelText('Collapse Dock');
+    fireEvent.click(collapseBtn);
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
   });
 });

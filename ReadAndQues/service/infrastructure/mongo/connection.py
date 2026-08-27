@@ -19,9 +19,13 @@ def get_mongo_client() -> MongoClient:
     global _mongo_client
     if _mongo_client is None:
         try:
-            uri = settings.MONGO_URI if settings.configured else os.getenv(
-                "MONGO_URI",
-                "mongodb://admin:changeme@localhost:27017/articlesDB?authSource=admin",
+            uri = (
+                settings.MONGO_URI
+                if settings.configured
+                else os.getenv(
+                    "MONGO_URI",
+                    "mongodb://admin:changeme@localhost:27017/articlesDB?authSource=admin",
+                )
             )
         except Exception:
             uri = os.getenv(
@@ -32,6 +36,7 @@ def get_mongo_client() -> MongoClient:
         # If running outside docker and uri has 'mongo:', check if mongo is resolvable
         if "@mongo:" in uri or "mongodb://mongo:" in uri:
             import socket
+
             try:
                 socket.gethostbyname("mongo")
             except Exception:

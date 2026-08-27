@@ -5,6 +5,7 @@ from pydantic import BaseModel, Field
 
 # Create your models here.
 
+
 # ==========================================
 # 1. QUIZ ITEM — Align with ai_core/schemas.py
 # ==========================================
@@ -16,9 +17,7 @@ class QuizItem(BaseModel):
       - fill_in_blank    : Summary Completion (5 blanks, answers separated by ' | ')
     """
 
-    quiz_type: str = Field(
-        ..., description="Question type: 'yes_no_not_given' or 'fill_in_blank'"
-    )
+    quiz_type: str = Field(..., description="Question type: 'yes_no_not_given' or 'fill_in_blank'")
     question: str = Field(
         ...,
         description=(
@@ -37,9 +36,7 @@ class QuizItem(BaseModel):
             "For fill_in_blank: 5 answers separated by ' | ' (e.g. 'word1 | word2 | word3 | word4 | word5')."
         ),
     )
-    explanation: str | None = Field(
-        default="", description="Detailed explanation of why the answer is correct."
-    )
+    explanation: str | None = Field(default="", description="Detailed explanation of why the answer is correct.")
     supporting_text: str | None = Field(
         default="",
         description="Verbatim sentence(s) from the article supporting the answer.",
@@ -72,15 +69,9 @@ class ArticleMongoModel(BaseModel):
     url: str = Field(..., description="Original article URL")
     title: str = Field(..., description="Article title")
     original_text: str = Field(..., description="Raw crawled content")
-    html_content: str | None = Field(
-        default=None, description="Raw HTML for rendering in UI"
-    )
-    clean_text: str | None = Field(
-        default=None, description="Cleaned text (after Smart Cleaner)"
-    )
-    source_name: str | None = Field(
-        default="Unknown", description="Source name, e.g., BBC, CNN"
-    )
+    html_content: str | None = Field(default=None, description="Raw HTML for rendering in UI")
+    clean_text: str | None = Field(default=None, description="Cleaned text (after Smart Cleaner)")
+    source_name: str | None = Field(default="Unknown", description="Source name, e.g., BBC, CNN")
 
     # Exam configuration used during generation (for auditing/re-generating)
     exam_config: dict[str, Any] | None = Field(
@@ -94,16 +85,10 @@ class ArticleMongoModel(BaseModel):
     exams: list[dict[str, Any]] = Field(default_factory=list)
 
     # Classification and images
-    theme: str | None = Field(
-        default=None, description="Article theme (e.g., Technology, Science)"
-    )
-    genre: str | None = Field(
-        default=None, description="Text genre (e.g., scientific, news)"
-    )
+    theme: str | None = Field(default=None, description="Article theme (e.g., Technology, Science)")
+    genre: str | None = Field(default=None, description="Text genre (e.g., scientific, news)")
     image_url: str | None = Field(default=None, description="Main article image URL")
-    image_urls: list[str] = Field(
-        default_factory=list, description="List of all image URLs in the article"
-    )
+    image_urls: list[str] = Field(default_factory=list, description="List of all image URLs in the article")
 
     # Pipeline metadata
     status: str = Field(

@@ -120,14 +120,16 @@ def search_article_index_by_text(query: str, limit: int = 10) -> list[dict]:
     regex = re.compile(re.escape(query_str), re.IGNORECASE)
     cursor = (
         _coll()
-        .find({
-            "ai_status": "completed",
-            "$or": [
-                {"title": regex},
-                {"source_name": regex},
-                {"url": regex},
-            ]
-        })
+        .find(
+            {
+                "ai_status": "completed",
+                "$or": [
+                    {"title": regex},
+                    {"source_name": regex},
+                    {"url": regex},
+                ],
+            }
+        )
         .sort("created_at", DESCENDING)
         .limit(limit)
     )
@@ -141,33 +143,8 @@ def delete_article(article_id: str) -> bool:
     return res.deleted_count > 0
 
 
-# ── Smart Paraphrase Cache ────────────────────────────────────────────────────
-
-@db_safe(default_return=None)
-def find_exact_paraphrase(
-    article_id: str, paragraph_hash: str, user_start_index: int, user_end_index: int
-) -> dict | None:
-    query = {
-        "article_id": article_id,
-        "paragraph_hash": paragraph_hash,
-        "user_start_index": user_start_index,
-        "user_end_index": user_end_index,
-    }
-    doc = get_collection("smart_paraphrase_cache").find_one(query)
-    if doc:
-        doc["id"] = str(doc["_id"])
-        del doc["_id"]
-        return doc
-    return None
-
-
-@db_safe(default_return="")
-def save_smart_paraphrase(data: dict) -> str:
-    result = get_collection("smart_paraphrase_cache").insert_one(data)
-    return str(result.inserted_id)
-
-
 # ── Homepage Sections Cache ───────────────────────────────────────────────────
+
 
 @db_safe(default_return=False)
 def update_section_data(section_id: str, data: list, expires_in_hours: int = 24) -> bool:

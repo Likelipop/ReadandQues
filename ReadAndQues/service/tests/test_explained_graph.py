@@ -23,10 +23,12 @@ class ExplainedGraphTests(unittest.TestCase):
         self.assertIn("detailed_explanation", res)
 
     def test_stream_explained_tokens(self):
-        tokens = list(stream_explained_tokens(
-            phrase="mitigate risks",
-            paragraph_context="The strategy aimed to mitigate risks across departments.",
-        ))
+        tokens = list(
+            stream_explained_tokens(
+                phrase="mitigate risks",
+                paragraph_context="The strategy aimed to mitigate risks across departments.",
+            )
+        )
         self.assertGreater(len(tokens), 0)
         full_text = "".join(tokens)
         self.assertIn("In Simple Words", full_text)

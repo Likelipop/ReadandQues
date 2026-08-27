@@ -11,6 +11,7 @@ from service.domain.enums import AgentIntent
 
 class Citation(BaseModel):
     """Citation metadata for grounded RAG answers."""
+
     article_id: str
     title: str
     url: str | None = ""
@@ -21,6 +22,7 @@ class Citation(BaseModel):
 
 class RAGQuery(BaseModel):
     """Incoming user RAG query."""
+
     question: str
     article_id: str | None = None
     user_id: int | None = None
@@ -30,6 +32,7 @@ class RAGQuery(BaseModel):
 
 class AgentResult(BaseModel):
     """Execution output from a specialized RAG agent."""
+
     intent: AgentIntent
     answer: str
     citations: list[Citation] = Field(default_factory=list)
@@ -41,6 +44,7 @@ class AgentResult(BaseModel):
 
 class RAGResponse(BaseModel):
     """Final outer response returned to services/selectors layer."""
+
     status: str = "success"
     query: str
     intent: AgentIntent

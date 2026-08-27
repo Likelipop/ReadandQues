@@ -38,9 +38,7 @@ def _validate_public_http_url(url: str) -> None:
     parsed = urlparse(url)
 
     if parsed.scheme not in {"http", "https"}:
-        raise CrawlError(
-            "INVALID_URL", "URL must start with http:// or https://"
-        )
+        raise CrawlError("INVALID_URL", "URL must start with http:// or https://")
     if not parsed.hostname:
         raise CrawlError("INVALID_URL", "URL does not have a valid domain")
     if parsed.username or parsed.password:
@@ -52,9 +50,7 @@ def _validate_public_http_url(url: str) -> None:
             type=socket.SOCK_STREAM,
         )
     except socket.gaierror as exc:
-        raise CrawlError(
-            "INVALID_URL", "Domain is invalid or does not exist"
-        ) from exc
+        raise CrawlError("INVALID_URL", "Domain is invalid or does not exist") from exc
 
     for item in address_info:
         ip = ipaddress.ip_address(item[4][0])
@@ -72,6 +68,7 @@ def _validate_public_http_url(url: str) -> None:
                 "PRIVATE_ADDRESS",
                 "URL points to a restricted private network address.",
             )
+
 
 def _parse_published_at(value: Any) -> datetime | None:
     if not value:
@@ -114,9 +111,7 @@ def _normalize_image_url(raw_url: str | None, base_url: str) -> str | None:
 
 
 # Extract images, prioritizing Open Graph and Twitter metadata
-def _extract_images(
-    html_content: bytes | str, base_url: str, limit: int
-) -> tuple[str | None, list[str]]:
+def _extract_images(html_content: bytes | str, base_url: str, limit: int) -> tuple[str | None, list[str]]:
     try:
         tree = lxml_html.fromstring(html_content, base_url=base_url)
     except (ValueError, TypeError):
@@ -259,7 +254,6 @@ def _extract_article(
         logger.error(f"Error generating standard HTML: {e}")
         clean_html = f"<html><body><h1>{title}</h1><div class='article-body'><pre>{content}</pre></div></body></html>"
 
-
     word_count = len(content.split())
 
     if word_count < settings.ARTICLE_MIN_WORDS:
@@ -275,12 +269,8 @@ def _extract_article(
         )
     parsed_final_url = urlparse(final_url)
     fallback_source = (parsed_final_url.hostname or "Unknown").removeprefix("www.")
-    source_name = (
-        extracted.get("sitename") or extracted.get("hostname") or fallback_source
-    )
-    image_url, image_urls = _extract_images(
-        html_content, base_url=final_url, limit=settings.ARTICLE_MAX_IMAGES
-    )
+    source_name = extracted.get("sitename") or extracted.get("hostname") or fallback_source
+    image_url, image_urls = _extract_images(html_content, base_url=final_url, limit=settings.ARTICLE_MAX_IMAGES)
     return {
         "success": True,
         "url": requested_url,
@@ -343,9 +333,7 @@ def crawl_article_content(url: str) -> dict[str, Any]:
         _validate_public_http_url(final_url)
 
         headers = response.headers or {}
-        content_type = str(
-            headers.get("content-type") or headers.get("Content-Type") or ""
-        )
+        content_type = str(headers.get("content-type") or headers.get("Content-Type") or "")
 
         # Handle PDF documents (arXiv, paper PDFs, direct PDF links)
         if is_pdf_url_or_content(final_url, content_type) or is_pdf_path:
@@ -364,8 +352,7 @@ def crawl_article_content(url: str) -> dict[str, Any]:
             )
 
         if content_type and not any(
-            allowed in content_type.lower()
-            for allowed in ("text/html", "application/xhtml+xml")
+            allowed in content_type.lower() for allowed in ("text/html", "application/xhtml+xml")
         ):
             raise CrawlError(
                 "UNSUPPORTED_CONTENT",

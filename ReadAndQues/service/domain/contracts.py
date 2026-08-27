@@ -8,7 +8,6 @@ from service.domain.models import (
     Exam,
     ExamAttempt,
     Option,
-    Paraphrase,
     Question,
     RawSourceManifest,
     Stage,
@@ -28,7 +27,6 @@ ExamContract = Exam
 QuizItemContract = Question
 QuizOptionContract = Option
 ExamAttemptContract = ExamAttempt
-SmartParaphraseContract = Paraphrase
 RawSourceManifestContract = RawSourceManifest
 
 __all__ = [
@@ -37,7 +35,6 @@ __all__ = [
     "Question",
     "Option",
     "ExamAttempt",
-    "Paraphrase",
     "RawSourceManifest",
     "Stage",
     "Status",
@@ -54,6 +51,5 @@ __all__ = [
     "QuizItemContract",
     "QuizOptionContract",
     "ExamAttemptContract",
-    "SmartParaphraseContract",
     "RawSourceManifestContract",
 ]

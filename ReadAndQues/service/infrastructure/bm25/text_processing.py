@@ -16,12 +16,11 @@ except OSError:
     try:
         logger.info("[TextPreprocessing] Model 'en_core_web_sm' not found, downloading...")
         from spacy.cli import download
+
         download("en_core_web_sm")
         _nlp = spacy.load("en_core_web_sm", disable=["parser", "ner"])
     except Exception as e:
-        logger.error(
-            f"[TextPreprocessing] spaCy model 'en_core_web_sm' failed to download/load: {e}"
-        )
+        logger.error(f"[TextPreprocessing] spaCy model 'en_core_web_sm' failed to download/load: {e}")
         _nlp = None
 
 
@@ -43,10 +42,7 @@ def tokenize_and_lemmatize(text: str) -> list[str]:
     tokens = [
         token.lemma_.lower()
         for token in doc
-        if not token.is_stop
-        and not token.is_punct
-        and len(token.lemma_) > 2
-        and token.is_alpha
+        if not token.is_stop and not token.is_punct and len(token.lemma_) > 2 and token.is_alpha
     ]
     return tokens
 

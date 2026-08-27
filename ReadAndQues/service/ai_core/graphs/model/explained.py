@@ -46,10 +46,7 @@ def stream_explained_tokens(phrase: str, paragraph_context: str = "") -> Generat
             f"Understand {clean_phrase} in relation to the main argument."
         )
 
-        words = fallback_text.split(" ")
-        for i, word in enumerate(words):
-            yield word + (" " if i < len(words) - 1 else "")
-            time.sleep(0.01)
+        yield fallback_text
 
 
 def run_explained_flow(phrase: str, paragraph_context: str = "") -> dict[str, Any]:

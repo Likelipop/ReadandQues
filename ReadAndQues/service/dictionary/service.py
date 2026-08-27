@@ -1,4 +1,5 @@
 """Dictionary Service using NLTK WordNet and comprehensive offline English lexicon for fast, authentic vocabulary lookup."""
+
 from __future__ import annotations
 
 import logging
@@ -17,11 +18,14 @@ COMMON_LEXICON: dict[str, dict[str, Any]] = {
             {
                 "part_of_speech": "determiner",
                 "definition": "Denoting one or more people or things already mentioned, assumed to be common knowledge, or specifically identified.",
-                "examples": ["The author presents a compelling argument in the passage.", "She pointed to the main conclusion."],
+                "examples": [
+                    "The author presents a compelling argument in the passage.",
+                    "She pointed to the main conclusion.",
+                ],
                 "synonyms": [],
-                "antonyms": []
+                "antonyms": [],
             }
-        ]
+        ],
     },
     "a": {
         "word": "a",
@@ -32,11 +36,14 @@ COMMON_LEXICON: dict[str, dict[str, Any]] = {
             {
                 "part_of_speech": "determiner",
                 "definition": "Used when referring to someone or something for the first time in a text or not specifically identified.",
-                "examples": ["A new study explores the effects of sleep on memory.", "He discovered a breakthrough method."],
+                "examples": [
+                    "A new study explores the effects of sleep on memory.",
+                    "He discovered a breakthrough method.",
+                ],
                 "synonyms": ["an", "one"],
-                "antonyms": []
+                "antonyms": [],
             }
-        ]
+        ],
     },
     "an": {
         "word": "an",
@@ -49,9 +56,9 @@ COMMON_LEXICON: dict[str, dict[str, Any]] = {
                 "definition": "The form of the indefinite article used before words beginning with a vowel sound.",
                 "examples": ["An academic experiment was conducted across multiple universities."],
                 "synonyms": ["a", "one"],
-                "antonyms": []
+                "antonyms": [],
             }
-        ]
+        ],
     },
     "of": {
         "word": "of",
@@ -62,11 +69,14 @@ COMMON_LEXICON: dict[str, dict[str, Any]] = {
             {
                 "part_of_speech": "preposition",
                 "definition": "Expressing the relationship between a part and a whole, belonging, origin, or cause.",
-                "examples": ["The majority of participants showed measurable improvement.", "The structure of the cell was analyzed."],
+                "examples": [
+                    "The majority of participants showed measurable improvement.",
+                    "The structure of the cell was analyzed.",
+                ],
                 "synonyms": ["concerning", "regarding", "pertaining to"],
-                "antonyms": []
+                "antonyms": [],
             }
-        ]
+        ],
     },
     "to": {
         "word": "to",
@@ -77,11 +87,14 @@ COMMON_LEXICON: dict[str, dict[str, Any]] = {
             {
                 "part_of_speech": "preposition",
                 "definition": "Expressing motion or direction toward a location, person, goal, or recipient; or used with a verb to form the infinitive.",
-                "examples": ["Researchers traveled to remote geological sites.", "She wanted to understand the mechanism."],
+                "examples": [
+                    "Researchers traveled to remote geological sites.",
+                    "She wanted to understand the mechanism.",
+                ],
                 "synonyms": ["toward", "unto", "into"],
-                "antonyms": []
+                "antonyms": [],
             }
-        ]
+        ],
     },
     "in": {
         "word": "in",
@@ -92,11 +105,14 @@ COMMON_LEXICON: dict[str, dict[str, Any]] = {
             {
                 "part_of_speech": "preposition",
                 "definition": "Expressing the situation of something enclosed or surrounded by something else, or indicating a period of time or condition.",
-                "examples": ["The findings were published in a scientific journal.", "Significant progress was achieved in 2026."],
+                "examples": [
+                    "The findings were published in a scientific journal.",
+                    "Significant progress was achieved in 2026.",
+                ],
                 "synonyms": ["inside", "within"],
-                "antonyms": ["out", "outside"]
+                "antonyms": ["out", "outside"],
             }
-        ]
+        ],
     },
     "and": {
         "word": "and",
@@ -109,9 +125,9 @@ COMMON_LEXICON: dict[str, dict[str, Any]] = {
                 "definition": "Used to connect words of the same part of speech, clauses, or sentences that are to be taken jointly.",
                 "examples": ["Theory and empirical evidence both support the hypothesis."],
                 "synonyms": ["along with", "as well as", "together with"],
-                "antonyms": []
+                "antonyms": [],
             }
-        ]
+        ],
     },
     "is": {
         "word": "is",
@@ -124,9 +140,9 @@ COMMON_LEXICON: dict[str, dict[str, Any]] = {
                 "definition": "Third person singular present of 'be': exist, occur, or have a specified quality, identity, or state.",
                 "examples": ["Solar energy is an increasingly vital component of the modern power grid."],
                 "synonyms": ["exists", "represents", "constitutes"],
-                "antonyms": []
+                "antonyms": [],
             }
-        ]
+        ],
     },
     "are": {
         "word": "are",
@@ -139,9 +155,9 @@ COMMON_LEXICON: dict[str, dict[str, Any]] = {
                 "definition": "Second person singular and plural present of 'be'.",
                 "examples": ["Synaptic connections are dynamically reorganized during learning."],
                 "synonyms": ["exist", "constitute"],
-                "antonyms": []
+                "antonyms": [],
             }
-        ]
+        ],
     },
     "for": {
         "word": "for",
@@ -154,9 +170,9 @@ COMMON_LEXICON: dict[str, dict[str, Any]] = {
                 "definition": "Affecting, with with respect to, or in defense of; indicating the purpose, recipient, or duration of an action.",
                 "examples": ["The algorithm was developed for natural language comprehension."],
                 "synonyms": ["intended for", "serving"],
-                "antonyms": []
+                "antonyms": [],
             }
-        ]
+        ],
     },
     "with": {
         "word": "with",
@@ -169,9 +185,9 @@ COMMON_LEXICON: dict[str, dict[str, Any]] = {
                 "definition": "Accompanied by, in company with, or possessing a specified feature or instrument.",
                 "examples": ["The experiment was carried out with high precision instruments."],
                 "synonyms": ["alongside", "using", "by means of"],
-                "antonyms": ["without"]
+                "antonyms": ["without"],
             }
-        ]
+        ],
     },
     "that": {
         "word": "that",
@@ -184,9 +200,9 @@ COMMON_LEXICON: dict[str, dict[str, Any]] = {
                 "definition": "Used to identify a specific person, thing, or statement; or introducing a subordinate clause.",
                 "examples": ["The hypothesis that neural pathways remain malleable is widely accepted."],
                 "synonyms": ["which"],
-                "antonyms": []
+                "antonyms": [],
             }
-        ]
+        ],
     },
     "this": {
         "word": "this",
@@ -199,9 +215,9 @@ COMMON_LEXICON: dict[str, dict[str, Any]] = {
                 "definition": "Referring to a specific person, thing, or concept close at hand or immediately discussed.",
                 "examples": ["This investigation provides fresh insights into cognitive modeling."],
                 "synonyms": [],
-                "antonyms": ["that"]
+                "antonyms": ["that"],
             }
-        ]
+        ],
     },
     "pedagogical": {
         "word": "pedagogical",
@@ -214,9 +230,9 @@ COMMON_LEXICON: dict[str, dict[str, Any]] = {
                 "definition": "Relating to the methods, theory, and principles of teaching and education.",
                 "examples": ["The university adopted modern pedagogical frameworks for blended learning."],
                 "synonyms": ["instructional", "educational", "academic", "didactic"],
-                "antonyms": []
+                "antonyms": [],
             }
-        ]
+        ],
     },
     "mitigate": {
         "word": "mitigate",
@@ -229,9 +245,9 @@ COMMON_LEXICON: dict[str, dict[str, Any]] = {
                 "definition": "Make something less severe, serious, harmful, or painful.",
                 "examples": ["Measures were taken to mitigate the risks associated with data privacy."],
                 "synonyms": ["alleviate", "reduce", "diminish", "lessen", "attenuate"],
-                "antonyms": ["aggravate", "worsen", "intensify"]
+                "antonyms": ["aggravate", "worsen", "intensify"],
             }
-        ]
+        ],
     },
     "neuroplasticity": {
         "word": "neuroplasticity",
@@ -244,9 +260,9 @@ COMMON_LEXICON: dict[str, dict[str, Any]] = {
                 "definition": "The ability of the brain to form and reorganize synaptic connections, especially in response to learning or experience.",
                 "examples": ["Neuroplasticity allows adult polyglots to adapt to new linguistic patterns."],
                 "synonyms": ["neural plasticity", "brain malleability", "cognitive adaptability"],
-                "antonyms": []
+                "antonyms": [],
             }
-        ]
+        ],
     },
     "geothermal": {
         "word": "geothermal",
@@ -259,19 +275,13 @@ COMMON_LEXICON: dict[str, dict[str, Any]] = {
                 "definition": "Relating to or produced by the internal thermal heat of the earth.",
                 "examples": ["Deep-sea geothermal energy can supply continuous baseload clean power."],
                 "synonyms": ["hydrothermal", "terrestrial heat", "earth-energy"],
-                "antonyms": []
+                "antonyms": [],
             }
-        ]
-    }
+        ],
+    },
 }
 
-POS_MAP = {
-    "n": "noun",
-    "v": "verb",
-    "a": "adjective",
-    "s": "adjective",
-    "r": "adverb"
-}
+POS_MAP = {"n": "noun", "v": "verb", "a": "adjective", "s": "adjective", "r": "adverb"}
 
 _WORDNET_INITIALIZED = False
 
@@ -284,8 +294,10 @@ def _ensure_wordnet():
 
     try:
         import nltk
+
         try:
             from nltk.corpus import wordnet as wn
+
             wn.synsets("test")
             _WORDNET_INITIALIZED = True
         except Exception:
@@ -305,11 +317,7 @@ def lookup_word(word: str) -> dict[str, Any]:
     # Strip any trailing punctuation like commas, periods, quotes
     cleaned_word = cleaned_word.strip(".,;:\"'!?()[]{}")
     if not cleaned_word:
-        return {
-            "word": word,
-            "found": False,
-            "definitions": []
-        }
+        return {"word": word, "found": False, "definitions": []}
 
     # Check common lexicon first
     if cleaned_word in COMMON_LEXICON:
@@ -323,7 +331,7 @@ def lookup_word(word: str) -> dict[str, Any]:
         synsets = wn.synsets(cleaned_word)
         if not synsets:
             # Try lemmatization across parts of speech
-            for pos in ['n', 'v', 'a', 'r']:
+            for pos in ["n", "v", "a", "r"]:
                 lemma = wn.morphy(cleaned_word, pos)
                 if lemma and lemma != cleaned_word:
                     synsets = wn.synsets(lemma)
@@ -333,11 +341,7 @@ def lookup_word(word: str) -> dict[str, Any]:
 
         if not synsets:
             # If word is unknown, return graceful response without artificial boilerplate
-            return {
-                "word": word,
-                "found": False,
-                "definitions": []
-            }
+            return {"word": word, "found": False, "definitions": []}
 
         definitions_list = []
         seen_definitions = set()
@@ -364,26 +368,24 @@ def lookup_word(word: str) -> dict[str, Any]:
                 for ant in lemma_obj.antonyms():
                     antonyms.add(ant.name().replace("_", " "))
 
-            definitions_list.append({
-                "part_of_speech": pos_label,
-                "definition": defn.capitalize(),
-                "examples": [ex.capitalize() for ex in syn.examples()],
-                "synonyms": list(synonyms)[:5],
-                "antonyms": list(antonyms)[:3]
-            })
+            definitions_list.append(
+                {
+                    "part_of_speech": pos_label,
+                    "definition": defn.capitalize(),
+                    "examples": [ex.capitalize() for ex in syn.examples()],
+                    "synonyms": list(synonyms)[:5],
+                    "antonyms": list(antonyms)[:3],
+                }
+            )
 
         return {
             "word": word,
             "found": True,
             "lemma": cleaned_word,
             "part_of_speech": primary_pos or "noun",
-            "definitions": definitions_list
+            "definitions": definitions_list,
         }
 
     except Exception as e:
         logger.error("Error looking up word in WordNet: %s", e)
-        return {
-            "word": word,
-            "found": False,
-            "definitions": []
-        }
+        return {"word": word, "found": False, "definitions": []}

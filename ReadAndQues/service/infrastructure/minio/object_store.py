@@ -49,6 +49,7 @@ def _save_json(bucket: str, object_name: str, payload: dict[str, Any]) -> bool:
 
 # ── Bronze Tier ───────────────────────────────────────────────────────────────
 
+
 @db_safe(default_return=False)
 def save_bronze_html(article_id: str, html_content: str) -> bool:
     path = f"bronze/{article_id}/raw.html"
@@ -70,6 +71,7 @@ def read_bronze_meta(article_id: str) -> dict[str, Any] | None:
 
 # ── Silver Tier ───────────────────────────────────────────────────────────────
 
+
 @db_safe(default_return=False)
 def save_silver_clean(article_id: str, clean_doc: dict[str, Any]) -> bool:
     path = f"silver/{article_id}/clean.json"
@@ -84,6 +86,7 @@ def read_silver_clean(article_id: str) -> dict[str, Any] | None:
 
 # ── Gold Tier ─────────────────────────────────────────────────────────────────
 
+
 @db_safe(default_return=False)
 def save_gold_enriched(article_id: str, enriched_doc: dict[str, Any]) -> bool:
     path = f"gold/{article_id}/enriched.json"
@@ -97,6 +100,7 @@ def read_gold_enriched(article_id: str) -> dict[str, Any] | None:
 
 
 # ── Hard Delete ───────────────────────────────────────────────────────────────
+
 
 @db_safe(default_return=False)
 def delete_article_objects(article_id: str) -> bool:

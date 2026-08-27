@@ -38,12 +38,7 @@ def get_minio_client() -> Minio:
         secure_str = get_setting("MINIO_SECURE", "false")
         secure = str(secure_str).lower() == "true"
 
-        _minio_client = Minio(
-            endpoint,
-            access_key=access_key,
-            secret_key=secret_key,
-            secure=secure
-        )
+        _minio_client = Minio(endpoint, access_key=access_key, secret_key=secret_key, secure=secure)
     return _minio_client
 
 

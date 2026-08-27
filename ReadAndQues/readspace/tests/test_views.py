@@ -25,10 +25,12 @@ class ReadspaceViewsTestCase(TestCase):
         self.assertIn("/login/", response.url)
 
     def test_all_tests_view_accessible_unauthenticated(self):
-        with patch("service.selectors.list_completed_articles", return_value={"articles": []}), \
-             patch("service.selectors.get_theme_choices", return_value=[]), \
-             patch("service.selectors.get_genre_choices", return_value=[]), \
-             patch("service.selectors.get_user_attempted_ids", return_value=set()):
+        with (
+            patch("service.selectors.list_completed_articles", return_value={"articles": []}),
+            patch("service.selectors.get_theme_choices", return_value=[]),
+            patch("service.selectors.get_genre_choices", return_value=[]),
+            patch("service.selectors.get_user_attempted_ids", return_value=set()),
+        ):
             response = self.client.get(reverse("readspace:all_tests"))
             self.assertEqual(response.status_code, 200)
 
@@ -42,16 +44,20 @@ class ReadspaceViewsTestCase(TestCase):
 
     def test_submit_exam_attempt_authenticated_success(self):
         self.client.login(username="testuser", password="testpassword123")
-        with patch("service.services.submit_exam_attempt", return_value={"attempt_id": "attempt-456"}), \
-             patch("service.selectors.get_related_articles", return_value=[]):
+        with (
+            patch("service.services.submit_exam_attempt", return_value={"attempt_id": "attempt-456"}),
+            patch("service.selectors.get_related_articles", return_value=[]),
+        ):
             response = self.client.post(
                 reverse("readspace:submit_exam_attempt", kwargs={"pk": "article-123"}),
-                data=json.dumps({
-                    "score": 8,
-                    "total_questions": 10,
-                    "answers": {"1": "TRUE"},
-                    "elapsed_time": 120,
-                }),
+                data=json.dumps(
+                    {
+                        "score": 8,
+                        "total_questions": 10,
+                        "answers": {"1": "TRUE"},
+                        "elapsed_time": 120,
+                    }
+                ),
                 content_type="application/json",
             )
             self.assertEqual(response.status_code, 200)
@@ -60,7 +66,7 @@ class ReadspaceViewsTestCase(TestCase):
             self.assertEqual(data["id"], "attempt-456")
 
     def test_passage_proof_api_not_found(self):
-        with patch("service.passage_proof_service.get_passage_proof", return_value=None):
+        with patch("service.ai_core.grounding.get_passage_proof", return_value=None):
             response = self.client.get(reverse("readspace:passage_proof_api", kwargs={"pk": "article-1", "idx": 0}))
             self.assertEqual(response.status_code, 404)
 

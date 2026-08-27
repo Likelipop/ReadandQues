@@ -7,6 +7,7 @@ from enum import Enum
 
 class Stage(str, Enum):
     """Medallion storage layer stage."""
+
     BRONZE = "bronze"
     SILVER = "silver"
     GOLD = "gold"
@@ -14,6 +15,7 @@ class Stage(str, Enum):
 
 class Status(str, Enum):
     """Pipeline processing status."""
+
     PENDING = "pending"
     PROCESSING = "processing"
     COMPLETED = "completed"

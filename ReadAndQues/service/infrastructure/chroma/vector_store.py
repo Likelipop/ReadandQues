@@ -13,6 +13,7 @@ logger = logging.getLogger(__name__)
 
 # ── Article Summary Embeddings ────────────────────────────────────────────────
 
+
 @db_safe(default_return=False)
 def add_article_vector(
     gold_id: str, summary: str, title: str, url: str, theme: str = "General", genre: str = "general"
@@ -43,9 +44,7 @@ def query_related_chroma_ids(summary: str, exclude_id: str, limit: int = 5) -> l
     if not results or not results["ids"]:
         return []
 
-    related_ids = [
-        str(r_id) for r_id in results["ids"][0] if str(r_id) != str(exclude_id)
-    ][:limit]
+    related_ids = [str(r_id) for r_id in results["ids"][0] if str(r_id) != str(exclude_id)][:limit]
     return related_ids
 
 
@@ -63,13 +62,14 @@ def search_by_text(query: str, limit: int = 5) -> list[dict]:
         hit = {
             "id": str(results["ids"][0][i]),
             "distance": results["distances"][0][i] if "distances" in results and results["distances"] else 0.0,
-            "metadata": results["metadatas"][0][i] if "metadatas" in results and results["metadatas"] else {}
+            "metadata": results["metadatas"][0][i] if "metadatas" in results and results["metadatas"] else {},
         }
         hits.append(hit)
     return hits
 
 
 # ── Parent-Child Paragraph Chunk Vectors ──────────────────────────────────────
+
 
 @db_safe(default_return=False)
 def upsert_article_chunks(
@@ -111,9 +111,7 @@ def upsert_article_chunks(
 
 
 @db_safe(default_return=[])
-def vector_search_chunks(
-    query: str, limit: int = 10, where_filter: dict | None = None
-) -> list[dict]:
+def vector_search_chunks(query: str, limit: int = 10, where_filter: dict | None = None) -> list[dict]:
     if not news_chunks_collection or not query:
         return []
 
@@ -132,13 +130,15 @@ def vector_search_chunks(
         metadata = results["metadatas"][0][i] if "metadatas" in results and results["metadatas"] else {}
         distance = results["distances"][0][i] if "distances" in results and results["distances"] else 0.0
 
-        hits.append({
-            "id": str(doc_id),
-            "text": document,
-            "metadata": metadata,
-            "distance": distance,
-            "score": 1.0 / (1.0 + distance),
-        })
+        hits.append(
+            {
+                "id": str(doc_id),
+                "text": document,
+                "metadata": metadata,
+                "distance": distance,
+                "score": 1.0 / (1.0 + distance),
+            }
+        )
     return hits
 
 

@@ -14,6 +14,7 @@ logger = logging.getLogger(__name__)
 
 # ── Reading History ───────────────────────────────────────────────────────────
 
+
 @db_safe(default_return=False)
 def log_reading_session(user_id: int, article_id: str, duration_sec: int, completion_rate: float) -> bool:
     if not user_id or not article_id:
@@ -43,6 +44,7 @@ def get_user_reading_history(user_id: int, limit: int = 20) -> list[dict[str, An
 
 # ── User Highlights ───────────────────────────────────────────────────────────
 
+
 @db_safe(default_return=False)
 def add_highlight(user_id: int, article_id: str, highlighted_text: str, note: str = "") -> bool:
     if not user_id or not article_id or not highlighted_text:
@@ -66,6 +68,7 @@ def get_user_highlights(user_id: int, limit: int = 50) -> list[dict[str, Any]]:
 
 
 # ── Vocabulary Tracking ───────────────────────────────────────────────────────
+
 
 @db_safe(default_return=False)
 def track_vocab(user_id: int, word: str, article_id: str) -> bool:
@@ -93,9 +96,12 @@ def track_vocab(user_id: int, word: str, article_id: str) -> bool:
 
 @db_safe(default_return=[])
 def get_daily_vocab_for_user(user_id: int, limit: int = 5) -> list[dict[str, Any]]:
-    cursor = get_collection("vocab_tracking").find({"user_id": user_id}).sort(
-        [("mastery_level", 1), ("last_reviewed_at", 1)]
-    ).limit(limit)
+    cursor = (
+        get_collection("vocab_tracking")
+        .find({"user_id": user_id})
+        .sort([("mastery_level", 1), ("last_reviewed_at", 1)])
+        .limit(limit)
+    )
     return list(cursor)
 
 

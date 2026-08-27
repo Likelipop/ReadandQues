@@ -58,8 +58,10 @@ class CeleryPipelineFunctionalTestCase(TestCase):
         """Unified background dispatcher falls back to thread when Celery broker is unavailable."""
         from service.pipelines import enrich_article_only
 
-        with patch("service.tasks.task_enrich_article_only.delay", side_effect=Exception("Redis connection refused")), \
-             patch("threading.Thread.start") as mock_thread_start:
+        with (
+            patch("service.tasks.task_enrich_article_only.delay", side_effect=Exception("Redis connection refused")),
+            patch("threading.Thread.start") as mock_thread_start,
+        ):
             result = run_in_background(enrich_article_only, article_id=self.article_id)
             self.assertIsNotNone(result)
             mock_thread_start.assert_called_once()

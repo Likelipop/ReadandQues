@@ -23,11 +23,7 @@ def is_pdf_url_or_content(url: str, content_type: str) -> bool:
     """Check if the URL or HTTP Content-Type indicates a PDF file."""
     lowered_url = (url or "").lower().split("?")[0]
     lowered_ct = (content_type or "").lower()
-    return (
-        lowered_url.endswith(".pdf")
-        or "application/pdf" in lowered_ct
-        or "arxiv.org/pdf" in lowered_url
-    )
+    return lowered_url.endswith(".pdf") or "application/pdf" in lowered_ct or "arxiv.org/pdf" in lowered_url
 
 
 def resolve_arxiv_pdf_url(url: str) -> str | None:
@@ -170,6 +166,7 @@ def parse_pdf_bytes(
 
     if word_count < min_words:
         from service.crawler.scraper import CrawlError
+
         raise CrawlError(
             "CONTENT_TOO_SHORT",
             f"The paper needs at least {min_words} words to generate questions (found {word_count} words).",

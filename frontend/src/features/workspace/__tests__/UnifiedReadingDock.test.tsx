@@ -16,7 +16,7 @@ vi.mock('../../../api/client', () => ({
       status: vi.fn(),
       submitExam: vi.fn(),
       saveMarkers: vi.fn(),
-      smartParaphrase: vi.fn(),
+      explain: vi.fn(),
       getPassageProof: vi.fn(),
     },
     dictionary: {
@@ -406,7 +406,7 @@ describe('AuraDock Unified Reading Suite - Senior QA & DevOps Verification', () 
       expect(screen.getByRole('button', { name: /Mark selection/i })).toBeInTheDocument();
       expect(screen.getByRole('button', { name: /Define word/i })).toBeInTheDocument();
       expect(screen.getByRole('button', { name: /Explain with Smart Ink/i })).toBeInTheDocument();
-      expect(screen.getByRole('button', { name: /Paraphrase selection/i })).toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: /Paraphrase selection/i })).not.toBeInTheDocument();
       expect(screen.getByRole('button', { name: /Copy selection/i })).toBeInTheDocument();
     });
 
@@ -470,12 +470,14 @@ describe('AuraDock Unified Reading Suite - Senior QA & DevOps Verification', () 
       expect(handleToast).toHaveBeenCalledWith('Copied text to clipboard', 'success');
     });
 
-    it('opens Smart Paraphrase modal from HUD Paraphrase button', async () => {
-      vi.mocked(api.articles.smartParaphrase).mockResolvedValueOnce({
+    it('triggers Smart Ink explanation from HUD Smart Ink button', async () => {
+      vi.mocked(api.articles.explain).mockResolvedValueOnce({
         status: 'success',
-        original_text: 'Superconducting qubits enable superposition',
-        paraphrased_text: 'Quantum bits allow multiple states at once',
-        explanation: 'Simplified quantum jargon.',
+        phrase: 'Superconducting qubits enable superposition',
+        summary: 'Quantum computing summary',
+        detailed_explanation: 'Quantum bits allow multiple states at once',
+        simplified_version: 'Qubits can be in two states at once',
+        key_terms: [],
       });
 
       const { container } = render(<ArticleReader article={mockArticle} />);
@@ -496,14 +498,14 @@ describe('AuraDock Unified Reading Suite - Senior QA & DevOps Verification', () 
       fireEvent(document, new Event('selectionchange'));
 
       await waitFor(() => {
-        expect(screen.getByRole('button', { name: /Paraphrase selection/i })).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: /Explain with Smart Ink/i })).toBeInTheDocument();
       });
 
-      const paraphraseBtn = screen.getByRole('button', { name: /Paraphrase selection/i });
-      fireEvent.mouseDown(paraphraseBtn);
+      const smartInkBtn = screen.getByRole('button', { name: /Explain with Smart Ink/i });
+      fireEvent.mouseDown(smartInkBtn);
 
       await waitFor(() => {
-        expect(screen.getByRole('dialog', { name: /Smart Paraphrase Popover/i })).toBeInTheDocument();
+        expect(screen.getByText('💡 Explained')).toBeInTheDocument();
       });
     });
   });

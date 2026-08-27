@@ -22,37 +22,17 @@ class IndexView(TemplateView):
         recommended_articles = selectors.get_recommendations(user=user, limit=4)
         daily_vocab = selectors.get_daily_vocab(user_id=getattr(user, "id", None))
 
-        paraphrase_demo = {
-            "original": "Climate change poses severe threats to global food security.",
-            "paraphrased": "Global food production is gravely endangered by shifts in world climate.",
-        }
-
-        all_tests_res = selectors.list_completed_articles(theme=selected_theme, genre=selected_genre, limit=100)
-        all_articles = all_tests_res.get("articles", [])
-
-        attempted_ids = set()
-        if user and getattr(user, "is_authenticated", False):
-            attempted_ids = selectors.get_user_attempted_ids(getattr(user, "id", None))
-
-        def mark_attempted(articles):
-            for art in articles:
-                aid = str(art.get("article_id") or art.get("id") or "").strip()
-                art["has_attempted"] = aid in attempted_ids
-            return articles
-
-        trending_articles = mark_attempted(trending_articles)
-        recommended_articles = mark_attempted(recommended_articles)
-        all_articles = mark_attempted(all_articles)
-
-        paginator = Paginator(all_articles, 12)
-        page_number = self.request.GET.get("page")
-        page_obj = paginator.get_page(page_number)
+        page_num = self.request.GET.get("page", 1)
+        articles_res = selectors.list_completed_articles(
+            theme=selected_theme, genre=selected_genre, page=int(page_num) if str(page_num).isdigit() else 1, limit=12
+        )
+        paginator = Paginator(articles_res.get("articles", []), 12)
+        page_obj = paginator.get_page(page_num)
 
         context.update({
             "trending_articles": trending_articles,
             "recommended_articles": recommended_articles,
             "daily_vocab": daily_vocab,
-            "paraphrase_demo": paraphrase_demo,
             "page_obj": page_obj,
             "themes": themes,
             "genres": genres,

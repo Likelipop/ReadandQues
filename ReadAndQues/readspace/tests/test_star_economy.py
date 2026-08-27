@@ -1,6 +1,7 @@
-from accounts.models import UserProfile
 from django.contrib.auth.models import User
 from django.test import TestCase
+
+from accounts.models import UserProfile
 from readspace.utils import StarDeductionError, consume_user_star
 
 

@@ -6,27 +6,26 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('service', '0002_articleimportrequest_examattemptlog'),
+        ("service", "0002_articleimportrequest_examattemptlog"),
     ]
 
     operations = [
         migrations.CreateModel(
-            name='TopicProficiency',
+            name="TopicProficiency",
             fields=[
-                ('id', models.CharField(default=uuid.uuid4, max_length=64, primary_key=True, serialize=False)),
-                ('user_id', models.IntegerField()),
-                ('topic', models.CharField(max_length=64)),
-                ('total_questions', models.IntegerField(default=0)),
-                ('correct_answers', models.IntegerField(default=0)),
-                ('accuracy', models.FloatField(default=0.0)),
-                ('last_practiced', models.DateTimeField(auto_now=True)),
+                ("id", models.CharField(default=uuid.uuid4, max_length=64, primary_key=True, serialize=False)),
+                ("user_id", models.IntegerField()),
+                ("topic", models.CharField(max_length=64)),
+                ("total_questions", models.IntegerField(default=0)),
+                ("correct_answers", models.IntegerField(default=0)),
+                ("accuracy", models.FloatField(default=0.0)),
+                ("last_practiced", models.DateTimeField(auto_now=True)),
             ],
             options={
-                'db_table': 'service_topic_proficiency',
-                'ordering': ['accuracy'],
-                'unique_together': {('user_id', 'topic')},
+                "db_table": "service_topic_proficiency",
+                "ordering": ["accuracy"],
+                "unique_together": {("user_id", "topic")},
             },
         ),
     ]

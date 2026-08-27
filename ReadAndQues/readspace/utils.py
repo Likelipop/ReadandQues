@@ -7,8 +7,10 @@ from accounts.models import UserProfile
 
 logger = logging.getLogger(__name__)
 
+
 class StarDeductionError(Exception):
     pass
+
 
 @contextmanager
 def consume_user_star(user):

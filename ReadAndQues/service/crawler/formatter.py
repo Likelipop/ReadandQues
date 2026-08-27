@@ -53,9 +53,7 @@ def to_markdown(text: str) -> str:
             result_lines.append(line)
         else:
             prev_line = formatted_paragraphs[i - 1]
-            if line.startswith("- ") and (
-                prev_line.startswith("- ") or prev_line.endswith(":")
-            ):
+            if line.startswith("- ") and (prev_line.startswith("- ") or prev_line.endswith(":")):
                 result_lines.append("\n" + line)
             else:
                 result_lines.append("\n\n" + line)

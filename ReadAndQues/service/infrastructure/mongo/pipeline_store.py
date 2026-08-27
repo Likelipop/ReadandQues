@@ -13,6 +13,7 @@ logger = logging.getLogger(__name__)
 
 # ── RSS Tracking ──────────────────────────────────────────────────────────────
 
+
 @db_safe(default_return=set())
 def filter_existing_rss_links(links: list[str]) -> set:
     """Check which links already exist in rss_links (last 30 days)."""
@@ -53,13 +54,12 @@ def get_unprocessed_rss_links(limit: int = 50) -> list[dict]:
 @db_safe(default_return=False)
 def mark_rss_link_extracted(link: str) -> bool:
     """Mark an RSS link as crawled."""
-    result = get_collection("rss_links").update_one(
-        {"link": link}, {"$set": {"is_extracted": True}}
-    )
+    result = get_collection("rss_links").update_one({"link": link}, {"$set": {"is_extracted": True}})
     return result.modified_count > 0
 
 
 # ── Pipeline Logs ─────────────────────────────────────────────────────────────
+
 
 @db_safe(default_return="")
 def insert_pipeline_log(

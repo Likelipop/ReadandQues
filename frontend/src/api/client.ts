@@ -7,7 +7,6 @@ import {
   ProofData,
   QuestionTicket,
   SearchResultItem,
-  SmartParaphraseResult,
   UserProfile,
 } from '../types';
 import { isWithinDateFilter, DateFilterOption } from '../utils/dateFilter';
@@ -191,20 +190,6 @@ export const api = {
         id: string;
         related_articles: ArticleCard[];
       }>(`/${id}/submit/`, {
-        method: 'POST',
-        body: JSON.stringify(data),
-      }),
-
-    smartParaphrase: (
-      id: string,
-      data: {
-        paragraph_text: string;
-        highlighted_text?: string;
-        start_index?: number;
-        end_index?: number;
-      }
-    ) =>
-      request<SmartParaphraseResult>(`/${id}/smart_paraphrase/`, {
         method: 'POST',
         body: JSON.stringify(data),
       }),

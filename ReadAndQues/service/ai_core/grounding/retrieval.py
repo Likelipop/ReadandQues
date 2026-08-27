@@ -1,29 +1,44 @@
-import re
+from rank_bm25 import BM25Okapi
 
 from service.ai_core.grounding.chunking import ArticleChunk
+from service.infrastructure.bm25.text_processing import process_text_to_tokens
 
 
 def retrieve_article_chunks(chunks: list[ArticleChunk], query: str, top_k: int = 3) -> list[ArticleChunk]:
     """
-    Performs article-scoped lexical retrieval over the given article's chunks.
+    Performs article-scoped lexical retrieval over the given article's chunks using BM25 tokenization.
     Guarantees no cross-article leakage.
     """
     if not chunks or not query.strip():
         return []
 
-    tokens = [t.lower() for t in re.findall(r"\w+", query) if len(t) > 2]
-    if not tokens:
+    query_tokens = process_text_to_tokens(query)
+    if not query_tokens:
         return chunks[:top_k]
 
-    scored = []
-    for chunk in chunks:
-        chunk_text_lower = chunk.text.lower()
-        score = sum(chunk_text_lower.count(t) for t in tokens)
-        scored.append((score, chunk))
+    tokenized_corpus = [process_text_to_tokens(chunk.text) for chunk in chunks]
+    # Fallback to simple words if all tokens are empty
+    if not any(tokenized_corpus):
+        tokenized_corpus = [chunk.text.lower().split() for chunk in chunks]
 
-    scored.sort(key=lambda x: x[0], reverse=True)
-    # Filter chunks with score > 0 if available, else return top_k
-    matched = [c for s, c in scored if s > 0]
-    if matched:
-        return matched[:top_k]
-    return [c for _, c in scored[:top_k]]
+    try:
+        bm25 = BM25Okapi(tokenized_corpus)
+        scores = bm25.get_scores(query_tokens)
+        scored = list(zip(scores, chunks, strict=False))
+        scored.sort(key=lambda x: x[0], reverse=True)
+        matched = [c for s, c in scored if s > 0]
+        if matched:
+            return matched[:top_k]
+        return [c for _, c in scored[:top_k]]
+    except Exception:
+        # Fallback to frequency match
+        scored = []
+        for chunk in chunks:
+            chunk_lower = chunk.text.lower()
+            score = sum(chunk_lower.count(t) for t in query_tokens)
+            scored.append((score, chunk))
+        scored.sort(key=lambda x: x[0], reverse=True)
+        matched = [c for s, c in scored if s > 0]
+        if matched:
+            return matched[:top_k]
+        return [c for _, c in scored[:top_k]]
