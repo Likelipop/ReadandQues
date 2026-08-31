@@ -10,15 +10,15 @@ from unittest.mock import patch
 from django.test import Client, TestCase
 from django.urls import reverse
 
-from service.ai_core.rag.router import (
+from ai_service.rag.pipeline import (
     RouterState,
     build_rag_router_graph,
     classify_intent_node,
     execute_rag_pipeline,
     route_intent_edge,
 )
-from service.ai_core.rag.schemas import Citation, RAGResponse
-from service.domain.enums import AgentIntent
+from ai_service.rag.schemas import Citation, RAGResponse
+from shared.enums import AgentIntent
 
 
 class RAGChatFunctionalTestCase(TestCase):
@@ -109,7 +109,7 @@ class RAGChatFunctionalTestCase(TestCase):
 
     def test_classify_intent_node_fallback_when_no_api_key(self):
         """Intent classifier defaults to NEWS with confidence when LLM fails or is unavailable."""
-        with patch("service.ai_core.rag.router.ModelGateway.get_llm", side_effect=RuntimeError("No LLM provider")):
+        with patch("ai_service.rag.pipeline.get_llm", side_effect=RuntimeError("No LLM provider")):
             initial_state: RouterState = {
                 "question": "Explain paragraph 1",
                 "article_id": self.article_id,
@@ -151,7 +151,7 @@ class RAGChatFunctionalTestCase(TestCase):
             model_used="gpt-4o-mini",
         )
 
-        with patch("service.ai_core.rag.router.run_news_agent", return_value=mock_news_response):
+        with patch("ai_service.rag.pipeline.run_news_agent", return_value=mock_news_response):
             response = execute_rag_pipeline(
                 question="Tell me about ocean plastic",
                 article_id=self.article_id,
@@ -168,7 +168,7 @@ class RAGChatFunctionalTestCase(TestCase):
         from service.services import ask_rag_question
 
         with patch(
-            "service.ai_core.rag.execute_rag_pipeline", side_effect=RuntimeError("ChromaDB connection timeout")
+            "ai_service.rag.execute_rag_pipeline", side_effect=RuntimeError("ChromaDB connection timeout")
         ):
             result = ask_rag_question(question="What is this?", article_id=self.article_id)
             self.assertEqual(result["status"], "error")

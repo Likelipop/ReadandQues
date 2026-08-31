@@ -1,83 +1,93 @@
 # ReadAndQues 📖🧠
 
-ReadAndQues is an advanced English reading practice web application that leverages Large Language Models (LLMs) and a decoupled modular architecture to automatically generate IELTS-style reading comprehension quizzes from any online article.
+An AI-powered English reading comprehension and IELTS preparation platform. ReadAndQues automatically ingests news articles, extracts key concepts and keywords, and generates high-quality reading comprehension questions with verbatim citation proofs.
 
-By simply providing an article URL, the system's background AI pipeline ingests the text, analyzes its semantics, and generates questions such as Yes/No/Not Given, Fill-in-the-blanks, and Multiple Choice.
-
-## 🌟 Key Features
-- **AI-Powered Quiz Generation**: Uses LangGraph and LLMs (Azure OpenAI/Gemini/GPT-4o) to automatically formulate highly accurate IELTS-style questions.
-- **Self-Reflective AI Pipeline**: Includes a Verifier node to prevent AI hallucination, ensuring all questions and answers are rigorously based on the provided text.
-- **Split-Screen Workspace**: An optimized reading environment with the article on one side and the questions/timer on the other.
-- **Interactive Highlighter**: Users can highlight text during practice. The highlights are saved and restored when reviewing past attempts.
-- **Semantic Search (RAG)**: Uses ChromaDB to recommend related articles based on vector embeddings of article summaries.
-- **Polyglot Persistence**: Intelligently distributes data across PostgreSQL (User profiles/Auth), MongoDB (Articles, Exams, Attempts), and ChromaDB (Vector Embeddings).
-
-## 🛠 Tech Stack
-- **Backend Core**: Python 3.13, Django 5.x, Pydantic v2
-- **AI & Data Pipeline**: LangGraph, LangChain, newspaper3k (or Trafilatura)
-- **Databases**:
-  - **PostgreSQL 15**: Relational data, user authentication, and the "Star" energy system.
-  - **MongoDB 7**: Document storage for articles, complex JSON exams, and user attempts.
-  - **ChromaDB**: Vector store for semantic search and embeddings.
-- **Frontend**: HTML5, Vanilla CSS (Glassmorphism design), Modern JavaScript (ES6+).
-- **Infrastructure**: Docker Compose, `uv` for dependency management.
+---
 
 ## 🏗 Architecture Overview
-The system is divided into two primary, decoupled services:
-1. **`ReadAndQues` (Django Web App)**: Manages user authentication, the Star system, article listings, and the interactive split-screen quiz workspace.
-2. **`worker_service` (Worker & AI Engine)**: Operates a Medallion Data Pipeline (Bronze -> Silver -> Gold) to crawl, clean, and enrich text using a 4-Node LangGraph AI Pipeline (Analyzer -> Cleaner -> Planner -> Verifier -> Formatter).
 
-For detailed architectural diagrams and module breakdowns, please refer to the documentation in the [`docs/`](docs/) directory:
-- [01_project_structure.md](docs/01_project_structure.md) - Overall Architecture & Flow
-- [02_ReadAndQues.md](docs/02_ReadAndQues.md) - Django Web App Details
-- [03_worker_service.md](docs/03_worker_service.md) - Medallion Pipeline & LangGraph AI Core
+The repository is organized into four independent, decoupled modules connected by clean contracts:
 
-## 🚀 Getting Started
+```
+ReadandQues/
+├── NewsPipeline/        # Dagster ETL Pipeline (Bronze RSS -> Silver HTML -> Gold Enriched)
+├── ai_service/          # Isolated AI Engine (Quiz Generator, Explainer, RAG Multi-Agent)
+├── ReadAndQues/         # Django Web & REST API Backend (PostgreSQL, MongoDB, Django Ninja)
+├── frontend/            # React + TypeScript + Vite SPA Frontend
+└── shared/              # Pure Python dataclass contracts & enums (Zero external dependencies)
+```
 
-### Prerequisites
-- Docker and Docker Compose
-- Python 3.13
-- `uv` (recommended for dependency management) or `pip`
+| Module | Role | Tech Stack |
+|---|---|---|
+| **`NewsPipeline/`** | Medallion data engineering pipeline (RSS crawling, Trafilatura HTML extraction, MinIO caching, Gold transformation). | Dagster 1.13, Trafilatura, Feedparser, MinIO, PyMongo |
+| **`ai_service/`** | Isolated AI engine providing Quiz Generation, Contextual Phrase Explanation, Grounded RAG News Agent, and Passage Proof. | LangChain, LangGraph, Azure OpenAI, ChromaDB, BM25 |
+| **`ReadAndQues/`** | Web application & REST API server handling user authentication, reading progress, and test evaluations. | Django 5.x, Django Ninja, PostgreSQL, PyMongo |
+| **`frontend/`** | Modern responsive single-page application. | React 18, TypeScript, Tailwind CSS, Lucide Icons, Vite |
+| **`shared/`** | Single source of truth for cross-service domain models (`Article`, `Exam`, `Question`) and enums (`Stage`, `Status`). | Pure Python 3.12+ Dataclasses |
 
-### Installation & Setup
+---
 
-1. **Start the Database Containers:**
-   Start PostgreSQL, MongoDB, and ChromaDB using Docker Compose.
-   ```bash
-   docker compose up -d
-   ```
-   *Alternatively, you can use the provided `./run.sh` script if applicable.*
+## 🌟 Key Capabilities
 
-2. **Environment Setup:**
-   Create a `.env` file based on the provided template and fill in your API keys (e.g., Azure OpenAI / Gemini credentials).
-   ```bash
-   cp .env.example .env
-   ```
+1. **Automatic IELTS Quiz Generation**: Generates Multiple Choice, Yes/No/Not Given, and Fill-in-the-Blank questions directly grounded in article text.
+2. **Open Keyword Tagging**: Dynamic `keywords` extraction replaces rigid category classifiers, allowing flexible topic discovery.
+3. **Multi-Agent Grounded RAG**: Hybrid search (BM25 lexical + ChromaDB semantic) fused with Reciprocal Rank Fusion (RRF) and Cross-Encoder reranking.
+4. **Verbatim Passage Proof**: Pinpoints the exact sentences in the original text supporting every quiz answer.
+5. **Decoupled Architecture**: Clear boundaries allow students and engineers to work independently on Backend, Frontend, Data Engineering, or AI Engineering.
 
-3. **Install Dependencies:**
-   Create a virtual environment and install the required packages.
-   ```bash
-   # Using uv
-   uv venv
-   source .venv/bin/activate
-   uv sync
-   
-   # Or using pip
-   python -m venv .venv
-   source .venv/bin/activate
-   pip install -r requirements.txt
-   ```
+---
 
-4. **Run the Django Development Server:**
-   Navigate into the Django project directory (where `manage.py` is located) and start the server.
-   ```bash
-   cd ReadAndQues
-   python manage.py migrate
-   python manage.py runserver
-   ```
+## 🚀 Quick Start
 
-5. **Access the Application:**
-   Open your browser and navigate to the local server address (usually `http://127.0.0.1:8000`).
+### 1. Start Infrastructure Services
+Start PostgreSQL, MongoDB, MinIO, and ChromaDB via Docker Compose:
+```bash
+docker compose up -d
+```
+
+### 2. Configure Environment Variables
+Copy and configure the environment template:
+```bash
+cp .env.example .env
+```
+
+### 3. Run Backend (Django)
+```bash
+cd ReadAndQues
+python manage.py migrate
+python manage.py setup_db
+python manage.py runserver 8000
+```
+API Documentation will be available at `http://127.0.0.1:8000/api/docs`.
+
+### 4. Run Data Pipeline (Dagster)
+```bash
+cd NewsPipeline
+dg dev
+```
+Dagster UI will be accessible at `http://127.0.0.1:3000`.
+
+### 5. Run Frontend (React SPA)
+```bash
+cd frontend
+npm install
+npm run dev
+```
+Open `http://localhost:5173` in your browser.
+
+---
+
+## 📚 Documentation
+
+Detailed documentation is available in the [`docs/`](docs/) directory:
+- [System Architecture Overview](docs/architecture/01-overview.md)
+- [Data Layer & Persistence](docs/components/01-data-layer.md)
+- [Data Pipeline Orchestration (Dagster)](docs/components/02-orchestration.md)
+- [AI Service Platform](docs/components/03-ai-platform.md)
+- [Grounding & RAG Retrieval](docs/components/04-grounding-qa.md)
+- [Web Application & API](docs/components/05-web-applications.md)
+
+---
 
 ## 📜 License
-This project is licensed under the terms provided in the `LICENSE` file.
+MIT License.

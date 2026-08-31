@@ -109,10 +109,9 @@ class ArticleCardOut(Schema):
     source_name: str = "Unknown"
     image_url: str | None = None
     published_at: Any = None
-    stage: str = "bronze"
-    status: str = "pending"
-    theme: str = "General"
-    genre: str = "general"
+    stage: str = "gold"
+    status: str = "completed"
+    keywords: list[str] = ["General"]
     summary: str = ""
     original_text: str = ""
     word_count: int = 0
@@ -165,9 +164,7 @@ class HomepageDataOut(Schema):
     recommended_articles: list[ArticleCardOut]
     articles: list[ArticleCardOut]
     total_count: int
-    themes: list[str]
-    genres: list[str]
-    nav_themes: list[dict[str, str]]
+    popular_keywords: list[str] = []
 
 
 # ── Authentication Schemas ────────────────────────────────────────────────────

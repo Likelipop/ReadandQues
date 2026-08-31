@@ -1,61 +1,43 @@
-# Component Guide: Orchestration Engine & Pipelines
+# Component Guide: Data Pipeline Orchestration (Dagster)
 
-This document describes the typed pipeline orchestration engine, ZEN atomic job domain modules, `BackgroundRunner`, and `OrchestrationFacade`.
-
----
-
-## 1. Boundary & Responsibilities
-
-The Orchestration Engine in [service/orchestration/](file:///home/likelipop/Project/ReadandQues/ReadAndQues/service/orchestration/) manages multi-step batch processing and background pipelines ([ADR-0002](file:///home/likelipop/Project/ReadandQues/docs/refactor/adr/0002-application-orchestration-boundary.md)):
-
-- Single-step query operations (e.g., fetching an article by ID) use direct repository calls and do **not** use pipelines.
-- Multi-step workflows (e.g., crawl web page -> ingest Bronze -> extract Silver -> AI enrich Gold -> vector index) run through atomic orchestration `Pipe`s composed in [service/orchestration/pipes.py](file:///home/likelipop/Project/ReadandQues/ReadAndQues/service/orchestration/pipes.py).
+The data pipeline is located in [`NewsPipeline/`](file:///home/likelipop/Project/ReadandQues/NewsPipeline/) and orchestrated using Dagster 1.13.
 
 ---
 
-## 2. Typed Contracts & Exception Hierarchy
+## 1. Pipeline Architecture (Medallion Flow)
 
-Pipeline execution uses Pydantic v2 typed contracts defined in [service/orchestration/contracts.py](file:///home/likelipop/Project/ReadandQues/ReadAndQues/service/orchestration/contracts.py):
-
-- **`PipelineContext`**: Thread-safe dictionary container holding initial inputs and intermediate job outputs.
-- **`JobResult`**: Status (`completed`, `failed`, `skipped`), output data, duration in ms, and error message for an individual job step.
-- **`PipelineResult`**: Aggregated result of a pipeline execution (`pipeline_name`, `status`, `stage_results`, `total_duration_ms`).
-
-Structured Exceptions ([service/orchestration/exceptions.py](file:///home/likelipop/Project/ReadandQues/ReadAndQues/service/orchestration/exceptions.py)):
-- `OrchestrationError`: Base exception for pipeline failures.
-- `JobFailedError`: Raised when a job step fails or raises an unhandled exception.
-- `MissingContextError`: Raised during contract validation when required inputs are missing from `PipelineContext`.
-- `PipelineValidationError`: Raised when pipe configuration or job signatures are invalid.
-
----
-
-## 3. Background Runner & Facade
-
-Pipelines can run synchronously or asynchronously using `BackgroundRunner` and `OrchestrationFacade` in [service/orchestrator.py](file:///home/likelipop/Project/ReadandQues/ReadAndQues/service/orchestrator.py):
-
-- **`BackgroundRunner`**: Clean, lightweight thread daemon runner that dispatches pipelines asynchronously without duplicate code paths.
-- **`OrchestrationFacade`**: Thin facade exposing clean methods for views and background workers.
-
-```python
-from service.orchestrator import OrchestrationFacade
-
-# Run full single article pipeline synchronously
-result = OrchestrationFacade.execute_article_task(article_id="art_123", url="https://example.com/article")
-
-# Run AI generation in background thread
-OrchestrationFacade.run_ai_only_pipeline_async(article_id="art_123")
+```
+[RSS Feeds]
+    │
+    ▼
+[bronze_article_links]  ──▶  Parses RSS (BBC, NYTimes, Guardian), filters freshness (7 days), skips seen URLs
+    │
+    ▼
+[silver_html_documents] ──▶  Crawls raw HTML via Trafilatura, extracts clean text, saves to MinIO
+    │
+    ▼
+[gold_articles]         ──▶  Calls ai_service.interface.generate_quiz(text), NO AI HERE IN THE GOLD LAYER
+                             extracts dynamic keywords & quizzes,            CHUNKING 
+                             upserts to MongoDB gold_articles, 
+                             indexes into ChromaDB & BM25
 ```
 
 ---
 
-## 4. Domain Job Packages
+## 2. Asset Definitions
 
-Pipeline jobs are atomic, single-responsibility steps inside [service/orchestration/jobs/](file:///home/likelipop/Project/ReadandQues/ReadAndQues/service/orchestration/jobs/):
+* **`bronze_article_links`** ([`defs/bronze.py`](file:///home/likelipop/Project/ReadandQues/NewsPipeline/src/NewsPipeline/defs/bronze.py)):
+  Reads feed URLs from `rss_feeds.txt`, parses RSS XML, filters items newer than 7 days, and deduplicates against MongoDB.
 
-- **`ingestion.py`**: Web scraping via `service/crawler`, raw HTML parsing, and MinIO Bronze object persistence (`ingest_single_to_bronze`).
-- **`processing.py`**: Text cleaning, validation, paragraph segmentation, and MinIO Silver persistence (`fetch_single_silver`).
-- **`enrichment.py`**: Core AI processing via LangGraph. Persists results to MinIO Gold, MongoDB Exams, and ChromaDB Vectors.
-- **`paraphrase.py`**: Interfaces with the versioned AI tool for Smart Ink paraphrasing of highlights.
-- **`maintenance.py`**: Index initialization and cache refresh jobs.
+* **`silver_html_documents`** ([`defs/silver.py`](file:///home/likelipop/Project/ReadandQues/NewsPipeline/src/NewsPipeline/defs/silver.py)):
+  Fetches full article HTML with Trafilatura, checks minimum word count (>150 words), and caches raw HTML snapshot in MinIO.
 
-Each job function uses `@job(name="...", inputs=[...], outputs=[...])` and defines explicit parameters. Atomic jobs are composed into pipelines in `pipes.py` (`single_article_pipe`, `ai_only_pipe`, `smart_ink_pipe`).
+* **`gold_articles`** ([`defs/gold.py`](file:///home/likelipop/Project/ReadandQues/NewsPipeline/src/NewsPipeline/defs/gold.py)):
+  Invokes `ai_service.interface.generate_quiz()` to extract `keywords`, `summary`, and `questions`. Saves gold document into MongoDB and triggers search indexing.
+
+---
+
+## 3. Schedules & Execution
+
+* **Daily Ingestion**: Scheduled via `daily_crawl_schedule` at `06:00 UTC` daily.
+* **Development Server**: Run `dg dev` inside `NewsPipeline/` to open the Dagster UI at `http://localhost:3000`.

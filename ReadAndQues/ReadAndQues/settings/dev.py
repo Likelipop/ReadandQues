@@ -44,22 +44,13 @@ else:
         }
     }
 
-# Development Cache: Local Memory Cache or Redis
-REDIS_URL = os.getenv("REDIS_URL")
-if REDIS_URL:
-    CACHES = {
-        "default": {
-            "BACKEND": "django.core.cache.backends.redis.RedisCache",
-            "LOCATION": REDIS_URL,
-        }
+# Development Cache: Local Memory Cache
+CACHES = {
+    "default": {
+        "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
+        "LOCATION": "readandques-dev-cache",
     }
-else:
-    CACHES = {
-        "default": {
-            "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
-            "LOCATION": "unique-snowflake-dev",
-        }
-    }
+}
 
 # Logging: Console output in development
 LOGGING = {

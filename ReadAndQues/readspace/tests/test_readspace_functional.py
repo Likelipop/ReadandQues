@@ -182,7 +182,7 @@ class ReadspaceFunctionalTestCase(TestCase):
             "confidence_score": 0.95,
         }
 
-        with patch("service.ai_core.grounding.get_passage_proof", return_value=mock_proof):
+        with patch("ai_service.rag.grounding.get_passage_proof", return_value=mock_proof):
             response = self.client.get(reverse("readspace:passage_proof_api", kwargs={"pk": self.article_id, "idx": 0}))
             self.assertEqual(response.status_code, 200)
             data = response.json()

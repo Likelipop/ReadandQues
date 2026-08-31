@@ -1,16 +1,12 @@
 from django.core.cache import cache
 
 import service.selectors as selectors
-from service.domain.enums import ThemeCategory
+from shared.enums import ThemeCategory
 
 
 def global_news_context(request):
     """Returns context variables for Header and Footer across all pages."""
-    themes = [
-        {"id": theme.name, "name": theme.value}
-        for theme in ThemeCategory
-        if theme.name != "GENERAL"
-    ]
+    keywords = selectors.get_popular_keywords(limit=6)
 
     trending_topics = cache.get("global_trending_topics")
     if not trending_topics:
@@ -25,6 +21,6 @@ def global_news_context(request):
             trending_topics = []
 
     return {
-        "nav_themes": themes,
+        "nav_keywords": keywords,
         "trending_topics": trending_topics,
     }

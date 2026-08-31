@@ -1,6 +1,6 @@
 import unittest
 
-from service.ai_core.graphs import stream_explained_tokens
+from ai_service.quiz_generator import stream_explained_tokens
 
 
 class ExplainedStreamingTests(unittest.TestCase):

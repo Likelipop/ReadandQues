@@ -1,5 +1,6 @@
 """
-service/infrastructure/minio/connection.py — MinIO client singleton.
+service/infrastructure/minio/connection.py — MinIO Client and Bucket Configuration.
+Provides clean initialization for MinIO object storage.
 """
 
 import logging
@@ -10,50 +11,55 @@ from minio import Minio
 
 logger = logging.getLogger(__name__)
 
+BRONZE_BUCKET = "bronze"
+SILVER_BUCKET = "silver"
+GOLD_BUCKET = "gold"
+
 _minio_client: Minio | None = None
 
 
-def get_setting(name: str, default: str) -> str:
-    try:
-        if settings.configured:
-            val = getattr(settings, name, None)
-            if val:
-                return str(val)
-    except Exception:
-        pass
-    return os.getenv(name, default)
-
-
-BRONZE_BUCKET = get_setting("MINIO_BRONZE_BUCKET", "bronze")
-SILVER_BUCKET = get_setting("MINIO_SILVER_BUCKET", "silver")
-GOLD_BUCKET = get_setting("MINIO_GOLD_BUCKET", "gold")
-
-
 def get_minio_client() -> Minio:
+    """
+    Return singleton Minio client configured from Django settings or environment variables.
+    """
     global _minio_client
     if _minio_client is None:
-        endpoint = get_setting("MINIO_ENDPOINT", "minio:9000")
-        access_key = get_setting("MINIO_ACCESS_KEY", "minioadmin")
-        secret_key = get_setting("MINIO_SECRET_KEY", "minioadmin")
-        secure_str = get_setting("MINIO_SECURE", "false")
-        secure = str(secure_str).lower() == "true"
+        try:
+            endpoint = getattr(settings, "MINIO_ENDPOINT", None) if settings.configured else None
+            access_key = getattr(settings, "MINIO_ACCESS_KEY", None) if settings.configured else None
+            secret_key = getattr(settings, "MINIO_SECRET_KEY", None) if settings.configured else None
+            secure_val = getattr(settings, "MINIO_SECURE", None) if settings.configured else None
+        except Exception:
+            endpoint = access_key = secret_key = secure_val = None
 
-        _minio_client = Minio(endpoint, access_key=access_key, secret_key=secret_key, secure=secure)
+        endpoint = endpoint or os.getenv("MINIO_ENDPOINT", "minio:9000")
+        access_key = access_key or os.getenv("MINIO_ACCESS_KEY", "minioadmin")
+        secret_key = secret_key or os.getenv("MINIO_SECRET_KEY", "minioadmin")
+        secure = str(secure_val or os.getenv("MINIO_SECURE", "false")).lower() == "true"
+
+        _minio_client = Minio(
+            endpoint=endpoint,
+            access_key=access_key,
+            secret_key=secret_key,
+            secure=secure,
+        )
     return _minio_client
 
 
-class LazyMinioClient:
-    """Proxy object that delays MinIO client initialization until first attribute access."""
+class _LazyMinioProxy:
+    """Proxy object that delegates attribute calls to get_minio_client()."""
 
     def __getattr__(self, name: str):
         return getattr(get_minio_client(), name)
 
 
-client = LazyMinioClient()
+client = _LazyMinioProxy()
 
 
 def init_buckets():
-    """Explicit initializer for MinIO buckets (called on demand, not on import)."""
+    """
+    Ensure the standard Bronze, Silver, and Gold buckets exist.
+    """
     c = get_minio_client()
     for bucket in [BRONZE_BUCKET, SILVER_BUCKET, GOLD_BUCKET]:
         try:

@@ -61,7 +61,7 @@ class SmartInksAndInteractiveToolsTestCase(TestCase):
             "confidence_score": 0.94,
         }
 
-        with patch("service.ai_core.grounding.get_passage_proof", return_value=mock_proof):
+        with patch("ai_service.rag.grounding.get_passage_proof", return_value=mock_proof):
             response = self.client.get(reverse("readspace:passage_proof_api", kwargs={"pk": self.article_id, "idx": 0}))
             self.assertEqual(response.status_code, 200)
             data = response.json()
@@ -71,7 +71,7 @@ class SmartInksAndInteractiveToolsTestCase(TestCase):
 
     def test_passage_proof_api_not_found(self):
         """GET /readspace/<pk>/proof/<idx>/ returns 404 when index or article has no proof."""
-        with patch("service.ai_core.grounding.get_passage_proof", return_value=None):
+        with patch("ai_service.rag.grounding.get_passage_proof", return_value=None):
             response = self.client.get(
                 reverse("readspace:passage_proof_api", kwargs={"pk": self.article_id, "idx": 99})
             )

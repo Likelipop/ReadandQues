@@ -76,6 +76,7 @@ export const api = {
   articles: {
     list: async (
       params: {
+        keyword?: string;
         theme?: string;
         genre?: string;
         date_filter?: string;
@@ -86,7 +87,8 @@ export const api = {
     ) => {
       try {
         const sp = new URLSearchParams();
-        if (params.theme && params.theme !== 'All') sp.append('theme', params.theme);
+        const kw = params.keyword || params.theme;
+        if (kw && kw !== 'All') sp.append('keyword', kw);
         if (params.genre && params.genre !== 'All') sp.append('genre', params.genre);
         if (params.date_filter && params.date_filter.toLowerCase() !== 'all') {
           sp.append('date_filter', params.date_filter);

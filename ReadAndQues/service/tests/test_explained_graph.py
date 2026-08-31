@@ -1,18 +1,12 @@
 import unittest
 
-from service.ai_core.graphs import (
+from ai_service.quiz_generator import (
     run_explained_flow,
     stream_explained_tokens,
 )
-from service.ai_core.platform import get_ai_tool
 
 
 class ExplainedGraphTests(unittest.TestCase):
-    def test_explained_tool_registered(self):
-        tool = get_ai_tool("explained")
-        self.assertIsNotNone(tool)
-        self.assertEqual(tool.name, "explained")
-
     def test_run_explained_flow(self):
         res = run_explained_flow(
             phrase="pedagogical frameworks",

@@ -21,9 +21,8 @@ import service.selectors as selectors
 import service.services as services
 from accounts.emails import send_verification_email
 from accounts.models import EmailVerification, UserProfile
-from service.ai_core.grounding import get_passage_proof
-from service.dictionary import lookup_word
-from service.domain.enums import ThemeCategory
+from ai_service.interface import get_passage_proof
+from shared.enums import ThemeCategory
 
 from .schemas import (
     ArticleCardOut,
@@ -35,8 +34,6 @@ from .schemas import (
     AuthResponseOut,
     ChangePasswordIn,
     DailyVocabOut,
-    DictionaryDefinitionItem,
-    DictionaryLookupOut,
     ExamSubmitIn,
     ExamSubmitOut,
     ExplainPhraseIn,
@@ -104,16 +101,12 @@ def get_homepage_data(request: HttpRequest):
     is_auth = user and user.is_authenticated
     user_id = user.id if is_auth else None
 
-    themes = selectors.get_theme_choices()
-    genres = selectors.get_genre_choices()
-
-    nav_themes = [{"id": t.name, "name": t.value} for t in ThemeCategory if t.name != "GENERAL"]
-
+    popular_keywords = selectors.get_popular_keywords(limit=10)
     trending_articles = selectors.get_hot_news(limit=6)
     recommended_articles = selectors.get_recommendations(user=user, limit=4)
     daily_vocab_data = selectors.get_daily_vocab(user_id=user_id)
 
-    all_tests_res = selectors.list_completed_articles(theme="All", genre="All", limit=12)
+    all_tests_res = selectors.list_completed_articles(limit=12)
     all_articles = all_tests_res.get("articles", [])
 
     attempted_ids = selectors.get_user_attempted_ids(user_id) if is_auth else set()
@@ -143,9 +136,7 @@ def get_homepage_data(request: HttpRequest):
         "recommended_articles": rec_items,
         "articles": grid_items,
         "total_count": all_tests_res.get("total_count", len(grid_items)),
-        "themes": themes,
-        "genres": genres,
-        "nav_themes": nav_themes,
+        "popular_keywords": popular_keywords,
     }
 
 
@@ -155,24 +146,23 @@ def get_homepage_data(request: HttpRequest):
 @router.get("/articles/", response=ArticleListResponseOut, summary="List Articles")
 def list_articles(
     request: HttpRequest,
-    theme: str = "All",
-    genre: str = "All",
+    keyword: str = "All",
     date_filter: str = "All",
     q: str = "",
     page: int = 1,
     limit: int = 12,
 ):
-    """Paginated articles exploration catalog with theme, genre, date_filter, and keyword search filters."""
+    """Paginated articles exploration catalog with keyword search and date filters."""
     user = getattr(request, "user", None)
     user_id = user.id if user and user.is_authenticated else None
 
     query = q.strip()
     if query:
         raw_articles = selectors.search_articles_keyword(query, limit=50)
-        if theme and theme != "All":
-            raw_articles = [a for a in raw_articles if a.get("theme", "").lower() == theme.lower()]
-        if genre and genre != "All":
-            raw_articles = [a for a in raw_articles if a.get("genre", "").lower() == genre.lower()]
+        if keyword and keyword != "All":
+            raw_articles = [
+                a for a in raw_articles if any(keyword.lower() in k.lower() for k in a.get("keywords", []))
+            ]
         if date_filter and date_filter.lower() not in ("all", "all time", ""):
             raw_articles = [
                 a for a in raw_articles if selectors._is_within_date_filter(a.get("published_at"), date_filter)
@@ -185,7 +175,7 @@ def list_articles(
         has_prev = page > 1
     else:
         res = selectors.list_completed_articles(
-            theme=theme, genre=genre, date_filter=date_filter, page=page, limit=limit
+            keyword=keyword, date_filter=date_filter, page=page, limit=limit
         )
         articles = res.get("articles", [])
         total_count = res.get("total_count", len(articles))
@@ -381,15 +371,6 @@ def run_ai_tool(request: HttpRequest, data: GenericAiToolIn):
         raise HttpError(400, "Missing question in request")
     res = services.ask_rag_question(question=question, article_id=data.article_id)
     return res
-
-
-@router.get("/dictionary/lookup/", response=DictionaryLookupOut, summary="Offline WordNet Dictionary Lookup")
-@router.get("/dictionary/lookup", response=DictionaryLookupOut, summary="Offline WordNet Dictionary Lookup (no-slash)")
-def dictionary_lookup(request: HttpRequest, word: str):
-    """Lookup English word definitions, part of speech, examples, and synonyms offline."""
-    if not word or not word.strip():
-        raise HttpError(400, "Missing 'word' query parameter")
-    return lookup_word(word.strip())
 
 
 # ── 6. Authentication REST Endpoints ──────────────────────────────────────────

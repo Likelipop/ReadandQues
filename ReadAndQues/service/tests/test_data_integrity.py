@@ -1,7 +1,5 @@
-from unittest import TestCase
-
-from service.domain.contracts import ArticleContract, generate_article_id
-from service.domain.enums import AIStatus, ArticleStatus
+from shared.schemas import Article, generate_article_id
+from shared.enums import Status
 
 
 class DataIntegrityContractsTests(TestCase):

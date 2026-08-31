@@ -19,7 +19,7 @@ from django.test import Client, TestCase
 
 from accounts.models import UserProfile
 from readspace.utils import StarDeductionError, consume_user_star
-from service.ai_core.grounding.passage_proof import get_passage_proof
+from ai_service.rag.grounding.passage_proof import get_passage_proof
 from service.pipelines import enrich_article_only, ingest_and_enrich_article
 from service.selectors import (
     get_article_detail,
@@ -199,8 +199,8 @@ class ServiceTestSuite(TestCase):
             }
         ]
         with (
-            patch("service.ai_core.grounding.passage_proof.exam_store.get_exam", return_value=self.mock_mongo_doc),
-            patch("service.ai_core.grounding.passage_proof.vector_store.vector_search_chunks", return_value=mock_hits),
+            patch("ai_service.rag.grounding.passage_proof.exam_store.get_exam", return_value=self.mock_mongo_doc),
+            patch("ai_service.rag.grounding.passage_proof.vector_store.vector_search_chunks", return_value=mock_hits),
         ):
             proof = get_passage_proof(self.sample_article_id, question_idx=0)
 
@@ -212,7 +212,7 @@ class ServiceTestSuite(TestCase):
 
     def test_passage_proof_unmatched_fallback(self):
         """QA Test: When question index is invalid or proof cannot be found, returns safe fallback."""
-        with patch("service.ai_core.grounding.passage_proof.exam_store.get_exam", return_value=self.mock_mongo_doc):
+        with patch("ai_service.rag.grounding.passage_proof.exam_store.get_exam", return_value=self.mock_mongo_doc):
             proof = get_passage_proof(self.sample_article_id, question_idx=999)
 
             self.assertIsNone(proof)

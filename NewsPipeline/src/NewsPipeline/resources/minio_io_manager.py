@@ -1,0 +1,136 @@
+"""
+NewsPipeline/resources/minio_io_manager.py — MinIO S3 Resource and IO Manager for HTML document storage.
+"""
+
+import io
+import logging
+import os
+from typing import Any
+
+from dagster import ConfigurableIOManager, ConfigurableResource, InputContext, OutputContext
+from dotenv import find_dotenv, load_dotenv
+from minio import Minio
+
+load_dotenv(find_dotenv(usecwd=True))
+
+logger = logging.getLogger(__name__)
+
+
+def get_minio_client(
+    endpoint: str | None = None,
+    access_key: str | None = None,
+    secret_key: str | None = None,
+    secure: bool | None = None,
+) -> Minio:
+    """
+    Construct MinIO client:
+    Tries configured endpoint (e.g. 'minio:9000').
+    If unreachable, falls back to 'localhost:9000' for local execution.
+    """
+    target_endpoint = endpoint or os.getenv("MINIO_ENDPOINT", "minio:9000")
+    target_access_key = access_key or os.getenv("MINIO_ACCESS_KEY", "minioadmin")
+    target_secret_key = secret_key or os.getenv("MINIO_SECRET_KEY", "minioadmin")
+    target_secure = secure if secure is not None else (os.getenv("MINIO_SECURE", "false").lower() == "true")
+
+    client = Minio(
+        endpoint=target_endpoint,
+        access_key=target_access_key,
+        secret_key=target_secret_key,
+        secure=target_secure,
+    )
+
+    try:
+        client.list_buckets()
+        return client
+    except Exception as e:
+        logger.debug(f"MinIO primary connection to {target_endpoint} failed ({e}), trying localhost:9000...")
+        if "minio:" in target_endpoint:
+            fallback_endpoint = target_endpoint.replace("minio:", "localhost:")
+            fallback_client = Minio(
+                endpoint=fallback_endpoint,
+                access_key=target_access_key,
+                secret_key=target_secret_key,
+                secure=target_secure,
+            )
+            try:
+                fallback_client.list_buckets()
+                logger.info(f"Connected to MinIO on {fallback_endpoint}.")
+                return fallback_client
+            except Exception:
+                pass
+        return client
+
+
+class MinIOResource(ConfigurableResource):
+    """
+    Resource for storing and retrieving raw HTML documents in MinIO S3.
+    Bucket: 'raw-html'
+    Path pattern: <partition_date>/<article_id>.html
+    """
+
+    endpoint: str = "minio:9000"
+    access_key: str = "minioadmin"
+    secret_key: str = "minioadmin"
+    secure: bool = False
+    bucket: str = "raw-html"
+
+    def get_client(self) -> Minio:
+        return get_minio_client(
+            endpoint=self.endpoint,
+            access_key=self.access_key,
+            secret_key=self.secret_key,
+            secure=self.secure,
+        )
+
+    def ensure_bucket(self) -> None:
+        client = self.get_client()
+        try:
+            if not client.bucket_exists(self.bucket):
+                client.make_bucket(self.bucket)
+                logger.info(f"MinIOResource: Created bucket '{self.bucket}'.")
+        except Exception as e:
+            logger.debug(f"MinIOResource: Bucket check notice for '{self.bucket}': {e}")
+
+    def save_html(self, partition_date: str, article_id: str, html_str: str) -> str:
+        """Save a single raw HTML document to MinIO under date directory."""
+        self.ensure_bucket()
+        client = self.get_client()
+        key = f"{partition_date}/{article_id}.html"
+        raw_bytes = html_str.encode("utf-8")
+
+        client.put_object(
+            bucket_name=self.bucket,
+            object_name=key,
+            data=io.BytesIO(raw_bytes),
+            length=len(raw_bytes),
+            content_type="text/html; charset=utf-8",
+        )
+        return key
+
+    def read_html(self, partition_date: str, article_id: str) -> str:
+        """Read a single raw HTML document from MinIO."""
+        client = self.get_client()
+        key = f"{partition_date}/{article_id}.html"
+        response = client.get_object(self.bucket, key)
+        content = response.read().decode("utf-8")
+        response.close()
+        response.release_conn()
+        return content
+
+
+class MinIOIOManager(ConfigurableIOManager):
+    """
+    MinIO IO Manager for Dagster asset IO bindings.
+    """
+
+    endpoint: str = "minio:9000"
+    access_key: str = "minioadmin"
+    secret_key: str = "minioadmin"
+    secure: bool = False
+    bucket: str = "raw-html"
+
+    def handle_output(self, context: OutputContext, obj: Any) -> None:
+        pass
+
+    def load_input(self, context: InputContext) -> Any:
+        return []

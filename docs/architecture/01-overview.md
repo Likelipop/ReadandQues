@@ -1,104 +1,43 @@
-# Architecture Overview & System Design
+# System Architecture Overview
 
-Welcome to the **ReadAndQues** project codebase! This document provides a developer-first overview of the system architecture, design invariants, data flow, and layer boundaries.
-
----
-
-## 1. High-Level System Architecture
-
-ReadAndQues is an intelligent reading and examination web application built on Django. It ingests web articles, cleanses and processes them into standardized reading/testing units, generates AI-powered comprehension quizzes and paraphrases, and provides an article-grounded Q&A ticket system.
-
-```
-+-------------------------------------------------------------------------------+
-|                             WEB PRESENTATION LAYER                            |
-|             (Django Views: readspace, homepage, accounts, REST APIs)          |
-+---------------------------------------+---------------------------------------+
-                                        |
-                 +----------------------+----------------------+
-                 |                                             |
-                 v                                             v
-  +-----------------------------+               +-------------------------------+
-  |  APPLICATION SERVICES LAYER |               |     ORCHESTRATION FACADE      |
-  |  (readspace/services.py,    |               |  (service/orchestrator.py)    |
-  |   homepage/services.py)     |               +---------------+---------------+
-  +--------------+--------------+                               |
-                 |                                              v
-                 |                              +-------------------------------+
-                 |                              |      TYPED PIPELINE ENGINE    |
-                 |                              |  (service/orchestration/)     |
-                 |                              +---------------+---------------+
-                 |                                              |
-                 v                                              v
-  +-----------------------------+               +-------------------------------+
-  |      REPOSITORIES LAYER     |               |       SHARED AI PLATFORM      |
-  | (ArticleRepository,         |               | (ModelGateway, AIToolPolicy,  |
-  |  AttemptRepository)         |               |  AIToolRegistry, LangGraph)   |
-  +--------------+--------------+               +---------------+---------------+
-                 |                                              |
-                 +----------------------+-----------------------+
-                                        |
-                                        v
-+-------------------------------------------------------------------------------+
-|                                DATASTORE LAYER                                |
-|  - PostgreSQL: User Accounts, AIRunLog, ArticleImportRequest, ExamAttemptLog  |
-|  - MongoDB: Canonical Articles (gold_articles), Non-SQL Migrations            |
-|  - MinIO: Raw Bronze JSON Source Objects + Manifests                          |
-|  - ChromaDB: Vector Embeddings for Semantic Search                            |
-|  - BM25: In-Memory Lexical Index for Keyword Search                           |
-+-------------------------------------------------------------------------------+
-```
+ReadAndQues is built as a modular, decoupled pair-programming-friendly system with clear separation of concerns.
 
 ---
 
-## 2. Layer Boundaries & Invariants
+## 1. Architectural Tiers
 
-To keep the codebase maintainable, clear layer boundaries are strictly enforced ([ADR-0002](file:///home/likelipop/Project/ReadandQues/docs/refactor/adr/0002-application-orchestration-boundary.md)):
+### A. Shared Contract Layer (`shared/`)
+* **Purpose**: Single source of truth for cross-boundary data models and enums.
+* **Tech**: Pure Python standard library dataclasses (`Article`, `Exam`, `Question`) and enums (`Stage`, `Status`, `AgentIntent`).
+* **Rule**: Zero heavy external dependencies (no Pydantic, no Django, no LangChain).
 
-1. **Views (`views.py`)**: Responsible *only* for HTTP handling, request validation, authentication, and response rendering. Views **never** directly invoke raw database drivers or pipeline jobs.
-2. **Application Services (`services.py`)**: Encapsulate high-level application use-cases. They call **Repositories** for CRUD operations and the **OrchestrationFacade** for multi-step background workflows.
-3. **Orchestration Engine (`service/orchestration/`)**: Executes multi-step batch or background workflows (`ingest_bronze`, `enrich_silver`, `generate_gold`, `daily_pipeline`). Pipeline jobs are domain-grouped and typed.
-4. **Shared AI Platform (`service/ai_core/`)**: Standardized runtime for LLM execution via versioned `AITool` contracts, `ModelGateway`, `AIToolPolicy` (timing, caching, token usage), and PostgreSQL `AIRunLog` ledgering.
-5. **Repositories (`service/repositories/`)**: Abstract datastore access and return typed Pydantic contracts ([ADR-0001](file:///home/likelipop/Project/ReadandQues/docs/refactor/adr/0001-data-ownership.md)).
+### B. Data Engineering Pipeline (`NewsPipeline/`)
+* **Purpose**: Automated ingestion of daily world news via RSS feeds and Trafilatura extraction.
+* **Tech**: Dagster 1.13 (`dg`), Feedparser, Trafilatura, MinIO, PyMongo.
+* **Medallion Flow**:
+  1. `bronze_article_links`: Parses RSS feeds, filters for freshness (7 days), deduplicates.
+  2. `silver_html_documents`: Crawls raw HTML using Trafilatura, extracts clean text, stores raw snapshot in MinIO.
+  3. `gold_articles`: Enriches text with AI quizzes and dynamic keywords, upserts to MongoDB `gold_articles`, and triggers vector/BM25 indexing.
 
----
+### C. AI Engine (`ai_service/`)
+* **Purpose**: Encapsulated intelligence platform for question generation, contextual explanations, and multi-agent RAG.
+* **Tech**: LangChain, LangGraph, Azure OpenAI, ChromaDB, Rank-BM25, Sentence-Transformers.
+* **Boundary**: External callers interact exclusively through [`ai_service/interface.py`](file:///home/likelipop/Project/ReadandQues/ai_service/interface.py).
 
-## 3. Data Flow & Medallion Architecture
+### D. Web Backend & API (`ReadAndQues/`)
+* **Purpose**: User authentication, reading session tracking, and REST endpoints for the client application.
+* **Tech**: Django 5.x, Django Ninja, PostgreSQL, PyMongo.
+* **Pattern**: Separation into pure read operations ([`selectors.py`](file:///home/likelipop/Project/ReadandQues/ReadAndQues/service/selectors.py)) and transactional mutations ([`services.py`](file:///home/likelipop/Project/ReadandQues/ReadAndQues/service/services.py)).
 
-ReadAndQues processes raw web content through a **Medallion Data Architecture**:
-
-```
-+------------------+        +------------------+        +------------------+
-|   BRONZE LAYER   | ---->  |   SILVER LAYER   | ---->  |    GOLD LAYER    |
-| (Raw Web Scrapes |        |  (Cleaned Text,  |        | (Canonical Schema|
-|  stored in MinIO |        |   Paragraphs,    |        |  stored in Mongo |
-|  with SHA256)    |        |   Metadata)      |        |  & Projections)  |
-+------------------+        +------------------+        +------------------+
-```
-
-- **Bronze**: Raw HTML/JSON payloads scraped from web sources, stored immutably in MinIO with SHA-256 manifest validation.
-- **Silver**: Cleansed article text, extracted metadata, and paragraph breakdowns.
-- **Gold**: Fully enriched canonical `ArticleContract` document stored in MongoDB `gold_articles` and projected into ChromaDB (vector embeddings) and BM25 (lexical index).
-
----
-
-## 4. Key Subsystems Overview
-
-| Subsystem | Folder Location | Primary Responsibility |
-|---|---|---|
-| **Data Layer** | `service/domain/`, `service/repositories/`, `database/` | Pydantic contracts, repositories, datastore lazy connections, non-SQL migrations |
-| **Orchestration** | `service/orchestration/`, `service/orchestrator.py` | Typed pipeline engine, domain jobs, background execution facade |
-| **AI Platform** | `service/ai_core/platform/`, `service/ai_core/tools/` | ModelGateway, versioned AI tools, policy wrapper, AIRunLog persistence |
-| **Grounded Q&A** | `service/ai_core/grounding/`, `service/ai_core/graphs/ask_article/` | Article chunking, scoped retrieval, exact citation verification |
-| **Web Apps** | `readspace/`, `homepage/`, `accounts/`, `service/` | Views, services, templates, authentication, REST APIs |
+### E. User Interface (`frontend/`)
+* **Purpose**: Split-screen reading and quiz practice environment.
+* **Tech**: React 18, TypeScript, Tailwind CSS, Vite.
 
 ---
 
-## 5. Next Steps for New Developers
+## 2. Key Design Decisions
 
-To get up to speed with specific subsystems, read the component guides in order:
-
-1. [Datastore & Storage Layer Guide](file:///home/likelipop/Project/ReadandQues/docs/components/01-data-layer.md)
-2. [Orchestration Engine Guide](file:///home/likelipop/Project/ReadandQues/docs/components/02-orchestration.md)
-3. [AI Platform Guide](file:///home/likelipop/Project/ReadandQues/docs/components/03-ai-platform.md)
-4. [Grounded Q&A Subsystem Guide](file:///home/likelipop/Project/ReadandQues/docs/components/04-grounding-qa.md)
-5. [Web Application Layer Guide](file:///home/likelipop/Project/ReadandQues/docs/components/05-web-applications.md)
+1. **Dynamic Keywords over Rigid Enums**: Categorical fields (`theme`/`genre`) are replaced with `keywords: list[str]`, enabling flexible discovery and open tagging.
+2. **Zero Framework Leakage in AI Layer**: Django never imports LangChain or ChromaDB directly; all AI tasks flow through `ai_service.interface`.
+3. **Dedicated Data Pipeline**: Dagster handles batch extraction, scheduling, and asset lineage independently from web requests.
+4. **Lightweight Web Tasks**: Background tasks in Django use Python daemon threads without Celery or Redis complexity.

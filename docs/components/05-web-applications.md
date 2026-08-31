@@ -1,90 +1,64 @@
-# Component Guide: Web Application Layer & Django Apps
+# Component Guide: Web Applications & REST API
 
-This document describes the presentation and web application layer, Django apps, View-to-Service decoupling, REST APIs, and template structures.
-
----
-
-## 1. Django Applications Structure
-
-ReadAndQues is divided into modular Django applications:
-
-```
-ReadAndQues/
-├── accounts/      # User authentication, profiles, star balances
-├── homepage/      # Landing page, article feed sections, global search
-├── readspace/     # Interactive reading workspace, quizzes, paraphrasing, markers
-└── service/       # Central backend domain, orchestration, AI platform, models
-```
+This document details the Django backend architecture and React frontend interface.
 
 ---
 
-## 2. View-to-Service Decoupling Pattern
+## 1. Django Backend Architecture
 
-According to [ADR-0002](file:///home/likelipop/Project/ReadandQues/docs/refactor/adr/0002-application-orchestration-boundary.md), Django view functions must not contain business logic or direct database connections. Instead, views delegate directly to application service functions:
+The backend in [`ReadAndQues/`](file:///home/likelipop/Project/ReadandQues/ReadAndQues/) follows a clean Selectors and Services pattern:
 
 ```
-[ HTTP Request ]
-       |
-       v
-  readspace/views.py (Request parsing, login check)
-       |
-       v
-  readspace/services.py (Business logic & Use case)
-       |
-       +----------------------------+
-       |                            |
-       v                            v
-  ArticleRepository           OrchestrationFacade
-  (Simple Reads/Writes)      (Multi-step Pipelines)
+                  ┌──────────────────────┐
+                  │ Django Ninja Router  │
+                  └──────────┬───────────┘
+                             │
+              ┌──────────────┴──────────────┐
+              ▼                             ▼
+    ┌──────────────────┐          ┌──────────────────┐
+    │  selectors.py    │          │   services.py    │
+    │  (Pure Reads)    │          │  (Mutations)     │
+    └─────────┬────────┘          └─────────┬────────┘
+              │                             │
+              ▼                             ▼
+    PostgreSQL / MongoDB          MongoDB / ai_service
 ```
 
-Example in [readspace/views.py](file:///home/likelipop/Project/ReadandQues/ReadAndQues/readspace/views.py):
-```python
-from readspace.services import get_article_detail
+### A. Selectors ([`service/selectors.py`](file:///home/likelipop/Project/ReadandQues/ReadAndQues/service/selectors.py))
+Pure read queries with zero side effects:
+* `list_completed_articles(keyword, date_filter, page, limit)`: Paginated article list with dynamic keyword filtering.
+* `get_article_detail(article_id)`: Fetches clean text, keywords, and exam data.
+* `get_popular_keywords(limit)`: Aggregates top trending topic tags across all articles.
+* `get_hot_news(limit)` / `get_recommendations(user)`: Homepage spotlight articles.
 
-def readspace_view(request, pk):
-    article, quiz, attempt = get_article_detail(pk, user_id=request.user.id)
-    return render(request, "readspace/readspace.html", {
-        "article": article,
-        "quiz": quiz,
-        "attempt": attempt,
-    })
-```
+### B. Services ([`service/services.py`](file:///home/likelipop/Project/ReadandQues/ReadAndQues/service/services.py))
+Transactional business mutations:
+* `import_article(url, user_id)`: Registers a URL and triggers background ingestion.
+* `submit_exam_attempt(user_id, article_id, answers, time_spent)`: Records test scores in PostgreSQL `ExamAttemptLog` and increments user stars.
+* `save_user_highlights(user_id, article_id, highlights)`: Persists interactive text markers.
+* `ask_rag_question(question, article_id)`: Queries RAG agent via `ai_service.interface`.
 
 ---
 
-## 3. Key URLs & REST APIs
+## 2. REST API Endpoints (Django Ninja)
 
-### Main Web Views
-- **`GET /`**: Homepage landing feed and curated article sections ([homepage/views.py](file:///home/likelipop/Project/ReadandQues/ReadAndQues/homepage/views.py)).
-- **`GET /readspace/<pk>/`**: Interactive reading workspace ([readspace/views.py](file:///home/likelipop/Project/ReadandQues/ReadAndQues/readspace/views.py)).
-- **`GET /readspace/all-tests/`**: User test library.
-- **`POST /readspace/import/`**: Web article import handler.
+Interactive OpenAPI documentation is hosted at `/api/docs`.
 
-### REST APIs
-- **`POST /readspace/api/ai/tool/run/`**: Generic authenticated AI tool runner (`smart_paraphrase`, `quiz_generator`, `batch_paraphrase`, `ask_article`).
-- **`POST /readspace/api/<pk>/smart_paraphrase/`**: Legacy paraphrase API wrapper.
-- **`POST /readspace/api/<pk>/save_markers/`**: Saves user highlighter marks and reading progress.
-- **`GET /readspace/api/search/keyword/?q=...`**: BM25 lexical keyword search.
-- **`GET /readspace/api/search/semantic/?q=...`**: ChromaDB vector semantic search.
-
----
-
-## 4. User Star Charges & Entitlements
-
-Article imports and AI operations consume user stars. Transactional star deductions are handled atomically via `charge_and_create_import_request` in [service/models.py](file:///home/likelipop/Project/ReadandQues/ReadAndQues/service/models.py):
-
-```python
-from service.models import charge_and_create_import_request
-
-# Deduct star & log import request atomically in PostgreSQL
-import_req = charge_and_create_import_request(user_id=request.user.id, url=article_url)
-```
+| Method | Path | Description |
+|---|---|---|
+| `GET` | `/api/homepage/` | Homepage bundle (hero news, daily vocab, recommendations, popular keywords). |
+| `GET` | `/api/articles/` | Article catalog with `keyword`, `date_filter`, `q`, `page`, `limit` params. |
+| `GET` | `/api/articles/{article_id}/` | Article reading content, quizzes, and related articles. |
+| `POST` | `/api/articles/import/` | Import external URL for reading and quiz generation. |
+| `POST` | `/api/exams/{article_id}/submit/` | Submit quiz answers and receive score evaluation. |
+| `POST` | `/api/rag/ask/` | Ask questions to the AI assistant grounded in article context. |
+| `POST` | `/api/explain/` | Explain a selected word or phrase in context. |
 
 ---
 
-## 5. UI Design & Styling Rules
+## 3. Frontend Architecture
 
-- **CSS & Aesthetics**: Uses Vanilla CSS with curated color tokens, sleek dark modes, and dynamic micro-animations.
-- **Typography**: Modern Google Fonts (e.g. Inter, Outfit, Roboto).
-- **Templates Location**: Located in `templates/` and app-specific `templates/readspace/`, `templates/homepage/`.
+The frontend in [`frontend/`](file:///home/likelipop/Project/ReadandQues/frontend/) is a modern React SPA:
+* **`features/reading/`**: Split-screen reading view, paragraph highlighter, vocabulary popover, interactive question panel.
+* **`features/discovery/`**: Homepage carousel, dynamic keyword filter chips, search modal.
+* **`features/chat/`**: Grounded AI assistant drawer with citation links.

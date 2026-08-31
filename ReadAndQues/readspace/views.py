@@ -234,12 +234,12 @@ def explain_stream_api(request, pk: str | None = None):
     if not phrase:
         return JsonResponse({"status": "error", "message": "Missing phrase"}, status=400)
 
-    from service.ai_core.graphs import stream_explained_tokens
+    from ai_service.interface import stream_explanation
 
     def event_stream():
         is_term = len(phrase.split()) <= 2
         yield f"data: {json.dumps({'type': 'metadata', 'phrase': phrase, 'is_term': is_term})}\n\n"
-        for chunk in stream_explained_tokens(phrase=phrase, paragraph_context=paragraph_context):
+        for chunk in stream_explanation(phrase=phrase, context=paragraph_context):
             payload = json.dumps({"type": "delta", "text": chunk})
             yield f"data: {payload}\n\n"
         yield "data: [DONE]\n\n"
@@ -253,7 +253,7 @@ def explain_stream_api(request, pk: str | None = None):
 @require_GET
 @api_error_handler
 def passage_proof_api(request, pk: str, idx: int):
-    from service.ai_core.grounding import get_passage_proof
+    from ai_service.interface import get_passage_proof
 
     proof = get_passage_proof(article_id=pk, question_idx=idx)
     if not proof:

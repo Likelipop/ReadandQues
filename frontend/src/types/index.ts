@@ -29,8 +29,9 @@ export interface Article {
   published_at?: string | null;
   stage?: string;
   status: string;
-  theme: string;
-  genre: string;
+  keywords?: string[];
+  theme?: string;
+  genre?: string;
   summary: string;
   original_text: string;
   cleaned_text?: string;
@@ -50,8 +51,9 @@ export interface ArticleCard {
   published_at?: string | null;
   stage?: string;
   status: string;
-  theme: string;
-  genre: string;
+  keywords?: string[];
+  theme?: string;
+  genre?: string;
   summary: string;
   word_count: number;
   has_attempted?: boolean;
@@ -87,8 +89,9 @@ export interface HomepageData {
   recommendations?: ArticleCard[];
   articles: ArticleCard[];
   total_count: number;
-  themes: string[];
-  genres: string[];
+  popular_keywords?: string[];
+  themes?: string[];
+  genres?: string[];
   nav_themes?: NavTheme[];
 }
 

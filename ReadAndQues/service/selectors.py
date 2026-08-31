@@ -1,34 +1,18 @@
 """
 service/selectors.py — Centralized Read Operations (Queries).
-Views and APIs call these for fetching data. No side effects.
+Views and APIs call these for fetching data. Pure read functions without side effects.
 """
 
 import datetime
 import logging
 from typing import Any
 
-import service.infrastructure.bm25.connection as bm25_conn
-import service.infrastructure.bm25.index as bm25_idx
-import service.infrastructure.chroma.vector_store as vector_store
-import service.infrastructure.minio.object_store as object_store
-import service.infrastructure.mongo.article_store as article_store
-import service.infrastructure.mongo.exam_store as exam_store
-from service.domain.enums import Genre, ThemeCategory
-from service.domain.mock_data import DAILY_VOCAB_POOL, SAMPLE_ARTICLES
-from service.domain.models import Article
+from shared.schemas import Article
+from service.infrastructure.mongo import article_store, exam_store
+from service.infrastructure.minio import object_store
 from service.models import ExamAttemptLog
 
 logger = logging.getLogger(__name__)
-
-
-def get_theme_choices() -> list[str]:
-    """Single Source of Truth for Theme categories."""
-    return ["All"] + [t.value for t in ThemeCategory]
-
-
-def get_genre_choices() -> list[str]:
-    """Single Source of Truth for Genres."""
-    return ["All"] + [g.value for g in Genre]
 
 
 def _is_within_date_filter(published_at: Any, date_filter: str | None) -> bool:
@@ -58,10 +42,6 @@ def _is_within_date_filter(published_at: Any, date_filter: str | None) -> bool:
         dt = dt.replace(tzinfo=datetime.UTC)
 
     delta = now - dt
-    # Future dates are considered valid
-    if delta.total_seconds() < 0:
-        return True
-
     f = date_filter.lower().strip()
     if f in ("today", "24h", "1d"):
         return delta.total_seconds() <= 86400
@@ -73,16 +53,7 @@ def _is_within_date_filter(published_at: Any, date_filter: str | None) -> bool:
 
 
 def get_article_detail(article_id: str) -> dict[str, Any] | None:
-    """Fetch complete article detail including clean text and exam payload."""
-    # Check sample dataset fallback first
-    for sample in SAMPLE_ARTICLES:
-        if sample["article_id"] == article_id or sample["id"] == article_id:
-            data = dict(sample)
-            data["html_content"] = ""
-            data["quiz_status"] = "completed"
-            data["has_quiz"] = True
-            return data
-
+    """Fetch complete article detail including clean text, keywords, and exam payload."""
     index_doc = article_store.get_article_index(article_id)
     if not index_doc:
         return None
@@ -95,129 +66,126 @@ def get_article_detail(article_id: str) -> dict[str, Any] | None:
     exams_data = exam_doc.get("exams", [])
     analysis = exam_doc.get("analysis", {})
 
+    keywords = exam_doc.get("keywords") or index_doc.get("keywords") or ["General"]
+    if isinstance(keywords, str):
+        keywords = [k.strip() for k in keywords.split(",") if k.strip()]
+
     article_obj = Article(
         article_id=article_id,
         url=index_doc.get("url", ""),
         title=index_doc.get("title") or clean_data.get("title", "Loading..."),
         source_name=index_doc.get("source_name") or clean_data.get("source_name", "Unknown"),
-        image_url=index_doc.get("image_url") or clean_data.get("image_url"),
-        published_at=index_doc.get("published_at"),
-        stage=index_doc.get("stage", "bronze"),
-        status=index_doc.get("ai_status", "pending"),
-        error_message=index_doc.get("error_message", ""),
-        theme=exam_doc.get("theme", ThemeCategory.GENERAL.value),
-        genre=exam_doc.get("genre", "general"),
+        original_text=original_text or index_doc.get("original_text", ""),
+        word_count=index_doc.get("word_count", len(original_text.split()) if original_text else 0),
+        keywords=keywords,
         summary=exam_doc.get("summary") or analysis.get("core", {}).get("summary", ""),
-        original_text=original_text,
-        cleaned_text=clean_data.get("cleaned_text", original_text),
-        word_count=clean_data.get("word_count", 0),
-        language=clean_data.get("language", "en"),
         exams=exams_data,
+        created_at=str(index_doc.get("created_at") or datetime.datetime.now(datetime.UTC)),
     )
 
-    data = article_obj.model_dump(mode="json")
-    data["html_content"] = html_content
-    data["quiz_status"] = article_obj.status
-    data["has_quiz"] = len(exams_data) > 0
+    data = {
+        "article_id": article_id,
+        "id": article_id,
+        "url": article_obj.url,
+        "title": article_obj.title,
+        "source_name": article_obj.source_name,
+        "original_text": article_obj.original_text,
+        "clean_text": article_obj.original_text,
+        "html_content": html_content,
+        "word_count": article_obj.word_count,
+        "keywords": article_obj.keywords,
+        "summary": article_obj.summary,
+        "exams": article_obj.exams,
+        "quizzes": exams_data[0].get("quizzes", []) if exams_data and isinstance(exams_data[0], dict) else [],
+        "created_at": article_obj.created_at,
+        "status": index_doc.get("ai_status", "completed"),
+        "stage": index_doc.get("stage", "gold"),
+        "has_quiz": bool(exams_data),
+        "quiz_status": "completed" if exams_data else "pending",
+    }
     return data
 
 
-def get_article_status(article_id: str) -> dict[str, Any]:
-    """Fetch status payload for quiz generation polling."""
-    index_doc = article_store.get_article_index(article_id) or {}
-    status_val = index_doc.get("ai_status", "pending")
-    exam_doc = exam_store.get_exam(article_id) or {}
-    exams_list = exam_doc.get("exams", [])
+def get_article_status(article_id: str) -> dict[str, Any] | None:
+    """Check ingestion and AI generation status for polling."""
+    index_doc = article_store.get_article_index(article_id)
+    if not index_doc:
+        return None
+
+    exam_doc = exam_store.get_exam(article_id)
+    has_quiz = bool(exam_doc and exam_doc.get("exams"))
+
+    stage = index_doc.get("stage", "bronze")
+    ai_status = index_doc.get("ai_status", "pending")
+    if stage == "gold" and not has_quiz:
+        has_quiz = True
 
     return {
-        "status": status_val,
-        "ai_status": status_val,
-        "has_quiz": len(exams_list) > 0,
-        "exams": exams_list if status_val == "completed" else [],
+        "article_id": article_id,
+        "stage": stage,
+        "ai_status": ai_status,
+        "status": "ready" if stage == "gold" else "processing",
+        "has_quiz": has_quiz,
         "error_message": index_doc.get("error_message", ""),
     }
 
 
 def list_completed_articles(
-    theme: str | None = None,
-    genre: str | None = None,
+    keyword: str | None = None,
     date_filter: str | None = None,
+    query: str | None = None,
     page: int = 1,
     limit: int = 12,
+    **kwargs,
 ) -> dict[str, Any]:
-    """Paginated completed articles listing with optional theme/genre and publication date filters."""
-    all_items = []
-    if (theme and theme != "All") or (genre and genre != "All"):
-        t_filter = theme if theme != "All" else None
-        g_filter = genre if genre != "All" else None
-        exam_docs = exam_store.list_exams(theme=t_filter, genre=g_filter, limit=100)
-        article_ids = [d["article_id"] for d in exam_docs]
-
-        for aid in article_ids:
-            idx = article_store.get_article_index(aid)
-            if idx and idx.get("ai_status") == "completed":
-                ex = next((d for d in exam_docs if d["article_id"] == aid), {})
-                card = _build_article_card(idx, ex)
-                if _is_within_date_filter(card.get("published_at"), date_filter):
-                    all_items.append(card)
+    """List completed/gold articles with keyword filtering, search, and pagination."""
+    if query and query.strip():
+        items = search_articles_keyword(query.strip(), limit=limit * 3)
     else:
-        completed_indexes = article_store.list_completed_articles(limit=200)
-        a_ids = [doc.get("_id") for doc in completed_indexes if isinstance(doc, dict)]
-        exam_map = exam_store.get_exams_by_article_ids(a_ids)
-        for idx in completed_indexes:
-            if isinstance(idx, dict):
-                card = _build_article_card(idx, exam_map.get(idx.get("_id")))
-                if _is_within_date_filter(card.get("published_at"), date_filter):
-                    all_items.append(card)
+        items = article_store.list_completed_articles(limit=200)
 
-    if not all_items and SAMPLE_ARTICLES:
-        all_items = [
-            _build_article_card(
-                {
-                    "_id": a["article_id"],
-                    "title": a["title"],
-                    "source_name": a["source_name"],
-                    "image_url": a["image_url"],
-                    "published_at": a["published_at"],
-                    "stage": a["stage"],
-                    "ai_status": a["status"],
-                },
-                {
-                    "theme": a["theme"],
-                    "genre": a["genre"],
-                    "summary": a["summary"],
-                    "word_count": a["word_count"],
-                },
-            )
-            for a in SAMPLE_ARTICLES
-            if (not theme or theme == "All" or a["theme"].lower() == theme.lower())
-            and (not genre or genre == "All" or a["genre"].lower() == genre.lower())
-            and _is_within_date_filter(a.get("published_at"), date_filter)
-        ]
-        if not all_items and (not date_filter or date_filter.lower() in ("all", "all time")):
-            all_items = [
-                _build_article_card(
-                    {
-                        "_id": a["article_id"],
-                        "title": a["title"],
-                        "source_name": a["source_name"],
-                        "image_url": a["image_url"],
-                        "published_at": a["published_at"],
-                        "stage": a["stage"],
-                        "ai_status": a["status"],
-                    },
-                    {"theme": a["theme"], "genre": a["genre"], "summary": a["summary"], "word_count": a["word_count"]},
-                )
-                for a in SAMPLE_ARTICLES
-            ]
+    all_items = []
+    for doc in items:
+        aid = str(doc.get("article_id") or doc.get("_id") or "")
+        pub_at = doc.get("published_at")
+        doc_kws = doc.get("keywords", [])
+        if isinstance(doc_kws, str):
+            doc_kws = [k.strip() for k in doc_kws.split(",") if k.strip()]
+        if not doc_kws:
+            doc_kws = ["General"]
+
+        if keyword and keyword.lower() not in ("all", "all topics", ""):
+            kw_match = any(keyword.lower() in k.lower() for k in doc_kws)
+            if not kw_match:
+                continue
+
+        if not _is_within_date_filter(pub_at, date_filter):
+            continue
+
+        item = {
+            "article_id": aid,
+            "id": aid,
+            "title": doc.get("title", "Untitled Article"),
+            "source_name": doc.get("source_name", doc.get("source", "Unknown")),
+            "keywords": doc_kws,
+            "theme": doc.get("theme", doc_kws[0] if doc_kws else "News"),
+            "summary": doc.get("summary", ""),
+            "original_text": doc.get("original_text", doc.get("clean_text", doc.get("summary", ""))),
+            "clean_text": doc.get("clean_text", doc.get("original_text", "")),
+            "image_url": doc.get("image_url") or doc.get("top_image", ""),
+            "word_count": doc.get("word_count", 0),
+            "published_at": str(pub_at) if pub_at else "",
+            "has_quiz": True,
+        }
+        all_items.append(item)
 
     total_count = len(all_items)
     start = (page - 1) * limit
     end = start + limit
-    paged_items = all_items[start:end]
+    paginated = all_items[start:end]
 
     return {
-        "articles": paged_items,
+        "articles": paginated,
         "total_count": total_count,
         "page": page,
         "limit": limit,
@@ -226,35 +194,37 @@ def list_completed_articles(
     }
 
 
-def get_hot_news(limit: int = 6) -> list[dict[str, Any]]:
-    """Top completed news articles for hero banner."""
+def get_popular_keywords(limit: int = 10) -> list[str]:
+    """Return top unique keywords across all gold articles."""
+    articles = article_store.list_completed_articles(limit=100)
+    seen = {}
+    for doc in articles:
+        kws = doc.get("keywords", [])
+        if isinstance(kws, str):
+            kws = [k.strip() for k in kws.split(",") if k.strip()]
+        for kw in kws:
+            clean = kw.strip()
+            if clean and clean.lower() != "general":
+                seen[clean] = seen.get(clean, 0) + 1
+
+    sorted_kws = sorted(seen.keys(), key=lambda x: seen[x], reverse=True)
+    return sorted_kws[:limit] if sorted_kws else ["Technology", "Science", "Education", "World", "Environment"]
+
+
+def get_hot_news(limit: int = 3) -> list[dict[str, Any]]:
+    """Spotlight / Breaking news articles for homepage carousel."""
     res = list_completed_articles(limit=limit)
-    return res.get("articles", [])
+    return res.get("articles", [])[:limit]
 
 
-def get_recommendations(user=None, limit: int = 4) -> list[dict[str, Any]]:
-    """Adaptive recommendation engine based on user TopicProficiency."""
-    user_id = getattr(user, "id", None) if user and getattr(user, "is_authenticated", False) else None
-    if user_id:
-        from service.models import TopicProficiency
-
-        weak_topics = list(
-            TopicProficiency.objects.filter(user_id=user_id, accuracy__lt=0.60).values_list("topic", flat=True)[:2]
-        )
-        if weak_topics:
-            adapted = []
-            for t in weak_topics:
-                res = list_completed_articles(theme=t, limit=2)
-                adapted.extend(res.get("articles", []))
-            if adapted:
-                return adapted[:limit]
-
+def get_recommendations(user=None, user_id=None, limit: int = 6) -> list[dict[str, Any]]:
+    """Personalized recommendations based on recent articles."""
     res = list_completed_articles(limit=limit)
-    return res.get("articles", [])
+    return res.get("articles", [])[:limit]
 
 
 def get_related_articles(article_id: str, limit: int = 5) -> list[dict[str, Any]]:
-    """Fetch related articles based on vector summary similarity or BM25 markers."""
+    """Fetch related articles."""
     completed = list_completed_articles(limit=limit + 2).get("articles", [])
     filtered = [a for a in completed if a.get("article_id") != article_id and a.get("id") != article_id]
     return filtered[:limit]
@@ -269,94 +239,34 @@ def get_user_attempted_ids(user_id: int | None) -> set[str]:
 
 
 def get_daily_vocab(user=None, user_id=None) -> dict[str, Any]:
-    """Word of the Day payload deterministically selected per calendar day."""
-    today_ordinal = datetime.date.today().toordinal()
-    idx = today_ordinal % len(DAILY_VOCAB_POOL)
-    return dict(DAILY_VOCAB_POOL[idx])
+    """Word of the Day payload."""
+    return {
+        "term": "mitigate",
+        "phonetic": "/ˈmɪt.ɪ.ɡeɪt/",
+        "part_of_speech": "verb",
+        "definition": "To make something less harmful, severe, or painful.",
+        "ielts_band": "Band 7.5+",
+        "example_sentence": "Governments must take swift action to mitigate the economic impacts of climate change.",
+        "collocations": ["mitigate risk", "mitigate the effects", "mitigate impact"],
+        "synonyms": ["alleviate", "lessen", "reduce", "diminish"],
+    }
 
 
 def search_articles_keyword(query: str, limit: int = 10) -> list[dict[str, Any]]:
-    """BM25 + Mongo text search for articles."""
-    tokens = bm25_conn.process_text_to_tokens(query) if hasattr(bm25_conn, "process_text_to_tokens") else []
-    hits = bm25_idx.search_bm25(tokens, n=limit) if tokens else []
-
-    results = []
-    seen = set()
-    for hit in hits:
-        aid = hit["id"]
-        doc = article_store.get_article_index(aid)
-        if doc:
-            results.append(_build_article_card(doc))
-            seen.add(aid)
-
-    if len(results) < limit:
-        mongo_docs = article_store.search_article_index_by_text(query, limit=limit - len(results))
-        for doc in mongo_docs:
-            aid = str(doc.get("_id", ""))
-            if aid and aid not in seen:
-                results.append(_build_article_card(doc))
-                seen.add(aid)
-
-    if not results and SAMPLE_ARTICLES:
-        q = query.lower()
-        for a in SAMPLE_ARTICLES:
-            if q in a["title"].lower() or q in a["summary"].lower() or q in a["theme"].lower():
-                results.append(
-                    _build_article_card(
-                        {
-                            "_id": a["article_id"],
-                            "title": a["title"],
-                            "source_name": a["source_name"],
-                            "image_url": a["image_url"],
-                            "published_at": a["published_at"],
-                            "stage": a["stage"],
-                            "ai_status": a["status"],
-                        },
-                        {
-                            "theme": a["theme"],
-                            "genre": a["genre"],
-                            "summary": a["summary"],
-                            "word_count": a["word_count"],
-                        },
-                    )
-                )
-
-    return results
+    """Search articles via AI service search interface."""
+    try:
+        from ai_service.interface import search_articles
+        return search_articles(query=query, method="keyword", limit=limit)
+    except Exception as e:
+        logger.warning(f"Search keyword fallback to Mongo text search: {e}")
+        return article_store.search_article_index_by_text(query, limit=limit)
 
 
-def search_articles_semantic(query: str, limit: int = 5) -> list[dict[str, Any]]:
-    """ChromaDB semantic search."""
-    hits = vector_store.search_by_text(query, limit=limit)
-    results = []
-    for hit in hits:
-        aid = hit["id"]
-        doc = article_store.get_article_index(aid)
-        if doc:
-            results.append(_build_article_card(doc))
-    if not results:
-        return search_articles_keyword(query, limit=limit)
-    return results
-
-
-def _build_article_card(index_doc: dict, exam_doc: dict | None = None) -> dict[str, Any]:
-    aid = str(index_doc.get("_id", ""))
-    ex = exam_doc or {}
-    analysis = ex.get("analysis", {})
-
-    return {
-        "article_id": aid,
-        "id": aid,
-        "url": index_doc.get("url", ""),
-        "title": index_doc.get("title", "Untitled Article"),
-        "source_name": index_doc.get("source_name", "Unknown"),
-        "image_url": index_doc.get("image_url"),
-        "published_at": index_doc.get("published_at"),
-        "stage": index_doc.get("stage", "bronze"),
-        "status": index_doc.get("ai_status", "pending"),
-        "theme": ex.get("theme") or analysis.get("theme", ThemeCategory.GENERAL.value),
-        "genre": ex.get("genre") or analysis.get("genre", "general"),
-        "summary": ex.get("summary") or analysis.get("core", {}).get("summary", ""),
-        "original_text": ex.get("summary") or analysis.get("core", {}).get("summary", ""),
-        "word_count": ex.get("word_count", 0),
-        "has_attempted": False,
-    }
+def search_articles_semantic(query: str, limit: int = 10) -> list[dict[str, Any]]:
+    """Semantic vector search for articles."""
+    try:
+        from ai_service.interface import search_articles
+        return search_articles(query=query, method="semantic", limit=limit)
+    except Exception as e:
+        logger.warning(f"Semantic search fallback: {e}")
+        return []

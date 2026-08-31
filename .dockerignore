@@ -4,6 +4,11 @@ __pycache__/
 *.pyo
 *.egg-info/
 *.egg
+# ── Ignored Project Folders ─────────────────
+NewsPipeline/
+frontend/
+evaluation/
+chroma_data/
 .venv/
 venv/
 env/
@@ -47,7 +52,5 @@ docs/
 scripts/
 *.md
 LICENSE
-Makefile
-CMakeLists.txt
 run.sh
 uv.lock

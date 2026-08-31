@@ -66,7 +66,7 @@ class ReadspaceViewsTestCase(TestCase):
             self.assertEqual(data["id"], "attempt-456")
 
     def test_passage_proof_api_not_found(self):
-        with patch("service.ai_core.grounding.get_passage_proof", return_value=None):
+        with patch("ai_service.rag.grounding.get_passage_proof", return_value=None):
             response = self.client.get(reverse("readspace:passage_proof_api", kwargs={"pk": "article-1", "idx": 0}))
             self.assertEqual(response.status_code, 404)
 

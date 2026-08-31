@@ -1,101 +1,48 @@
-# Component Guide: Grounded Q&A Ticket Subsystem
+# Component Guide: Grounding & RAG Retrieval
 
-This document explains the article-grounded Q&A ticket subsystem, stable chunking, article-scoped retrieval, and exact citation verification.
-
----
-
-## 1. Grounding Mandate & Problem Statement
-
-Standard LLM Q&A can hallucinate or bring in external web knowledge not present in the user's active reading material. The Grounded Q&A subsystem guarantees:
-
-1. **Strict Article Scoping**: Answers are generated exclusively from the active article text.
-2. **Zero Cross-Article Contamination**: Lexical retrieval is strictly scoped to the active article's chunks.
-3. **Exact Citation Verification**: Every answer must quote an exact substring from the article. Unverified answers are automatically rejected and converted to `"not_found_in_article"`.
+This document explains the multi-stage grounding and retrieval mechanisms used in ReadAndQues to ensure high precision and zero hallucinations.
 
 ---
 
-## 2. Article Chunking & Content Hashes
+## 1. Multi-Stage Hybrid Retrieval Flow
 
-Articles are partitioned into stable chunks with offset boundaries in [service/ai_core/grounding/chunking.py](file:///home/likelipop/Project/ReadandQues/ReadAndQues/service/ai_core/grounding/chunking.py):
-
-```python
-from service.ai_core.grounding import chunk_article_text
-
-chunks = chunk_article_text(article_text="Paragraph 1...\n\nParagraph 2...")
 ```
-
-Each `ArticleChunk` contains:
-- `chunk_id`: Stable identifier (e.g. `chunk_0`, `chunk_1`)
-- `text`: Paragraph text content
-- `start_offset` & `end_offset`: Exact 0-indexed character offsets within full article text
-- `content_hash`: SHA-256 checksum hex slice
+User Query: "What are the latest developments in renewable energy?"
+    │
+    ├─────────────────────────────┬─────────────────────────────┐
+    ▼                             ▼                             ▼
+[ChromaDB Vector Search]   [BM25 Okapi Search]          [Metadata Filters]
+(Semantic Embeddings)       (Lexical Token Match)        (Keywords / Article ID)
+    │                             │                             │
+    └─────────────────────────────┴─────────────────────────────┘
+                                  │
+                                  ▼
+                    [Reciprocal Rank Fusion (RRF)]
+                                  │
+                                  ▼
+                   [Cross-Encoder Reranker Node]
+                    (ms-marco-MiniLM-L-6-v2)
+                                  │
+                                  ▼
+                  [Top-5 Grounded Chunks + Quotes]
+                                  │
+                                  ▼
+                     [Grounded LLM Response]
+```
 
 ---
 
-## 3. Article-Scoped Lexical Retrieval
+## 2. Core Grounding Components
 
-Candidate chunks are retrieved strictly from the active article in [service/ai_core/grounding/retrieval.py](file:///home/likelipop/Project/ReadandQues/ReadAndQues/service/ai_core/grounding/retrieval.py):
+### A. Hierarchical Chunking ([`grounding/chunking.py`](file:///home/likelipop/Project/ReadandQues/ai_service/rag/grounding/chunking.py))
+Articles are partitioned into parent chunks (~500 words for broader context) and child chunks (~100-150 words for precise retrieval).
 
-```python
-from service.ai_core.grounding import retrieve_article_chunks
+### B. Reciprocal Rank Fusion (RRF)
+Combines semantic rank from ChromaDB and keyword rank from BM25 using standard RRF formula:
+$$	ext{RRF Score} = \sum_{s \in \{	ext{vector}, 	ext{bm25}\}} rac{1}{60 + 	ext{rank}_s}$$
 
-matched_chunks = retrieve_article_chunks(chunks=chunks, query="solar energy", top_k=3)
-```
+### C. Cross-Encoder Reranking ([`grounding/reranker.py`](file:///home/likelipop/Project/ReadandQues/ai_service/rag/grounding/reranker.py))
+Scores query-chunk pairs jointly with a transformer Cross-Encoder model to eliminate irrelevant candidates before prompting the LLM.
 
-No database vectors or global search collections are queried during single-article Q&A, guaranteeing zero cross-article leakage.
-
----
-
-## 4. LangGraph Ask-Article Workflow
-
-The Q&A workflow is executed by the stateful LangGraph workflow in [service/ai_core/graphs/ask_article/graph.py](file:///home/likelipop/Project/ReadandQues/ReadAndQues/service/ai_core/graphs/ask_article/graph.py):
-
-```
-+---------------------+        +---------------------+        +---------------------+
-| chunk_and_retrieve  | ---->  |   generate_answer   | ---->  |   verify_grounding  |
-| (Splits text and    |        | (LLM extracts answer|        | (Checks exact quote |
-|  selects top-k)     |        |  & citation quote)  |        |  in chunk text)     |
-+---------------------+        +---------------------+        +---------------------+
-```
-
-### Verification Node Behavior (`verify_grounding`):
-- If `answer == "not_found_in_article"`, passes through directly.
-- Checks whether `citation_quote` is present as an exact, case-insensitive substring within the retrieved chunk text.
-- If the quote fails validation, logs a warning and returns `answer = "not_found_in_article"` with `is_grounded = False`.
-
----
-
-## 5. API Endpoint Usage
-
-The Q&A ticket subsystem is exposed via the versioned AI tool endpoint `/api/ai/tool/run/`:
-
-```http
-POST /readspace/api/ai/tool/run/
-Content-Type: application/json
-
-{
-  "tool_name": "ask_article",
-  "version": "1.0.0",
-  "input_data": {
-    "article_text": "Solar energy is renewable...",
-    "question": "Is solar energy renewable?"
-  }
-}
-```
-
-Response:
-```json
-{
-  "run_id": "run_9f8e7d6c5b4a3210",
-  "tool_name": "ask_article",
-  "version": "1.0.0",
-  "status": "completed",
-  "output": {
-    "answer": "Yes, solar energy is a renewable resource.",
-    "citation_quote": "Solar energy is renewable",
-    "chunk_id": "chunk_0",
-    "is_grounded": true
-  },
-  "duration_ms": 142.5
-}
-```
+### D. Verbatim Passage Proof ([`grounding/passage_proof.py`](file:///home/likelipop/Project/ReadandQues/ai_service/rag/grounding/passage_proof.py))
+Matches quiz questions against original source text using fuzzy token alignment, ensuring students can inspect exact quotes.

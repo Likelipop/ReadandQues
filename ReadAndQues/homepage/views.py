@@ -12,11 +12,8 @@ class IndexView(TemplateView):
         context = super().get_context_data(**kwargs)
         user = getattr(self.request, "user", AnonymousUser())
 
-        themes = selectors.get_theme_choices()
-        genres = selectors.get_genre_choices()
-
-        selected_theme = self.request.GET.get("theme", "All")
-        selected_genre = self.request.GET.get("genre", "All")
+        popular_keywords = selectors.get_popular_keywords(limit=10)
+        selected_keyword = self.request.GET.get("keyword", "All")
 
         trending_articles = selectors.get_hot_news(limit=6)
         recommended_articles = selectors.get_recommendations(user=user, limit=4)
@@ -24,7 +21,7 @@ class IndexView(TemplateView):
 
         page_num = self.request.GET.get("page", 1)
         articles_res = selectors.list_completed_articles(
-            theme=selected_theme, genre=selected_genre, page=int(page_num) if str(page_num).isdigit() else 1, limit=12
+            keyword=selected_keyword, page=int(page_num) if str(page_num).isdigit() else 1, limit=12
         )
         paginator = Paginator(articles_res.get("articles", []), 12)
         page_obj = paginator.get_page(page_num)
@@ -34,9 +31,7 @@ class IndexView(TemplateView):
             "recommended_articles": recommended_articles,
             "daily_vocab": daily_vocab,
             "page_obj": page_obj,
-            "themes": themes,
-            "genres": genres,
-            "selected_theme": selected_theme,
-            "selected_genre": selected_genre,
+            "popular_keywords": popular_keywords,
+            "selected_keyword": selected_keyword,
         })
         return context

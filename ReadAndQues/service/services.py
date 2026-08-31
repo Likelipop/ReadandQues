@@ -12,9 +12,8 @@ import service.infrastructure.minio.object_store as object_store
 import service.infrastructure.mongo.activity_store as activity_store
 import service.infrastructure.mongo.article_store as article_store
 import service.infrastructure.mongo.exam_store as exam_store
-import service.infrastructure.mongo.pipeline_store as pipeline_store
-from service.domain.contracts import generate_article_id
-from service.domain.enums import AIStatus
+from shared.schemas import generate_article_id
+from shared.enums import Status as AIStatus
 from service.models import ExamAttemptLog, TopicProficiency
 from service.pipelines import enrich_article_only, ingest_and_enrich_article
 from service.tasks import run_in_background
@@ -100,60 +99,16 @@ def submit_exam_attempt(
     }
 
 
-def run_daily_ingestion(max_articles: int = 10) -> dict[str, Any]:
-    """Run daily RSS feed crawling & batch ingestion for Today's Brief."""
-    from service.crawler.feed_crawler import fetch_rss_feed_links
-
-    new_links = fetch_rss_feed_links(max_per_feed=5)
-    unprocessed = pipeline_store.get_unprocessed_rss_links(limit=max_articles)
-
-    processed_count = 0
-    for item in unprocessed:
-        url = item.get("link")
-        if url:
-            article_id = generate_article_id(url)
-            article_store.create_article_index(article_id=article_id, url=url, stage="bronze", ai_status="pending")
-            res = ingest_and_enrich_article(article_id=article_id, url=url)
-            if res.get("status") == "completed":
-                processed_count += 1
-            pipeline_store.mark_rss_link_extracted(url)
-
-    return {"status": "success", "crawled_count": len(new_links), "processed_count": processed_count}
-
-
 def explain_phrase(
     article_id: str,
     phrase: str,
     paragraph_context: str = "",
 ) -> dict[str, Any]:
-    """Execute the explained AI tool on a phrase within its paragraph context."""
+    """Execute contextual phrase explanation flow directly."""
     try:
-        from service.ai_core.platform import get_ai_tool
+        from ai_service.interface import explain_phrase as ai_explain
 
-        tool = get_ai_tool("explained")
-        if tool:
-            run_res = tool.run(
-                {
-                    "phrase": phrase,
-                    "paragraph_context": paragraph_context or phrase,
-                }
-            )
-            if run_res.status == "completed" and isinstance(run_res.output, dict):
-                return {
-                    "article_id": article_id,
-                    "phrase": phrase,
-                    "summary": run_res.output.get("summary", ""),
-                    "detailed_explanation": run_res.output.get("detailed_explanation", ""),
-                    "simplified_version": run_res.output.get("simplified_version", phrase),
-                    "key_terms": run_res.output.get("key_terms", []),
-                }
-    except Exception as e:
-        logger.error(f"Error using platform explained tool: {e}")
-
-    try:
-        from service.ai_core.graphs import run_explained_flow
-
-        res = run_explained_flow(phrase=phrase, paragraph_context=paragraph_context)
+        res = ai_explain(phrase=phrase, context=paragraph_context)
         return {
             "article_id": article_id,
             "phrase": phrase,
@@ -182,10 +137,10 @@ def save_user_highlights(user_id: int, article_id: str, highlighted_text: str, n
 
 def ask_rag_question(question: str, article_id: str | None = None) -> dict[str, Any]:
     try:
-        from service.ai_core.rag import execute_rag_pipeline
+        from ai_service.interface import ask_question
 
-        res = execute_rag_pipeline(question=question, article_id=article_id)
-        return res.model_dump(mode="json")
+        res = ask_question(question=question, article_id=article_id)
+        return {"status": "success", "answer": res.get("answer", ""), "citations": res.get("citations", [])}
     except Exception as e:
         logger.error(f"RAG service query failed: {e}")
         return {"status": "error", "answer": f"Error executing RAG: {str(e)}", "citations": []}

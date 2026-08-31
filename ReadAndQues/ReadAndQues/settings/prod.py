@@ -48,17 +48,13 @@ DATABASES = {
     }
 }
 
-# Production Cache: Redis backend
-REDIS_URL = os.getenv("REDIS_URL", "redis://redis:6379/0")
+# Production Cache: Local Memory Cache
 CACHES = {
     "default": {
-        "BACKEND": "django.core.cache.backends.redis.RedisCache",
-        "LOCATION": REDIS_URL,
+        "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
+        "LOCATION": "readandques-prod-cache",
     }
 }
-
-CELERY_BROKER_URL = os.getenv("CELERY_BROKER_URL", "redis://redis:6379/1")
-CELERY_RESULT_BACKEND = os.getenv("CELERY_RESULT_BACKEND", "redis://redis:6379/2")
 
 
 # Security Hardening for Production Nginx Reverse Proxy

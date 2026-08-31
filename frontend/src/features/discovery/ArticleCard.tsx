@@ -51,7 +51,13 @@ export const ArticleCard: React.FC<ArticleCardProps> = ({ article, onSelect }) =
       <div className="p-5 flex-1 flex flex-col justify-between space-y-4">
         <div className="space-y-2">
           <div className="flex items-center gap-2 text-[11px] text-slate-400 font-medium flex-wrap">
-            <span className="text-indigo-400 font-semibold">{article.theme || 'General'}</span>
+            {article.keywords && article.keywords.length > 0 ? (
+              <span className="text-indigo-400 font-semibold">
+                #{article.keywords.slice(0, 2).join(' #')}
+              </span>
+            ) : (
+              <span className="text-indigo-400 font-semibold">{article.theme || 'General'}</span>
+            )}
             <span>•</span>
             <span className="flex items-center gap-1">
               <Clock className="w-3 h-3 text-slate-500" /> {estimatedMin} min read
