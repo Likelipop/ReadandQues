@@ -1,0 +1,56 @@
+# ── Python ──────────────────────────────────
+__pycache__/
+*.py[cod]
+*.pyo
+*.egg-info/
+*.egg
+# ── Ignored Project Folders ─────────────────
+NewsPipeline/
+frontend/
+evaluation/
+chroma_data/
+.venv/
+venv/
+env/
+.eggs/
+dist/
+build/
+
+# ── Frontend ────────────────────────────────
+frontend/node_modules/
+frontend/dist/
+frontend/.vite/
+
+# ── Git & IDE ───────────────────────────────
+.git/
+.gitignore
+.github/
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# ── Docker (don't recurse) ──────────────────
+docker-compose*.yaml
+docker-compose*.yml
+Dockerfile
+
+# ── Data & Secrets ──────────────────────────
+.env
+.env.*
+!.env.example
+db.sqlite3
+*.sqlite3
+logs/
+staticfiles/
+
+# ── Misc ────────────────────────────────────
+.ruff_cache/
+.pytest_cache/
+.mypy_cache/
+docs/
+scripts/
+*.md
+LICENSE
+run.sh
+uv.lock

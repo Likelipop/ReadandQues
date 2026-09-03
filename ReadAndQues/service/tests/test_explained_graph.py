@@ -1,0 +1,28 @@
+import unittest
+
+from ai_service.quiz_generator import (
+    run_explained_flow,
+    stream_explained_tokens,
+)
+
+
+class ExplainedGraphTests(unittest.TestCase):
+    def test_run_explained_flow(self):
+        res = run_explained_flow(
+            phrase="pedagogical frameworks",
+            paragraph_context="Universities are adopting blended pedagogical frameworks.",
+        )
+        self.assertIn("phrase", res)
+        self.assertIn("summary", res)
+        self.assertIn("detailed_explanation", res)
+
+    def test_stream_explained_tokens(self):
+        tokens = list(
+            stream_explained_tokens(
+                phrase="mitigate risks",
+                paragraph_context="The strategy aimed to mitigate risks across departments.",
+            )
+        )
+        self.assertGreater(len(tokens), 0)
+        full_text = "".join(tokens)
+        self.assertIn("In Simple Words", full_text)

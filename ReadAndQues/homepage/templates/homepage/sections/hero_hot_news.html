@@ -51,7 +51,7 @@
                         </h2>
                         
                         <p class="text-slate-300 text-sm line-clamp-2 font-light leading-relaxed max-w-2xl">
-                            {{ hero_art.summary|default:hero_art.original_text|truncatewords:25 }}
+                            {{ hero_art.summary|default:hero_art.title|truncatewords:25 }}
                         </p>
                         
                         <div class="pt-2 flex items-center justify-between">
@@ -95,7 +95,7 @@
                                     {{ art.title }}
                                 </h3>
                                 <p class="text-xs text-slate-500 line-clamp-2 leading-relaxed">
-                                    {{ art.summary|default:art.original_text|truncatewords:15 }}
+                                    {{ art.summary|default:art.title|truncatewords:15 }}
                                 </p>
                             </div>
                             

@@ -6,17 +6,17 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 
 WORKDIR /app
 
-# Install system dependencies
+# Install system dependencies required for building C extensions
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
     curl \
     && rm -rf /var/lib/apt/lists/*
 
-# Install Python dependencies
+# Install Python dependencies and spaCy model wheel directly (bypasses GitHub REST API 429 limits)
 COPY requirements.txt /app/
 RUN pip install --upgrade pip && \
     pip install -r requirements.txt && \
-    python -m spacy download en_core_web_sm
+    pip install https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.8.0/en_core_web_sm-3.8.0-py3-none-any.whl
 
 # Create non-root user for security
 RUN useradd -m -u 1000 appuser && \

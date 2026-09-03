@@ -1,12 +1,16 @@
 import logging
 from contextlib import contextmanager
+
 from django.db import transaction
+
 from accounts.models import UserProfile
 
 logger = logging.getLogger(__name__)
 
+
 class StarDeductionError(Exception):
     pass
+
 
 @contextmanager
 def consume_user_star(user):
@@ -41,6 +45,6 @@ def consume_user_star(user):
                 profile.save()
         except Exception as refund_err:
             logger.error(f"Error refunding star for user {user.id} after failure: {refund_err}")
-        
+
         # Reraise the original exception
         raise e

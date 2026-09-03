@@ -1,74 +1,68 @@
 import json
-import hashlib
 import logging
-from datetime import datetime
 
 from django.contrib import messages
-from django.http import JsonResponse
-from django.shortcuts import redirect, render
-from django.views.decorators.csrf import csrf_exempt
-from django.views.decorators.cache import never_cache
 from django.contrib.auth.decorators import login_required
-from django.views.decorators.http import require_POST, require_GET, require_http_methods
 from django.core.paginator import Paginator
+from django.http import JsonResponse, StreamingHttpResponse
+from django.shortcuts import redirect, render
+from django.views.decorators.cache import never_cache
+from django.views.decorators.csrf import csrf_exempt
+from django.views.decorators.http import require_GET, require_http_methods, require_POST
 
-from .models import AttemptMongoModel
+import service.selectors as selectors
+import service.services as services
+
 from .decorators import api_error_handler, rate_limit
 from .utils import consume_user_star
-from .services import (
-    get_article_detail,
-    import_article,
-    trigger_article_quiz,
-    get_article_status_payload,
-    get_all_tests,
-    save_attempt,
-    get_smart_paraphrase,
-    search_bm25_articles,
-    search_semantic_articles,
-)
 
 logger = logging.getLogger(__name__)
 
 
-# --- Core Views ---
+# ── Core Reading Workspace Views ──────────────────────────────────────────────
+
 
 @require_GET
-@login_required(login_url='/login/')
+@login_required(login_url="/login/")
 @never_cache
 def readspace_view(request, pk):
     """Displays the article in the 3-column Reading Space layout."""
-    doc, related_articles = get_article_detail(pk)
+    doc = selectors.get_article_detail(pk)
     if not doc:
         messages.error(request, "Requested article not found!")
         return redirect("home")
 
+    related = selectors.get_related_articles(pk, limit=5)
     return render(
         request,
         "readspace/layout.html",
-        {"article": doc, "related_articles": related_articles},
+        {"article": doc, "related_articles": related},
     )
 
 
 @require_http_methods(["POST"])
-@login_required(login_url='/login/')
+@login_required(login_url="/login/")
 @rate_limit(requests=5, timeout=60)
 def import_article_view(request):
-    """
-    Validates input URL, checks rate limit, deduplicates, and kicks off AI exam pipeline.
-    """
+    """Import article URL and trigger background ingestion."""
     url = request.POST.get("url", "").strip()
     user_id = request.user.id if request.user.is_authenticated else 0
 
     with consume_user_star(request.user):
-        inserted_id, is_reused = import_article(url, user_id)
+        result = services.import_article(url, user_id)
+
+    inserted_id = result.get("article_id")
+    is_new = result.get("is_new", False)
 
     if request.user.is_authenticated:
-        from .utils import UserProfile
         from django.db import transaction
+
+        from accounts.models import UserProfile
+
         try:
             with transaction.atomic():
                 profile = UserProfile.objects.select_for_update().get(user=request.user)
-                if is_reused:
+                if not is_new:
                     profile.stars += 1
                 else:
                     profile.total_articles_imported += 1
@@ -83,62 +77,65 @@ def import_article_view(request):
 
 
 @require_POST
-@csrf_exempt
+@login_required(login_url="/login/")
 @api_error_handler
 def trigger_quiz(request, pk):
-    success = trigger_article_quiz(pk)
-    if not success:
-        return JsonResponse({"status": "error", "message": "Article not found"}, status=404)
-        
+    res = services.trigger_quiz_generation(pk)
+    if res.get("status") == "error":
+        return JsonResponse({"status": "error", "message": res.get("message")}, status=404)
     return JsonResponse({"status": "processing"})
 
 
 @require_GET
 @api_error_handler
 def article_status(request, pk):
-    payload = get_article_status_payload(pk)
-    if payload is None:
-        return JsonResponse({"status": "error", "message": "Article not found."}, status=404)
-
+    payload = selectors.get_article_status(pk)
     return JsonResponse(payload)
 
 
 @require_GET
 @never_cache
 def all_tests_view(request):
-    """Lists completed tests with category, genre, and search filtering."""
+    """Lists completed tests with theme, genre, and keyword search filters."""
     query = request.GET.get("q", "").strip()
     selected_theme = request.GET.get("theme", "All")
     selected_genre = request.GET.get("genre", "All")
     user_id = request.user.id if request.user.is_authenticated else None
 
-    try:
-        articles = get_all_tests(theme=selected_theme, genre=selected_genre, user_id=user_id, search_query=query)
-    except Exception as exc:
-        logger.exception("Error loading tests in all_tests_view: %s", exc)
-        articles = []
+    if query:
+        articles = selectors.search_articles_keyword(query, limit=50)
+    else:
+        res = selectors.list_completed_articles(theme=selected_theme, genre=selected_genre, limit=100)
+        articles = res.get("articles", [])
 
-    themes = ["All", "Economy", "Society", "Education", "Technology", "Science", "Environment", "Culture", "Health", "General"]
-    genres = ["All", "scientific", "narrative", "persuasive", "poetry", "general"]
+    attempted_ids = selectors.get_user_attempted_ids(user_id)
+    for art in articles:
+        aid = art.get("article_id") or art.get("id")
+        art["has_attempted"] = aid in attempted_ids
+
+    themes = selectors.get_theme_choices()
+    genres = selectors.get_genre_choices()
 
     paginator = Paginator(articles, 12)
     page_number = request.GET.get("page")
     page_obj = paginator.get_page(page_number)
 
-    context = {
-        "page_obj": page_obj,
-        "themes": themes,
-        "genres": genres,
-        "selected_theme": selected_theme,
-        "selected_genre": selected_genre,
-        "search_query": query,
-    }
-    return render(request, "readspace/all_tests.html", context)
+    return render(
+        request,
+        "readspace/all_tests.html",
+        {
+            "page_obj": page_obj,
+            "themes": themes,
+            "genres": genres,
+            "selected_theme": selected_theme,
+            "selected_genre": selected_genre,
+            "search_query": query,
+        },
+    )
 
 
 @require_POST
-@login_required(login_url='/login/')
-@csrf_exempt
+@login_required(login_url="/login/")
 @api_error_handler
 def submit_exam_attempt(request, pk):
     data = json.loads(request.body)
@@ -146,87 +143,171 @@ def submit_exam_attempt(request, pk):
     total_questions = data.get("total_questions", 0)
     answers = data.get("answers", {})
     highlighted_markdown = data.get("highlighted_markdown", "")
-    elapsed_time = data.get("elapsed_time", 0)
+    elapsed_time = data.get("elapsed_time") or data.get("time_taken_seconds", 0)
+    user_id = request.user.id
 
-    user_id = request.user.id if request.user.is_authenticated else 0
-
-    attempt_data = {
-        "user_id": user_id,
-        "article_id": pk,
-        "score": score,
-        "total_questions": total_questions,
-        "answers": answers,
-        "highlighted_markdown": highlighted_markdown,
-        "elapsed_time": elapsed_time,
-        "submitted_at": datetime.utcnow(),
-    }
-
-    model = AttemptMongoModel(**attempt_data)
-    model_dict = model.model_dump(by_alias=True, exclude={"id"})
-
-    inserted_id, related = save_attempt(model_dict, pk, highlighted_markdown)
-    
-    if not inserted_id:
-        return JsonResponse({"status": "error", "message": "Failed to save attempt to DB"}, status=500)
-
-    return JsonResponse({"status": "success", "id": inserted_id, "related_articles": related})
-
-
-@require_POST
-@login_required(login_url='/login/')
-@csrf_exempt
-@api_error_handler
-def smart_paraphrase_api(request, pk: str):
-    data = json.loads(request.body)
-    highlighted_text = data.get("highlighted_text", "").strip()
-    paragraph_text = data.get("paragraph_text", "").strip()
-    start_idx = data.get("start_index", 0)
-    end_idx = data.get("end_index", 0)
-
-    if not highlighted_text or not paragraph_text:
-        return JsonResponse({"status": "error", "message": "Missing text data"}, status=400)
-        
-    paragraph_hash = hashlib.md5(paragraph_text.encode('utf-8')).hexdigest()
-
-    paraphrase_data = get_smart_paraphrase(
-        pk, paragraph_hash, highlighted_text, paragraph_text, start_idx, end_idx
+    res = services.submit_exam_attempt(
+        user_id=user_id,
+        article_id=pk,
+        score=score,
+        total_questions=total_questions,
+        answers=answers,
+        highlighted_markdown=highlighted_markdown,
+        elapsed_time=elapsed_time,
     )
-    
-    if not paraphrase_data:
-        return JsonResponse({"status": "error", "message": "Failed to generate paraphrase"}, status=500)
 
-    return JsonResponse({
-        "status": "success",
-        "expanded_text": paraphrase_data.get("original_expanded_text"),
-        "paraphrased_text": paraphrase_data.get("paraphrased_text"),
-        "start_index": paraphrase_data.get("start_index"),
-        "end_index": paraphrase_data.get("end_index")
-    })
+    related = selectors.get_related_articles(pk, limit=5)
+    return JsonResponse({"status": "success", "id": res.get("attempt_id"), "related_articles": related})
 
 
 @require_POST
-@login_required(login_url='/login/')
-@csrf_exempt
+@login_required(login_url="/login/")
 @api_error_handler
 def save_markers_api(request, pk: str):
     data = json.loads(request.body)
-    highlighted_markdown = data.get("highlighted_markdown", "")
-    
-    attempt_data = {
-        "user_id": request.user.id,
-        "article_id": pk,
-        "highlighted_markdown": highlighted_markdown,
-        "submitted_at": datetime.utcnow(),
-    }
+    highlighted_markdown = data.get("highlighted_markdown") or data.get("highlights", "")
 
-    model = AttemptMongoModel(**attempt_data)
-    model_dict = model.model_dump(by_alias=True, exclude={"id"})
-    
-    inserted_id, _ = save_attempt(model_dict, pk, "")
-    
-    if inserted_id:
-        return JsonResponse({"status": "success", "id": inserted_id})
-    return JsonResponse({"status": "error", "message": "Failed to save markers to DB"}, status=500)
+    services.save_user_highlights(
+        user_id=request.user.id,
+        article_id=pk,
+        highlighted_text=highlighted_markdown,
+    )
+    return JsonResponse({"status": "success"})
+
+
+@require_POST
+@csrf_exempt
+def rag_stream_api(request):
+    """Server-Sent Events (SSE) streaming endpoint for RAG Study Buddy responses."""
+    import time
+
+    from django.http import StreamingHttpResponse
+
+    try:
+        body = json.loads(request.body.decode("utf-8"))
+    except Exception:
+        body = {}
+
+    question = body.get("question", "").strip()
+    article_id = body.get("article_id")
+
+    if not question:
+        return JsonResponse({"status": "error", "message": "Question required"}, status=400)
+
+    res = services.ask_rag_question(question=question, article_id=article_id)
+    answer_text = res.get("answer", "")
+    citations = res.get("citations", [])
+
+    def event_stream():
+        # Stream metadata first
+        yield f"data: {json.dumps({'type': 'metadata', 'citations': citations})}\n\n"
+        time.sleep(0.05)
+
+        # Stream words word-by-word (ChatGPT style)
+        words = answer_text.split(" ")
+        for i, word in enumerate(words):
+            chunk = word + (" " if i < len(words) - 1 else "")
+            payload = json.dumps({"type": "delta", "text": chunk})
+            yield f"data: {payload}\n\n"
+            time.sleep(0.02)
+
+        yield "data: [DONE]\n\n"
+
+    response = StreamingHttpResponse(event_stream(), content_type="text/event-stream")
+    response["Cache-Control"] = "no-cache"
+    response["X-Accel-Buffering"] = "no"
+    return response
+
+
+@csrf_exempt
+@require_POST
+def explain_stream_api(request, pk: str | None = None):
+    """Stream token-by-token explanation for clicked markdown phrase/sentence."""
+    try:
+        body = json.loads(request.body.decode("utf-8")) if request.body else {}
+    except Exception:
+        body = {}
+
+    phrase = body.get("phrase", "").strip()
+    paragraph_context = body.get("paragraph_context", "").strip()
+
+    if not phrase:
+        return JsonResponse({"status": "error", "message": "Missing phrase"}, status=400)
+
+    from ai_service.interface import stream_explanation
+
+    def event_stream():
+        is_term = len(phrase.split()) <= 2
+        yield f"data: {json.dumps({'type': 'metadata', 'phrase': phrase, 'is_term': is_term})}\n\n"
+        for chunk in stream_explanation(phrase=phrase, context=paragraph_context):
+            payload = json.dumps({"type": "delta", "text": chunk})
+            yield f"data: {payload}\n\n"
+        yield "data: [DONE]\n\n"
+
+    response = StreamingHttpResponse(event_stream(), content_type="text/event-stream")
+    response["Cache-Control"] = "no-cache"
+    response["X-Accel-Buffering"] = "no"
+    return response
+
+
+@csrf_exempt
+@require_POST
+def study_dock_stream_api(request):
+    """Unified SSE streaming endpoint for Left AI Study Dock (Multi-Agent LangGraph)."""
+    try:
+        body = json.loads(request.body.decode("utf-8")) if request.body else {}
+    except Exception:
+        body = {}
+
+    query = body.get("query", "").strip() or body.get("question", "").strip()
+    article_id = body.get("article_id", "").strip()
+    page_context = body.get("page_context", "homepage")
+    article_text = body.get("article_text", "")
+
+    if not query:
+        return JsonResponse({"status": "error", "message": "Query is required"}, status=400)
+
+    user_id = request.user.id if request.user.is_authenticated else None
+    thread_id = body.get("thread_id", "").strip()
+    if not thread_id:
+        if page_context == "readspace" and article_id:
+            thread_id = f"user_{user_id or 'anon'}_article_{article_id}"
+        else:
+            session_key = getattr(request.session, "session_key", None) or "sess"
+            thread_id = f"user_{user_id or 'anon'}_homepage_{session_key}"
+
+    from ai_service.interface import stream_study_dock_sync
+
+    def event_stream():
+        for event in stream_study_dock_sync(
+            query=query,
+            article_id=article_id,
+            page_context=page_context,
+            article_text=article_text,
+            thread_id=thread_id,
+            user_id=user_id,
+        ):
+            if event.get("type") == "done":
+                yield "data: [DONE]\n\n"
+            else:
+                yield f"data: {json.dumps(event)}\n\n"
+
+    response = StreamingHttpResponse(event_stream(), content_type="text/event-stream")
+    response["Cache-Control"] = "no-cache"
+    response["X-Accel-Buffering"] = "no"
+    return response
+
+
+
+@require_GET
+@api_error_handler
+def passage_proof_api(request, pk: str, idx: int):
+    from ai_service.interface import get_passage_proof
+
+    proof = get_passage_proof(article_id=pk, question_idx=idx)
+    if not proof:
+        return JsonResponse({"status": "error", "message": "Proof not found"}, status=404)
+    return JsonResponse({"status": "success", "proof": proof})
 
 
 @require_GET
@@ -235,8 +316,8 @@ def search_bm25_api(request):
     query = request.GET.get("q", "").strip()
     if not query:
         return JsonResponse({"status": "error", "message": "Missing query"}, status=400)
-        
-    results = search_bm25_articles(query)
+
+    results = selectors.search_articles_keyword(query)
     return JsonResponse({"status": "success", "results": results})
 
 
@@ -246,14 +327,14 @@ def search_semantic_api(request):
     query = request.GET.get("q", "").strip()
     if not query:
         return JsonResponse({"status": "error", "message": "Missing query"}, status=400)
-        
-    results = search_semantic_articles(query)
+
+    results = selectors.search_articles_semantic(query)
     return JsonResponse({"status": "success", "results": results})
 
 
-@csrf_exempt
 @api_error_handler
 def run_ai_tool_api(request):
+    """Generic AI Tool gateway endpoint."""
     if request.method != "POST":
         return JsonResponse({"error": "POST method required"}, status=405)
     try:
@@ -261,20 +342,27 @@ def run_ai_tool_api(request):
     except Exception:
         return JsonResponse({"error": "Invalid JSON body"}, status=400)
 
-    tool_name = body.get("tool_name")
-    version = body.get("version")
-    input_data = body.get("input_data", {})
+    question = (
+        body.get("question")
+        or (body.get("input_data", {}).get("question") if isinstance(body.get("input_data"), dict) else "")
+        or ""
+    )
+    article_id = body.get("article_id")
 
-    if not tool_name:
-        return JsonResponse({"error": "tool_name is required"}, status=400)
+    res = services.ask_rag_question(question=question, article_id=article_id)
+    answer = res.get("answer", "")
+    citations = res.get("citations", [])
+    first_quote = citations[0].get("quote", "") if citations and isinstance(citations[0], dict) else ""
 
-    from service.ai_core.platform import get_ai_tool
-    try:
-        tool = get_ai_tool(tool_name, version)
-    except KeyError as e:
-        return JsonResponse({"error": str(e)}, status=404)
-
-    user_id = request.user.id if request.user.is_authenticated else None
-    result = tool.run(input_data, user_id=user_id)
-    return JsonResponse(result.model_dump(mode="json"))
-
+    return JsonResponse(
+        {
+            "status": "success",
+            "answer": answer,
+            "citations": citations,
+            "output": {
+                "answer": answer,
+                "citation_quote": first_quote,
+                "status": "RESOLVED",
+            },
+        }
+    )

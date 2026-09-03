@@ -1,6 +1,5 @@
 import datetime
 
-from django.contrib.auth import get_user_model
 from django.contrib.auth.models import User
 from django.test import Client, TestCase, override_settings
 from django.urls import reverse
@@ -297,7 +296,7 @@ class ProfileAndStarsTests(TestCase):
 
         # Regular post attempt
         response = self.client.post(
-            reverse("import_article"), {"url": "https://vietnamnews.vn/economy/123456"}
+            reverse("readspace:import_article"), {"url": "https://vietnamnews.vn/economy/123456"}
         )
         # Should render import page with errors
         self.assertEqual(response.status_code, 200)
@@ -305,7 +304,7 @@ class ProfileAndStarsTests(TestCase):
 
         # Ajax attempt
         response = self.client.post(
-            reverse("import_article"),
+            reverse("readspace:import_article"),
             {"url": "https://vietnamnews.vn/economy/123456"},
             HTTP_X_REQUESTED_WITH="XMLHttpRequest",
         )

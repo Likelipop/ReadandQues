@@ -284,95 +284,13 @@
 
             if (target.tagName.toLowerCase() === 'mark' && target.classList.contains('user-highlight')) {
                 if (activeTool === 'eraser') {
-                    if (target.classList.contains('is-paraphrased')) {
-                        target.innerHTML = target.getAttribute('data-original-text');
-                        target.classList.remove('is-paraphrased');
-                        target.style.backgroundColor = '#fef08a';
-                        target.style.opacity = '1';
-                        saveHighlightsToStorage();
-                    } else {
-                        const parent = target.parentNode;
-                        while (target.firstChild) {
-                            parent.insertBefore(target.firstChild, target);
-                        }
-                        parent.removeChild(target);
-                        parent.normalize();
-                        saveHighlightsToStorage();
+                    const parent = target.parentNode;
+                    while (target.firstChild) {
+                        parent.insertBefore(target.firstChild, target);
                     }
-                } else {
-                    if (target.classList.contains('is-loading') || target.classList.contains('is-paraphrased')) return;
-
-                    const highlightedText = target.getAttribute('data-original-text') || target.textContent;
-                    
-                    if (!target.hasAttribute('data-original-text')) {
-                        target.setAttribute('data-original-text', highlightedText);
-                    }
-                    
-                    let pContextNode = target.closest('p, div, li');
-                    if (!pContextNode) pContextNode = target.parentNode;
-                    const paragraphText = pContextNode.textContent;
-                    
-                    let walker = tDoc.createTreeWalker(pContextNode, NodeFilter.SHOW_TEXT, null, false);
-                    let node;
-                    let startIdx = 0;
-                    while (node = walker.nextNode()) {
-                        if (node.parentNode === target || node.parentNode.closest('mark.user-highlight') === target) {
-                            break;
-                        }
-                        startIdx += node.nodeValue.length;
-                    }
-                    const endIdx = startIdx + highlightedText.length;
-
-                    const originalColor = target.style.backgroundColor;
-                    target.classList.add('is-loading');
-                    target.style.backgroundColor = '#e2e8f0'; 
-                    target.style.transition = 'all 0.5s ease-in-out';
-                    target.innerHTML = `<span class="inline-block animate-spin mr-1">⌛</span>${highlightedText}`;
-
-                    try {
-                        const res = await fetch(`/readspace/api/${getArticleId()}/smart_paraphrase/`, {
-                            method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/json',
-                                'X-CSRFToken': getCookie('csrftoken')
-                            },
-                            body: JSON.stringify({
-                                highlighted_text: highlightedText,
-                                paragraph_text: paragraphText,
-                                start_index: startIdx,
-                                end_index: endIdx
-                            })
-                        });
-                        
-                        const data = await res.json();
-                        if (data.status === 'success') {
-                            target.innerHTML = data.expanded_text;
-                            target.style.backgroundColor = '#bfdbfe'; 
-                            
-                            setTimeout(() => {
-                                target.style.opacity = '0';
-                                setTimeout(() => {
-                                    target.innerHTML = `<strong>${data.paraphrased_text}</strong>`;
-                                    target.style.backgroundColor = '#dcfce7'; 
-                                    target.style.opacity = '1';
-                                    
-                                    target.classList.remove('is-loading');
-                                    target.classList.add('is-paraphrased');
-                                    saveHighlightsToStorage();
-                                }, 300);
-                            }, 1000); 
-                        } else {
-                            target.innerHTML = highlightedText;
-                            target.style.backgroundColor = originalColor;
-                            target.classList.remove('is-loading');
-                            alert("Failed to paraphrase: " + data.message);
-                        }
-                    } catch (err) {
-                        console.error(err);
-                        target.innerHTML = highlightedText;
-                        target.style.backgroundColor = originalColor;
-                        target.classList.remove('is-loading');
-                    }
+                    parent.removeChild(target);
+                    parent.normalize();
+                    saveHighlightsToStorage();
                 }
             }
         });
@@ -633,7 +551,7 @@
                         quizPollDone = true;
                         quizPollTimeout = null;
                         renderQuizzesDynamically(data.exams);
-                    } else if (data.quiz_status === 'failed') {
+                    } else if (data.status === 'failed' || data.status === 'error' || data.ai_status === 'failed' || data.ai_status === 'error' || data.quiz_status === 'failed') {
                         quizPollDone = true;
                         quizPollTimeout = null;
                         const proc = document.getElementById('processing-right');
@@ -859,6 +777,7 @@
                         score: correctCount,
                         total_questions: totalQuestions,
                         answers: examState.answers,
+                        elapsed_time: elapsedTime,
                         time_taken_seconds: elapsedTime,
                         highlighted_markdown: highlightedMarkdown
                     })
@@ -1161,20 +1080,23 @@
             const data = await response.json();
             
             let finalTicket;
-            if (data.status === "completed" && data.output) {
+            if (data.status === "success" || data.status === "completed") {
+                const answerText = data.answer || (data.output && data.output.answer) || "Answer processed.";
+                const citationQuote = (data.citations && data.citations[0] && data.citations[0].quote) || 
+                                      (data.output && data.output.citation_quote) || "";
                 finalTicket = {
-                    ticket_id: data.output.ticket_id || pendingTicket.ticket_id,
+                    ticket_id: (data.output && data.output.ticket_id) || pendingTicket.ticket_id,
                     question: question,
-                    answer: data.output.answer || "Answer processed.",
-                    citation_quote: data.output.citation_quote || "",
-                    status: data.output.status || "RESOLVED",
-                    timestamp: data.output.timestamp || pendingTicket.timestamp,
+                    answer: answerText,
+                    citation_quote: citationQuote,
+                    status: "RESOLVED",
+                    timestamp: (data.output && data.output.timestamp) || pendingTicket.timestamp,
                 };
             } else {
                 finalTicket = {
                     ticket_id: pendingTicket.ticket_id,
                     question: question,
-                    answer: data.error || "Failed to process ticket.",
+                    answer: data.error || data.message || "Failed to process ticket.",
                     citation_quote: "",
                     status: "ERROR",
                     timestamp: pendingTicket.timestamp,
