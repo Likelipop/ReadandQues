@@ -67,7 +67,7 @@ def ask_question(question: str, article_id: str | None = None) -> dict[str, Any]
     Returns:
         dict with keys: answer (markdown string), citations (list of dicts).
     """
-    from ai_service.rag.pipeline import execute_rag_pipeline
+    from ai_service.rag import execute_rag_pipeline
     result = execute_rag_pipeline(question=question, article_id=article_id)
     return {
         "answer": result.answer,
@@ -166,7 +166,7 @@ def get_passage_proof(article_id: str, question_idx: int) -> dict[str, Any] | No
     Returns:
         dict with proof data or None if not found.
     """
-    from ai_service.rag.grounding.passage_proof import get_passage_proof as _get_proof
+    from ai_service.rag.grounding import get_passage_proof as _get_proof
     return _get_proof(article_id=article_id, question_idx=question_idx)
 
 

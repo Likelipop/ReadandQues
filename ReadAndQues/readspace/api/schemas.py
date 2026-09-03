@@ -167,6 +167,7 @@ class HomepageDataOut(Schema):
     articles: list[ArticleCardOut]
     total_count: int
     popular_keywords: list[str] = []
+    themes: list[str] = []
 
 
 # ── Authentication Schemas ────────────────────────────────────────────────────

@@ -129,14 +129,19 @@ def get_homepage_data(request: HttpRequest):
         {"id": a.get("article_id") or a.get("id"), "title": a.get("title")} for a in trending_articles[:5]
     ]
 
+    daily_vocab = selectors.get_daily_vocab(user=user, user_id=user_id)
+    themes = selectors.get_theme_choices()
+
     return {
         "status": "success",
         "hero_articles": hero_items,
         "trending_topics": trending_topics,
+        "daily_vocab": daily_vocab,
         "recommended_articles": rec_items,
         "articles": grid_items,
         "total_count": all_tests_res.get("total_count", len(grid_items)),
         "popular_keywords": popular_keywords,
+        "themes": themes,
     }
 
 
