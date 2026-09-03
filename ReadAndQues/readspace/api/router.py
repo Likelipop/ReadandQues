@@ -22,6 +22,7 @@ import service.services as services
 from accounts.emails import send_verification_email
 from accounts.models import EmailVerification, UserProfile
 from ai_service.interface import get_passage_proof
+from service.dictionary_service import lookup_word
 from shared.enums import ThemeCategory
 
 from .schemas import (
@@ -34,6 +35,7 @@ from .schemas import (
     AuthResponseOut,
     ChangePasswordIn,
     DailyVocabOut,
+    DictionaryLookupOut,
     ExamSubmitIn,
     ExamSubmitOut,
     ExplainPhraseIn,
@@ -96,7 +98,7 @@ def _extract_user_profile(user: User) -> UserProfileOut:
 
 @router.get("/homepage/", response=HomepageDataOut, summary="Get Homepage Bundle")
 def get_homepage_data(request: HttpRequest):
-    """Returns complete bundle of hero news, daily vocab, recommendations, and test catalog."""
+    """Returns complete bundle of hero news, recommendations, and test catalog."""
     user = getattr(request, "user", None)
     is_auth = user and user.is_authenticated
     user_id = user.id if is_auth else None
@@ -104,7 +106,6 @@ def get_homepage_data(request: HttpRequest):
     popular_keywords = selectors.get_popular_keywords(limit=10)
     trending_articles = selectors.get_hot_news(limit=6)
     recommended_articles = selectors.get_recommendations(user=user, limit=4)
-    daily_vocab_data = selectors.get_daily_vocab(user_id=user_id)
 
     all_tests_res = selectors.list_completed_articles(limit=12)
     all_articles = all_tests_res.get("articles", [])
@@ -132,7 +133,6 @@ def get_homepage_data(request: HttpRequest):
         "status": "success",
         "hero_articles": hero_items,
         "trending_topics": trending_topics,
-        "daily_vocab": DailyVocabOut(**daily_vocab_data),
         "recommended_articles": rec_items,
         "articles": grid_items,
         "total_count": all_tests_res.get("total_count", len(grid_items)),
@@ -370,6 +370,15 @@ def run_ai_tool(request: HttpRequest, data: GenericAiToolIn):
     if not question.strip():
         raise HttpError(400, "Missing question in request")
     res = services.ask_rag_question(question=question, article_id=data.article_id)
+    return res
+
+
+@router.get("/dictionary/lookup/", response=DictionaryLookupOut, summary="Dictionary Lookup")
+def dictionary_lookup_endpoint(request: HttpRequest, word: str):
+    """Look up word definitions, phonetics, parts of speech, and synonyms using lightweight lexicon."""
+    if not word or not word.strip():
+        raise HttpError(400, "Word parameter is required")
+    res = lookup_word(word.strip())
     return res
 
 

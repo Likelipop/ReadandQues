@@ -13,6 +13,7 @@ services:
       POSTGRES_PASSWORD: ${DB_PASSWORD:-mypassword}
     volumes:
       - postgres_data:/var/lib/postgresql/data
+      - ./postgres/init-dagster.sql:/docker-entrypoint-initdb.d/init-dagster.sql:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-myuser} -d ${DB_NAME:-readandques}"]
       interval: 10s
@@ -164,6 +165,119 @@ services:
       ME_CONFIG_BASICAUTH_PASSWORD: ${MONGO_INITDB_ROOT_PASSWORD:-changeme}
     depends_on:
       mongo:
+        condition: service_healthy
+
+  dagster-user-code:
+    build:
+      context: ./NewsPipeline
+      dockerfile: Dockerfile.user_code
+    container_name: dagster_code_server
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      PYTHONPATH: /app/src:/app
+      MONGO_URI: mongodb://${MONGO_INITDB_ROOT_USERNAME:-admin}:${MONGO_INITDB_ROOT_PASSWORD:-changeme}@mongo:27017/${MONGO_INITDB_DATABASE:-articlesDB}?authSource=admin
+      MINIO_ENDPOINT: minio:9000
+      CHROMA_HOST: chromadb
+      CHROMA_PORT: 8000
+      DB_HOST: postgres
+      DB_NAME: readandques
+      DAGSTER_DB: dagster_db
+      DB_USER: ${DB_USER:-myuser}
+      DB_PASSWORD: ${DB_PASSWORD:-mypassword}
+      DAGSTER_GRPC_TIMEOUT_SECONDS: 180
+      TOKENIZERS_PARALLELISM: "false"
+      OMP_NUM_THREADS: "1"
+      MKL_NUM_THREADS: "1"
+      OPENBLAS_NUM_THREADS: "1"
+    command:
+      - dagster
+      - api
+      - grpc
+      - -h
+      - "0.0.0.0"
+      - -p
+      - "4000"
+      - -m
+      - NewsPipeline.definitions
+    depends_on:
+      postgres:
+        condition: service_healthy
+      mongo:
+        condition: service_healthy
+      chromadb:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "dagster", "api", "grpc-health-check", "-p", "4000"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+    ports:
+      - "4000:4000"
+    volumes:
+      - ./NewsPipeline:/app
+
+  dagster-webserver:
+    build:
+      context: ./NewsPipeline
+      dockerfile: Dockerfile.dagster
+    container_name: dagster_web_ui
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      DAGSTER_HOME: /opt/dagster/dagster_home/
+      DB_HOST: postgres
+      DB_USER: ${DB_USER:-myuser}
+      DB_PASSWORD: ${DB_PASSWORD:-mypassword}
+      DAGSTER_DB: dagster_db
+      DAGSTER_GRPC_TIMEOUT_SECONDS: 180
+    entrypoint:
+      - dagster-webserver
+      - -h
+      - "0.0.0.0"
+      - -p
+      - "3000"
+      - -w
+      - /opt/dagster/dagster_home/workspace.yaml
+    ports:
+      - "3001:3000"
+    volumes:
+      - ./NewsPipeline/dagster_home:/opt/dagster/dagster_home
+    depends_on:
+      postgres:
+        condition: service_healthy
+      dagster-user-code:
+        condition: service_healthy
+
+  dagster-daemon:
+    build:
+      context: ./NewsPipeline
+      dockerfile: Dockerfile.dagster
+    container_name: dagster_daemon_service
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      DAGSTER_HOME: /opt/dagster/dagster_home/
+      DB_HOST: postgres
+      DB_USER: ${DB_USER:-myuser}
+      DB_PASSWORD: ${DB_PASSWORD:-mypassword}
+      DAGSTER_DB: dagster_db
+      DAGSTER_GRPC_TIMEOUT_SECONDS: 180
+    entrypoint:
+      - dagster-daemon
+      - run
+    volumes:
+      - ./NewsPipeline/dagster_home:/opt/dagster/dagster_home
+    depends_on:
+      postgres:
+        condition: service_healthy
+      dagster-user-code:
         condition: service_healthy
 
 volumes:

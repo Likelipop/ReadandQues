@@ -48,9 +48,6 @@ export const Navbar: React.FC<NavbarProps> = ({
               <span className="font-extrabold text-base tracking-tight text-white">
                 READ<span className="text-indigo-400">QUES</span>
               </span>
-              <span className="text-[9px] font-extrabold uppercase px-1.5 py-0.5 rounded-md bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">
-                AI PRO
-              </span>
             </div>
             <span className="text-[10px] text-slate-400 font-medium tracking-wide">
               Academic Reading Engine

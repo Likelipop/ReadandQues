@@ -5,6 +5,7 @@ ai_service/rag/search/bm25_index.py — Lexical Search & Text Processing with BM
 import logging
 import os
 import re
+
 import spacy
 from pymongo import MongoClient
 from rank_bm25 import BM25Okapi

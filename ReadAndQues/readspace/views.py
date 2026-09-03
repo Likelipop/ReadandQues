@@ -250,6 +250,55 @@ def explain_stream_api(request, pk: str | None = None):
     return response
 
 
+@csrf_exempt
+@require_POST
+def study_dock_stream_api(request):
+    """Unified SSE streaming endpoint for Left AI Study Dock (Multi-Agent LangGraph)."""
+    try:
+        body = json.loads(request.body.decode("utf-8")) if request.body else {}
+    except Exception:
+        body = {}
+
+    query = body.get("query", "").strip() or body.get("question", "").strip()
+    article_id = body.get("article_id", "").strip()
+    page_context = body.get("page_context", "homepage")
+    article_text = body.get("article_text", "")
+
+    if not query:
+        return JsonResponse({"status": "error", "message": "Query is required"}, status=400)
+
+    user_id = request.user.id if request.user.is_authenticated else None
+    thread_id = body.get("thread_id", "").strip()
+    if not thread_id:
+        if page_context == "readspace" and article_id:
+            thread_id = f"user_{user_id or 'anon'}_article_{article_id}"
+        else:
+            session_key = getattr(request.session, "session_key", None) or "sess"
+            thread_id = f"user_{user_id or 'anon'}_homepage_{session_key}"
+
+    from ai_service.interface import stream_study_dock_sync
+
+    def event_stream():
+        for event in stream_study_dock_sync(
+            query=query,
+            article_id=article_id,
+            page_context=page_context,
+            article_text=article_text,
+            thread_id=thread_id,
+            user_id=user_id,
+        ):
+            if event.get("type") == "done":
+                yield "data: [DONE]\n\n"
+            else:
+                yield f"data: {json.dumps(event)}\n\n"
+
+    response = StreamingHttpResponse(event_stream(), content_type="text/event-stream")
+    response["Cache-Control"] = "no-cache"
+    response["X-Accel-Buffering"] = "no"
+    return response
+
+
+
 @require_GET
 @api_error_handler
 def passage_proof_api(request, pk: str, idx: int):

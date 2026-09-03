@@ -28,14 +28,14 @@ jobs:
 
       - name: Run Ruff Linter
         run: |
-          ruff check ReadAndQues/
+          ruff check ReadAndQues/ ai_service/
 
       - name: Run Pytest Test Suite
         env:
           DJANGO_SETTINGS_MODULE: ReadAndQues.settings.dev
           SECRET_KEY: ci-test-key-for-github-actions-readandques
         run: |
-          pytest ReadAndQues/readspace/tests ReadAndQues/accounts/tests ReadAndQues/service/tests/test_ai_platform.py
+          pytest ReadAndQues/readspace/tests ReadAndQues/accounts/tests ReadAndQues/service/tests/test_ai_functional_suite.py ai_service/agents/tests
 
   frontend-test-and-build:
     name: Frontend Tests & Production Build

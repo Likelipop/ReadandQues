@@ -1,18 +1,16 @@
 import React, { useRef, useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import {
-  Sparkles,
   BookOpen,
   Clock,
-  Loader2,
   Highlighter,
+  Eraser,
   Copy,
   Check,
-  RotateCcw,
 } from 'lucide-react';
 import { Article } from '../../types';
 import { useHighlighter, HIGHLIGHT_THEMES } from '../../hooks/useHighlighter';
 import { useWorkspace, HighlightColor } from '../../store';
-import { api } from '../../api/client';
 
 export interface ArticleReaderProps {
   article: Article;
@@ -45,7 +43,7 @@ export const ArticleReader: React.FC<ArticleReaderProps> = ({
   } = useWorkspace();
 
   const articleId = article.id || article.article_id || '';
-  const { highlightSelection } = useHighlighter(articleId, contentRef);
+  const { highlightSelection, eraseSelection } = useHighlighter(articleId, contentRef);
 
   const formattedDate = article.published_at
     ? new Intl.DateTimeFormat('en-US', {
@@ -85,10 +83,10 @@ export const ArticleReader: React.FC<ArticleReaderProps> = ({
       if (text.length >= 2) {
         const rect = range.getBoundingClientRect();
         if (rect.width === 0 && rect.height === 0) return;
-        setPopoverPos({
-          x: Math.max(20, Math.min(window.innerWidth - 20, rect.left + rect.width / 2)),
-          y: Math.max(10, rect.top - 10),
-        });
+        // Viewport-based calculation with boundary safety
+        const x = Math.max(100, Math.min(window.innerWidth - 100, rect.left + rect.width / 2));
+        const y = Math.max(50, rect.top - 10);
+        setPopoverPos({ x, y });
         setSelectedText(text);
       } else {
         setPopoverPos(null);
@@ -100,75 +98,33 @@ export const ArticleReader: React.FC<ArticleReaderProps> = ({
     return () => document.removeEventListener('selectionchange', handleSelection);
   }, [activeTool]);
 
-  // Explain a sentence/phrase in-place in the paragraph DOM with Smart Ink
-  const explainSentenceInPlace = async (
-    sentenceKey: string,
-    sentenceText: string,
-    paragraphText: string
-  ) => {
-    const cleanSentence = sentenceText.trim();
-    if (!cleanSentence || loadingSentences[sentenceKey]) return;
-
-    setLoadingSentences((prev) => ({ ...prev, [sentenceKey]: true }));
-    if (onShowToast) {
-      onShowToast('✨ Explaining with Smart Ink...', 'info');
-    }
-
-    try {
-      const res = await api.articles.explain(articleId, {
-        phrase: cleanSentence,
-        paragraph_context: paragraphText,
-      });
-
-      const explanation =
-        res.detailed_explanation ||
-        res.summary ||
-        res.simplified_version ||
-        cleanSentence;
-
-      setSimplifiedSentences((prev) => ({
-        ...prev,
-        [sentenceKey]: explanation,
-      }));
-
-      if (onShowToast) {
-        onShowToast('Contextual explanation generated!', 'success');
-      }
-    } catch {
-      // Fallback explanation if offline
-      setSimplifiedSentences((prev) => ({
-        ...prev,
-        [sentenceKey]: `💡 Explanation: ${cleanSentence}`,
-      }));
-      if (onShowToast) {
-        onShowToast('Contextual explanation (offline)', 'info');
-      }
-    } finally {
-      setLoadingSentences((prev) => ({ ...prev, [sentenceKey]: false }));
-      setPopoverPos(null);
-      setSelectedText(null);
-    }
-  };
-
-  // Revert a simplified sentence back to original
-  const restoreSentence = (sentenceKey: string, e?: React.MouseEvent) => {
-    if (e) e.stopPropagation();
-    setSimplifiedSentences((prev) => {
-      const next = { ...prev };
-      delete next[sentenceKey];
-      return next;
-    });
-    if (onShowToast) {
-      onShowToast('Restored original sentence', 'info');
-    }
-  };
-
-  // Split text into paragraphs
+  // Split text into paragraphs and blocks (supporting both double and single newlines)
   const rawText = article.original_text || article.cleaned_text || article.summary || '';
-  const paragraphs = rawText
+  const initialBlocks = rawText
     .split(/\n\s*\n/)
     .map((p) => p.trim())
     .filter((p) => p.length > 0);
+
+  // Fallback to single newline split if text wasn't double-newline formatted
+  const rawBlocks =
+    initialBlocks.length <= 1 && rawText.includes('\n')
+      ? rawText
+          .split(/\n+/)
+          .map((p) => p.trim())
+          .filter((p) => p.length > 0)
+      : initialBlocks;
+
+  // Filter out leading title heading if redundant with header h1
+  const paragraphs = rawBlocks.filter((block, idx) => {
+    if (idx === 0) {
+      const cleanBlock = block.replace(/^[#\s]+/, '').trim().toLowerCase();
+      const cleanTitle = (article.title || '').trim().toLowerCase();
+      if (cleanBlock && cleanTitle && (cleanBlock === cleanTitle || cleanBlock.startsWith(cleanTitle))) {
+        return false;
+      }
+    }
+    return true;
+  });
 
   // 1-Click Sentence / Word interaction on Markdown
   const handleSentenceClick = (
@@ -213,51 +169,10 @@ export const ArticleReader: React.FC<ArticleReaderProps> = ({
       return;
     }
 
-    // 2. Eraser Mode: If clicked sentence is simplified, revert it!
-    if (activeTool === 'eraser') {
-      restoreSentence(sentenceKey, e);
-      return;
-    }
-
-    // 3. Marker Mode: Handled by useHighlighter
+    // 2. Marker Mode: Handled by useHighlighter
     if (activeTool === 'marker') {
       return;
     }
-
-    // 4. Smart Ink Mode: In-Place Contextual Explanation!
-    if (activeTool === 'smart_ink') {
-      if (simplifiedSentences[sentenceKey]) {
-        return;
-      }
-      explainSentenceInPlace(sentenceKey, sentenceText, paragraphText);
-    }
-  };
-
-  // Trigger Smart Ink explanation from HUD
-  const handleHudSmartInk = () => {
-    if (!selectedText) return;
-
-    let targetKey: string | null = null;
-    let targetSentence = selectedText;
-    let targetParagraph = selectedText;
-
-    for (let pIdx = 0; pIdx < paragraphs.length; pIdx++) {
-      const p = paragraphs[pIdx];
-      const sents = p.match(/[^.!?]+[.!?]+(\s+|$)|[^.!?]+$/g) || [p];
-      for (let sIdx = 0; sIdx < sents.length; sIdx++) {
-        const s = sents[sIdx];
-        if (s.includes(selectedText) || selectedText.includes(s.trim())) {
-          targetKey = `p${pIdx}_s${sIdx}`;
-          targetSentence = s;
-          targetParagraph = p;
-          break;
-        }
-      }
-      if (targetKey) break;
-    }
-
-    const key = targetKey || `p0_s0`;
-    explainSentenceInPlace(key, targetSentence, targetParagraph);
   };
 
   // Trigger Dictionary lookup from selection HUD
@@ -275,6 +190,18 @@ export const ArticleReader: React.FC<ArticleReaderProps> = ({
   // Trigger Highlight from selection HUD
   const handleMarkSelection = (color?: HighlightColor) => {
     highlightSelection(color || highlightColor);
+    setPopoverPos(null);
+    setSelectedText(null);
+  };
+
+  // Trigger Erase / Remove highlight from selection HUD
+  const handleEraseSelection = () => {
+    const success = eraseSelection();
+    if (success) {
+      if (onShowToast) onShowToast('Highlight removed', 'info');
+    } else {
+      if (onShowToast) onShowToast('No highlight in selected text to remove', 'info');
+    }
     setPopoverPos(null);
     setSelectedText(null);
   };
@@ -330,13 +257,6 @@ export const ArticleReader: React.FC<ArticleReaderProps> = ({
         return;
       }
 
-      // I: Smart Ink tool
-      if (key === 'i' && !e.metaKey && !e.ctrlKey) {
-        e.preventDefault();
-        setActiveTool(activeTool === 'smart_ink' ? null : 'smart_ink');
-        return;
-      }
-
       // D: Dictionary tool
       if (key === 'd' && !e.metaKey && !e.ctrlKey) {
         e.preventDefault();
@@ -379,7 +299,6 @@ export const ArticleReader: React.FC<ArticleReaderProps> = ({
   }, [activeTool, highlightColor, onToggleQuiz, setActiveTool, setHighlightColor, toggleZenMode]);
 
   const isSingleWord = selectedText ? selectedText.trim().split(/\s+/).length <= 2 : false;
-  const isAnySentenceLoading = Object.values(loadingSentences).some(Boolean);
 
   return (
     <article className="glass-card p-6 sm:p-10 space-y-8 relative">
@@ -420,13 +339,52 @@ export const ArticleReader: React.FC<ArticleReaderProps> = ({
             ? 'cursor-text'
             : activeTool === 'eraser'
             ? 'cursor-crosshair'
-            : activeTool === 'smart_ink'
-            ? 'cursor-pointer'
             : 'cursor-auto'
         }`}
       >
         {paragraphs.map((p, idx) => {
-          // Split paragraph into sentences for interaction
+          const isH1 = p.startsWith('# ') && !p.startsWith('## ');
+          const isH2 = p.startsWith('## ') && !p.startsWith('### ');
+          const isH3 = p.startsWith('### ');
+          const isHeading = isH1 || isH2 || isH3;
+
+          if (isHeading) {
+            const headingText = p.replace(/^[#\s]+/, '').trim();
+            const headingKey = `h${idx}_s0`;
+            return (
+              <div
+                key={idx}
+                id={`heading-${idx}`}
+                className="relative pt-4 pb-1 border-b border-white/10 scroll-mt-24"
+              >
+                <h2
+                  className={`${
+                    isH1 || isH2
+                      ? 'text-lg sm:text-xl font-bold text-cyan-300'
+                      : 'text-base sm:text-lg font-semibold text-cyan-200'
+                  } tracking-tight leading-snug`}
+                >
+                  <span
+                    data-sentence-key={headingKey}
+                    onClick={(e) => handleSentenceClick(headingKey, headingText, p, e)}
+                    title={
+                      activeTool === 'dictionary'
+                        ? 'Click word to look up in Dictionary'
+                        : undefined
+                    }
+                    className={`rounded px-0.5 transition-all duration-150 inline ${
+                      activeTool === 'dictionary'
+                        ? 'hover:bg-cyan-500/20 hover:text-white cursor-help'
+                        : ''
+                    }`}
+                  >
+                    {headingText}
+                  </span>
+                </h2>
+              </div>
+            );
+          }
+
           const sentences = p.match(/[^.!?]+[.!?]+(\s+|$)|[^.!?]+$/g) || [p];
 
           return (
@@ -441,57 +399,6 @@ export const ArticleReader: React.FC<ArticleReaderProps> = ({
               <p className="flex-1 text-slate-200 leading-[1.85]">
                 {sentences.map((sent, sIdx) => {
                   const sentenceKey = `p${idx}_s${sIdx}`;
-                  const isLoading = loadingSentences[sentenceKey];
-                  const isExplained = !!simplifiedSentences[sentenceKey];
-                  const displayedText = simplifiedSentences[sentenceKey] || sent;
-
-                  if (isLoading) {
-                    return (
-                      <span
-                        key={sIdx}
-                        className="inline-flex items-center gap-1.5 bg-indigo-500/20 text-cyan-200 border border-indigo-500/40 rounded px-2 py-0.5 my-0.5 animate-pulse text-xs font-mono select-none"
-                      >
-                        <Loader2 className="w-3.5 h-3.5 animate-spin text-cyan-300" />
-                        <span>[⏳ Explaining sentence...]</span>
-                      </span>
-                    );
-                  }
-
-                  if (isExplained) {
-                    return (
-                      <span
-                        key={sIdx}
-                        data-sentence-key={sentenceKey}
-                        onClick={(e) => handleSentenceClick(sentenceKey, sent, p, e)}
-                        className={`inline-smart-ink group/ink relative inline-block transition-all duration-200 my-0.5 rounded px-1.5 py-0.5 bg-emerald-500/15 text-emerald-100 border-b border-emerald-400/50 ${
-                          activeTool === 'eraser'
-                            ? 'hover:bg-rose-500/20 hover:text-rose-200 hover:line-through cursor-crosshair ring-1 ring-rose-400/50'
-                            : activeTool === 'dictionary'
-                            ? 'cursor-help'
-                            : 'cursor-default'
-                        }`}
-                      >
-                        <span className="font-medium">{displayedText}</span>
-
-                        {/* Inline 💡 Explained Badge */}
-                        <span className="inline-flex items-center gap-0.5 ml-1.5 text-[10px] font-black uppercase tracking-wider text-emerald-300 bg-emerald-500/20 border border-emerald-500/30 rounded px-1.5 py-0.5 select-none align-middle">
-                          💡 Explained
-                        </span>
-
-                        {/* Quick Restore ↺ Original Button */}
-                        <button
-                          type="button"
-                          onClick={(e) => restoreSentence(sentenceKey, e)}
-                          title="Restore original sentence"
-                          aria-label="Restore original sentence"
-                          className="inline-flex items-center gap-0.5 ml-1 text-[10px] font-bold text-slate-300 hover:text-white bg-slate-800/80 hover:bg-slate-700/80 border border-white/10 rounded px-1.5 py-0.5 cursor-pointer transition select-none align-middle"
-                        >
-                          <RotateCcw className="w-2.5 h-2.5" />
-                          <span>Original</span>
-                        </button>
-                      </span>
-                    );
-                  }
 
                   return (
                     <span
@@ -499,16 +406,12 @@ export const ArticleReader: React.FC<ArticleReaderProps> = ({
                       data-sentence-key={sentenceKey}
                       onClick={(e) => handleSentenceClick(sentenceKey, sent, p, e)}
                       title={
-                        activeTool === 'smart_ink'
-                          ? 'Click to explain sentence in-place'
-                          : activeTool === 'dictionary'
-                          ? 'Click word to look up in WordNet Dictionary'
+                        activeTool === 'dictionary'
+                          ? 'Click word to look up in Dictionary'
                           : undefined
                       }
                       className={`rounded px-0.5 transition-all duration-150 inline ${
-                        activeTool === 'smart_ink'
-                          ? 'hover:bg-purple-500/20 hover:text-white cursor-pointer'
-                          : activeTool === 'dictionary'
+                        activeTool === 'dictionary'
                           ? 'hover:bg-cyan-500/20 hover:text-white cursor-help'
                           : ''
                       }`}
@@ -523,83 +426,83 @@ export const ArticleReader: React.FC<ArticleReaderProps> = ({
         })}
       </div>
 
-      {/* Contextual Selection Action HUD Popover */}
-      {popoverPos && selectedText && (
-        <div
-          role="toolbar"
-          aria-label="Selection Actions HUD"
-          style={{
-            position: 'fixed',
-            left: `${popoverPos.x}px`,
-            top: `${popoverPos.y}px`,
-            transform: 'translate(-50%, -100%)',
-          }}
-          className="z-50 flex items-center gap-1 sm:gap-1.5 p-1 rounded-2xl glass-card glow-violet backdrop-blur-2xl border border-white/20 shadow-2xl animate-in fade-in zoom-95 duration-150 select-none max-w-[95vw] overflow-x-auto"
-        >
-          {/* 1. Mark (Highlight) Button */}
-          <button
-            onMouseDown={(e) => {
-              e.preventDefault();
-              handleMarkSelection();
+      {/* Contextual Selection Action HUD Popover Portal (Guarantees exact viewport positioning) */}
+      {typeof document !== 'undefined' &&
+        popoverPos &&
+        selectedText &&
+        createPortal(
+          <div
+            role="toolbar"
+            aria-label="Selection Actions HUD"
+            style={{
+              position: 'fixed',
+              left: `${popoverPos.x}px`,
+              top: `${popoverPos.y}px`,
+              transform: 'translate(-50%, -100%)',
+              zIndex: 9999,
             }}
-            title={`Mark selection (${highlightColor.toUpperCase()})`}
-            aria-label="Mark selection"
-            className={`flex items-center gap-1 px-2.5 py-1 rounded-xl text-xs font-bold transition cursor-pointer ${HIGHLIGHT_THEMES[highlightColor].badgeClass} hover:opacity-90`}
+            className="flex items-center gap-1 sm:gap-1.5 p-1 rounded-2xl glass-card glow-violet backdrop-blur-2xl border border-white/20 shadow-2xl animate-in fade-in zoom-95 duration-150 select-none max-w-[95vw] overflow-x-auto pointer-events-auto"
           >
-            <Highlighter className="w-3.5 h-3.5" />
-            <span>Mark</span>
-          </button>
-
-          {/* 2. Define (Dictionary) Button */}
-          {isSingleWord && (
+            {/* 1. Mark (Highlight) Button */}
             <button
               onMouseDown={(e) => {
                 e.preventDefault();
-                handleTriggerDictionary();
+                handleMarkSelection();
               }}
-              title="Look up word in Dictionary (D)"
-              aria-label="Define word"
-              className="flex items-center gap-1 px-2.5 py-1 rounded-xl bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-200 border border-cyan-500/30 font-bold text-xs cursor-pointer transition"
+              title={`Mark selection (${highlightColor.toUpperCase()})`}
+              aria-label="Mark selection"
+              className={`flex items-center gap-1 px-2.5 py-1 rounded-xl text-xs font-bold transition cursor-pointer ${HIGHLIGHT_THEMES[highlightColor].badgeClass} hover:opacity-90`}
             >
-              <BookOpen className="w-3.5 h-3.5 text-cyan-300" />
-              <span>Define</span>
+              <Highlighter className="w-3.5 h-3.5" />
+              <span>Mark</span>
             </button>
-          )}
 
-          {/* 3. Explain (Smart Ink) Button */}
-          <button
-            onMouseDown={(e) => {
-              e.preventDefault();
-              handleHudSmartInk();
-            }}
-            disabled={isAnySentenceLoading}
-            title="Explain with AI Smart Ink (I)"
-            aria-label="Explain with Smart Ink"
-            className="flex items-center gap-1 px-2.5 py-1 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white font-bold text-xs shadow-lg cursor-pointer transition disabled:opacity-50"
-          >
-            {isAnySentenceLoading ? (
-              <Loader2 className="w-3.5 h-3.5 animate-spin text-cyan-300" />
-            ) : (
-              <Sparkles className="w-3.5 h-3.5 text-amber-300" />
+            {/* 2. Erase / Remove Highlight Button */}
+            <button
+              onMouseDown={(e) => {
+                e.preventDefault();
+                handleEraseSelection();
+              }}
+              title="Erase highlight from selection"
+              aria-label="Erase highlight"
+              className="flex items-center gap-1 px-2.5 py-1 rounded-xl bg-rose-500/20 hover:bg-rose-500/30 text-rose-200 border border-rose-500/30 font-bold text-xs cursor-pointer transition"
+            >
+              <Eraser className="w-3.5 h-3.5 text-rose-300" />
+              <span>Erase</span>
+            </button>
+
+            {/* 3. Define (Dictionary) Button */}
+            {isSingleWord && (
+              <button
+                onMouseDown={(e) => {
+                  e.preventDefault();
+                  handleTriggerDictionary();
+                }}
+                title="Look up word in Dictionary (D)"
+                aria-label="Define word"
+                className="flex items-center gap-1 px-2.5 py-1 rounded-xl bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-200 border border-cyan-500/30 font-bold text-xs cursor-pointer transition"
+              >
+                <BookOpen className="w-3.5 h-3.5 text-cyan-300" />
+                <span>Define</span>
+              </button>
             )}
-            <span>{isAnySentenceLoading ? 'Explaining...' : 'Smart Ink'}</span>
-          </button>
 
-          {/* 4. Copy Button */}
-          <button
-            onMouseDown={(e) => {
-              e.preventDefault();
-              handleCopySelection();
-            }}
-            title="Copy selection"
-            aria-label="Copy selection"
-            className="p-1 px-2 rounded-xl bg-white/5 hover:bg-white/15 text-slate-300 hover:text-white text-xs font-semibold cursor-pointer transition flex items-center gap-1"
-          >
-            {isCopied ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
-            <span>{isCopied ? 'Copied' : 'Copy'}</span>
-          </button>
-        </div>
-      )}
+            {/* 4. Copy Button */}
+            <button
+              onMouseDown={(e) => {
+                e.preventDefault();
+                handleCopySelection();
+              }}
+              title="Copy selection"
+              aria-label="Copy selection"
+              className="p-1 px-2 rounded-xl bg-white/5 hover:bg-white/15 text-slate-300 hover:text-white text-xs font-semibold cursor-pointer transition flex items-center gap-1"
+            >
+              {isCopied ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+              <span>{isCopied ? 'Copied' : 'Copy'}</span>
+            </button>
+          </div>,
+          document.body
+        )}
     </article>
   );
 };

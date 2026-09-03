@@ -145,22 +145,24 @@ class ArticleImportOut(Schema):
     message: str | None = None
 
 
+
+
 # ── Homepage Feed Schemas ─────────────────────────────────────────────────────
 
 
 class DailyVocabOut(Schema):
-    word: str
-    phonetic: str
-    part_of_speech: str
-    definition: str
-    example: str
+    word: str = ""
+    phonetic: str = ""
+    part_of_speech: str = ""
+    definition: str = ""
+    example: str = ""
 
 
 class HomepageDataOut(Schema):
     status: str = "success"
     hero_articles: list[ArticleCardOut]
     trending_topics: list[dict[str, Any]]
-    daily_vocab: DailyVocabOut
+    daily_vocab: DailyVocabOut | None = None
     recommended_articles: list[ArticleCardOut]
     articles: list[ArticleCardOut]
     total_count: int

@@ -1,23 +1,52 @@
 """
-service/infrastructure/bm25/connection.py — In-memory BM25 Okapi Index Manager.
-Builds and maintains the lexical search index from completed articles in MongoDB.
+service/infrastructure/bm25/connection.py — BM25 Okapi Index Manager.
+
+Loads the pre-computed BM25 lexical search index binary artifact directly from MinIO
+bucket 'bm25-index/gold_bm25_index/index.pkl' produced by the Dagster Gold pipeline.
 """
 
 import logging
+import pickle
+
 from rank_bm25 import BM25Okapi
 
-from service.infrastructure.bm25.text_processing import process_text_to_tokens
+from service.infrastructure.minio.connection import client as minio_client
 
 logger = logging.getLogger(__name__)
+
+BM25_BUCKET = "bm25-index"
+BM25_KEY = "gold_bm25_index/index.pkl"
 
 _bm25_index: BM25Okapi | None = None
 _corpus_ids: list[str] = []
 
 
+def load_index_from_minio() -> bool:
+    """
+    Fetch the pre-computed BM25 binary pickle payload from MinIO.
+    Deserializes index and corpus_ids in O(1) time.
+    """
+    global _bm25_index, _corpus_ids
+    try:
+        response = minio_client.get_object(BM25_BUCKET, BM25_KEY)
+        data = response.read()
+        response.close()
+        response.release_conn()
+
+        payload = pickle.loads(data)
+        _bm25_index = payload.get("index")
+        _corpus_ids = [str(cid) for cid in payload.get("corpus_ids", [])]
+        logger.info(f"[BM25] Successfully loaded Gold BM25 index from MinIO for {len(_corpus_ids)} documents.")
+        return True
+    except Exception as e:
+        logger.warning(f"[BM25] Could not load pre-computed index from MinIO ({e}).")
+        return False
+
+
 def get_index() -> tuple[BM25Okapi | None, list[str]]:
     """
     Return the current BM25 index instance and corresponding article IDs list.
-    Automatically triggers index rebuild if not yet initialized.
+    Automatically loads from MinIO if not yet initialized.
     """
     global _bm25_index, _corpus_ids
     if _bm25_index is None:
@@ -27,35 +56,12 @@ def get_index() -> tuple[BM25Okapi | None, list[str]]:
 
 def rebuild_index() -> None:
     """
-    Fetch all indexed article titles from MongoDB and build a fresh BM25Okapi index.
+    Load the pre-computed Gold BM25 index from MinIO.
     """
     global _bm25_index, _corpus_ids
-
-    logger.info("[BM25] Building index from article_index...")
-
-    try:
-        from service.infrastructure.mongo.connection import get_collection
-
-        docs = list(
-            get_collection("article_index").find(
-                {"title": {"$ne": ""}},
-                {"_id": 1, "title": 1},
-            )
-        )
-    except Exception as e:
-        logger.warning(f"[BM25] Could not load articles for index build: {e}")
+    logger.info("[BM25] Loading Gold index from MinIO...")
+    success = load_index_from_minio()
+    if not success:
         _bm25_index = None
         _corpus_ids = []
-        return
 
-    if not docs:
-        logger.info("[BM25] No articles found to index.")
-        _bm25_index = None
-        _corpus_ids = []
-        return
-
-    _corpus_ids = [str(d["_id"]) for d in docs]
-    corpus_tokens = [process_text_to_tokens(d.get("title", "")) for d in docs]
-
-    _bm25_index = BM25Okapi(corpus_tokens)
-    logger.info(f"[BM25] Successfully built index for {len(docs)} documents.")

@@ -8,7 +8,7 @@ import { AllTestsPage } from './features/discovery/AllTestsPage';
 import { ReadingSpacePage } from './features/workspace/ReadingSpacePage';
 import { ProfilePage } from './features/auth/ProfilePage';
 import { AuthModal } from './features/auth/AuthModal';
-import { BottomChatDock } from './features/rag/BottomChatDock';
+import { LeftAiDock } from './features/rag/LeftAiDock';
 import { useAuth } from './store';
 import { api } from './api/client';
 import { NavTheme } from './types';
@@ -143,9 +143,10 @@ export default function App() {
         onNavigate={handleNavigate}
       />
 
-      {/* 5. VS Code-Style Bottom RAG Chat Dock */}
-      <BottomChatDock
+      {/* 5. Left AI Study Dock (Multi-Agent Panel) */}
+      <LeftAiDock
         activeArticleId={currentView === 'readspace' ? selectedArticleId || undefined : undefined}
+        pageContext={currentView}
       />
 
       {/* 6. Global Auth Modal */}

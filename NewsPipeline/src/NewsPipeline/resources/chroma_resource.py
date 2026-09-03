@@ -72,7 +72,9 @@ class ChromaResource(ConfigurableResource):
             persistent_path=self.persistent_path,
         )
 
-    def upsert_chunks(self, collection_name: str, chunks: list[dict[str, Any]]) -> int:
+    def upsert_chunks(self, 
+                      collection_name: str, 
+                      chunks: list[dict[str, Any]]) -> int:
         """
         Upsert document chunks into the target ChromaDB collection.
         Purges prior chunks for all article_ids in the batch first to guarantee idempotency.
@@ -95,18 +97,30 @@ class ChromaResource(ConfigurableResource):
             except Exception as e:
                 logger.debug(f"ChromaResource: Note during prior chunk purge for {aid}: {e}")
 
-        ids = [c["id"] for c in chunks]
-        documents = [c["document"] for c in chunks]
-        metadatas = [c["metadata"] for c in chunks]
-
-        # Chroma supports batch addition
-        batch_size = 500
+        # Chroma supports batch addition - use small micro-batches of 5 to prevent memory spikes
+        batch_size = 5
         for i in range(0, len(chunks), batch_size):
-            col.add(
-                ids=ids[i : i + batch_size],
-                documents=documents[i : i + batch_size],
-                metadatas=metadatas[i : i + batch_size],
-            )
+            batch_slice = chunks[i : i + batch_size]
+            b_ids = [c["id"] for c in batch_slice]
+            b_docs = [c["document"] for c in batch_slice]
+            b_metas = [c["metadata"] for c in batch_slice]
+            try:
+                col.add(
+                    ids=b_ids,
+                    documents=b_docs,
+                    metadatas=b_metas,
+                )
+            except Exception as e:
+                logger.warning(f"ChromaResource: Retrying individual chunk adds after batch error: {e}")
+                for single_chunk in batch_slice:
+                    try:
+                        col.add(
+                            ids=[single_chunk["id"]],
+                            documents=[single_chunk["document"]],
+                            metadatas=[single_chunk["metadata"]],
+                        )
+                    except Exception as err:
+                        logger.error(f"ChromaResource: Failed to add chunk {single_chunk.get('id')}: {err}")
 
         logger.info(f"ChromaResource: Upserted {len(chunks)} chunks into '{collection_name}'.")
         return len(chunks)

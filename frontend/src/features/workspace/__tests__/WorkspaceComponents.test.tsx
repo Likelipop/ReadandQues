@@ -43,15 +43,10 @@ describe('Workspace Components & Unified Reading Suite', () => {
     });
   });
 
-  it('renders LeftSidebar with article statistics, section jumps, and WordNet lexicon', () => {
-    render(<LeftSidebar article={dummyArticle} />);
-
-    expect(screen.getByText('Education')).toBeInTheDocument();
-    expect(screen.getByText('The Future of AI in Education')).toBeInTheDocument();
-    expect(screen.getByText(/650 words/)).toBeInTheDocument();
-    expect(screen.getByText('Nature News • 650 words')).toBeInTheDocument();
-    expect(screen.getByText(/Passage Sections/)).toBeInTheDocument();
-    expect(screen.getByText(/Interactive WordNet Dictionary/)).toBeInTheDocument();
+  it('renders LeftSidebar cleanly as null when idle', () => {
+    const { container } = render(<LeftSidebar article={dummyArticle} />);
+    expect(container.firstChild).toBeNull();
+    expect(screen.queryByText(/Interactive WordNet Dictionary/)).not.toBeInTheDocument();
   });
 
   it('renders WorkspaceToolbar and delegates seamlessly to UnifiedReadingDock', () => {
@@ -61,17 +56,13 @@ describe('Workspace Components & Unified Reading Suite', () => {
     expect(screen.getByLabelText('Pointer Tool')).toBeInTheDocument();
     expect(screen.getByLabelText('Highlighter Tool')).toBeInTheDocument();
     expect(screen.getByLabelText('Eraser Tool')).toBeInTheDocument();
-    expect(screen.getByLabelText('Smart Ink Tool')).toBeInTheDocument();
     expect(screen.getByLabelText('Dictionary Tool')).toBeInTheDocument();
-    expect(screen.getByLabelText('Toggle Zen Mode')).toBeInTheDocument();
-    expect(screen.getByLabelText('Keyboard Shortcuts')).toBeInTheDocument();
-
-    const quizBtn = screen.getByLabelText('Toggle AI Reading Quiz');
-    fireEvent.click(quizBtn);
-    expect(handleToggleQuiz).toHaveBeenCalled();
+    expect(screen.queryByLabelText('Toggle Zen Mode')).not.toBeInTheDocument();
+    expect(screen.queryByLabelText('Keyboard Shortcuts')).not.toBeInTheDocument();
+    expect(screen.queryByLabelText('Toggle AI Reading Quiz')).not.toBeInTheDocument();
   });
 
-  it('operates UnifiedReadingDock tool toggles, color picker, and shortcuts cheat sheet', () => {
+  it('operates UnifiedReadingDock tool toggles and color picker', () => {
     const handleToggleQuiz = vi.fn();
     render(<UnifiedReadingDock isQuizOpen={false} onToggleQuiz={handleToggleQuiz} />);
 
@@ -84,9 +75,9 @@ describe('Workspace Components & Unified Reading Suite', () => {
     fireEvent.click(eraserBtn);
     expect(workspaceStore.getState().activeTool).toBe('eraser');
 
-    const smartInkBtn = screen.getByLabelText('Smart Ink Tool');
-    fireEvent.click(smartInkBtn);
-    expect(workspaceStore.getState().activeTool).toBe('smart_ink');
+    const dictionaryBtn = screen.getByLabelText('Dictionary Tool');
+    fireEvent.click(dictionaryBtn);
+    expect(workspaceStore.getState().activeTool).toBe('dictionary');
 
     const pointerBtn = screen.getByLabelText('Pointer Tool');
     fireEvent.click(pointerBtn);
@@ -100,21 +91,6 @@ describe('Workspace Components & Unified Reading Suite', () => {
     const emeraldBtn = screen.getByText(/Emerald/i);
     fireEvent.click(emeraldBtn);
     expect(workspaceStore.getState().highlightColor).toBe('emerald');
-
-    // 3. Zen Mode toggle
-    const zenBtn = screen.getByLabelText('Toggle Zen Mode');
-    fireEvent.click(zenBtn);
-    expect(workspaceStore.getState().isZenMode).toBe(true);
-
-    // 4. Keyboard Shortcuts Modal
-    const shortcutsBtn = screen.getByLabelText('Keyboard Shortcuts');
-    fireEvent.click(shortcutsBtn);
-    expect(screen.getByRole('dialog', { name: /Keyboard Shortcuts/i })).toBeInTheDocument();
-    expect(screen.getByText('Reading Space Shortcuts')).toBeInTheDocument();
-
-    const closeShortcutsBtn = screen.getByLabelText('Close shortcuts dialog');
-    fireEvent.click(closeShortcutsBtn);
-    expect(screen.queryByRole('dialog', { name: /Keyboard Shortcuts/i })).not.toBeInTheDocument();
   });
 
   it('validates multi-color highlight classes and themes in useHighlighter', () => {
@@ -153,31 +129,6 @@ describe('Workspace Components & Unified Reading Suite', () => {
     expect(handleToast).not.toHaveBeenCalled();
   });
 
-  it('performs in-place Smart Ink sentence explanation and Eraser restore cycle', async () => {
-    const handleToast = vi.fn();
-    workspaceStore.setState({ activeTool: 'smart_ink' });
-
-    render(<ArticleReader article={dummyArticle} onShowToast={handleToast} />);
-
-    const sentence = screen.getByText(/Artificial intelligence is reshaping pedagogy/);
-    fireEvent.click(sentence);
-
-    // Should display in-place explained sentence with badge and restore button
-    await waitFor(() => {
-      expect(screen.getByText('💡 Explained')).toBeInTheDocument();
-      expect(screen.getByText('Original')).toBeInTheDocument();
-    });
-
-    // Test restoring via Original button
-    const restoreBtn = screen.getByLabelText('Restore original sentence');
-    fireEvent.click(restoreBtn);
-
-    await waitFor(() => {
-      expect(screen.queryByText('💡 Explained')).not.toBeInTheDocument();
-      expect(screen.getByText(/Artificial intelligence is reshaping pedagogy/)).toBeInTheDocument();
-    });
-  });
-
   it('handles Dictionary tool click without showing floating HUD popover', async () => {
     const handleToast = vi.fn();
     workspaceStore.setState({ activeTool: 'dictionary' });
@@ -212,7 +163,7 @@ describe('Workspace Components & Unified Reading Suite', () => {
 
     render(<LeftSidebar article={dummyArticle} />);
 
-    expect(screen.getByText('WordNet Lexicon')).toBeInTheDocument();
+    expect(screen.getByText('Vocabulary Lexicon')).toBeInTheDocument();
     expect(screen.getByText('pedagogy')).toBeInTheDocument();
     expect(screen.getByLabelText('Listen pronunciation')).toBeInTheDocument();
     expect(screen.getByText('The method and practice of teaching.')).toBeInTheDocument();

@@ -93,7 +93,7 @@ export const useAuth = () => {
 
 // ── Workspace Store ───────────────────────────────────────────────────────────
 
-export type ActiveTool = 'pointer' | 'marker' | 'eraser' | 'dictionary' | 'smart_ink' | null;
+export type ActiveTool = 'pointer' | 'marker' | 'eraser' | 'dictionary' | null;
 export type HighlightColor = 'amber' | 'emerald' | 'cyan' | 'rose';
 
 interface WorkspaceState {

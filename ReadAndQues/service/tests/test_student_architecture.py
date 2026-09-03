@@ -29,16 +29,10 @@ import service.infrastructure.minio.object_store as minio_store
 import service.infrastructure.mongo.activity_store as activity_store
 import service.infrastructure.mongo.article_store as article_store
 import service.infrastructure.mongo.exam_store as exam_store
-import service.infrastructure.mongo.pipeline_store as pipeline_store
 from ai_service.connection import get_azure_llm, get_llm
-from ai_service.quiz_generator import (
-    ExamOutput,
-    QuizItem,
-    SemanticAnalysis,
-    run_explained_flow,
-    run_question_generator_flow,
-    stream_explained_tokens,
-)
+from ai_service.explainer.explainer import run_explained_flow, stream_explained_tokens
+from ai_service.quiz_generator.generator import run_question_generator_flow
+from ai_service.quiz_generator.schemas import ExamOutput, QuizItem, SemanticAnalysis
 from service.pipelines import ingest_and_enrich_article
 from service.services import explain_phrase
 
@@ -112,8 +106,8 @@ class StudentArchitectureTests(TestCase):
 
         with patch("ai_service.quiz_generator.generator.get_llm", return_value=mock_llm):
             result = run_question_generator_flow(self.sample_text)
-            self.assertTrue(result["_verifier_passed"])
-            self.assertEqual(len(result["verified_quizzes"]), 1)
+            self.assertIn("questions", result)
+            self.assertEqual(len(result["questions"]), 1)
             self.assertEqual(result["final_exam"]["total_questions"], 1)
 
     def test_direct_explained_flow(self):
@@ -129,31 +123,28 @@ class StudentArchitectureTests(TestCase):
     # ── 3. MongoDB Storage Layer ──────────────────────────────────────────────
 
     def test_mongo_article_store_operations(self):
-        """Test article_store CRUD operations with mocked collection."""
+        """Test article_store Gold CRUD operations with mocked collection."""
         mock_coll = MagicMock()
-        mock_coll.update_one.return_value.acknowledged = True
-        mock_coll.update_one.return_value.modified_count = 1
-        mock_coll.find_one.return_value = {"_id": "art-1", "title": "Test Article", "stage": "silver"}
-        mock_coll.find.return_value.sort.return_value.limit.return_value = [{"_id": "art-1"}]
+        mock_coll.find_one.return_value = {"article_id": "art-1", "title": "Test Article", "source": "Nature"}
+        mock_coll.find.return_value.sort.return_value.skip.return_value.limit.return_value = [{"article_id": "art-1"}]
+        mock_coll.count_documents.return_value = 1
         mock_coll.delete_one.return_value.deleted_count = 1
 
-        with patch("service.infrastructure.mongo.article_store._coll", return_value=mock_coll):
-            self.assertTrue(article_store.create_article_index(article_id="art-1", url="https://example.com"))
-            self.assertIsNotNone(article_store.get_article_index("art-1"))
-            self.assertTrue(article_store.update_article_stage("art-1", "silver"))
-            self.assertTrue(article_store.update_ai_status("art-1", "completed"))
-            self.assertTrue(article_store.update_article_title("art-1", "New Title"))
-            self.assertEqual(len(article_store.list_completed_articles()), 1)
-            self.assertTrue(article_store.delete_article("art-1"))
+        with patch("service.infrastructure.mongo.article_store._gold_coll", return_value=mock_coll):
+            self.assertIsNotNone(article_store.get_gold_content("art-1"))
+            self.assertIsNotNone(article_store.get_gold_content_by_url("https://example.com"))
+            self.assertEqual(len(article_store.list_gold_articles()), 1)
+            self.assertEqual(article_store.count_gold_articles(), 1)
+            self.assertTrue(article_store.delete_gold_content("art-1"))
 
     def test_mongo_article_store_handles_pymongo_error(self):
         """Test that article_store handles PyMongoError gracefully."""
         mock_coll = MagicMock()
-        mock_coll.update_one.side_effect = ConnectionFailure("MongoDB unreachable")
+        mock_coll.find_one.side_effect = ConnectionFailure("MongoDB unreachable")
 
-        with patch("service.infrastructure.mongo.article_store._coll", return_value=mock_coll):
-            success = article_store.create_article_index("art-err", "https://example.com")
-            self.assertFalse(success)
+        with patch("service.infrastructure.mongo.article_store._gold_coll", return_value=mock_coll):
+            doc = article_store.get_gold_content("art-err")
+            self.assertIsNone(doc)
 
     def test_mongo_exam_store_operations(self):
         """Test exam_store save, get, list, and delete operations."""
@@ -183,21 +174,17 @@ class StudentArchitectureTests(TestCase):
             self.assertEqual(len(activity_store.get_daily_vocab_for_user(user_id=1)), 1)
             self.assertTrue(activity_store.delete_article_activity("art-1"))
 
-    def test_mongo_pipeline_store_operations(self):
-        """Test pipeline_store RSS tracking and pipeline logs."""
+    def test_mongo_gold_content_save(self):
+        """Test article_store save_gold_content and delete_gold_content operations."""
         mock_coll = MagicMock()
-        mock_coll.find.return_value = [{"link": "https://example.com/1"}]
-        mock_coll.insert_many.return_value.inserted_ids = ["id1", "id2"]
-        mock_coll.update_one.return_value.modified_count = 1
-        mock_coll.insert_one.return_value.inserted_id = "log-id-123"
+        mock_coll.update_one.return_value.acknowledged = True
+        mock_coll.delete_one.return_value.deleted_count = 1
 
-        with patch("service.infrastructure.mongo.pipeline_store.get_collection", return_value=mock_coll):
-            existing = pipeline_store.filter_existing_rss_links(["https://example.com/1", "https://example.com/2"])
-            self.assertIn("https://example.com/1", existing)
-            self.assertEqual(pipeline_store.batch_insert_rss_links([{"link": "l1"}, {"link": "l2"}]), 2)
-            self.assertTrue(pipeline_store.mark_rss_link_extracted("https://example.com/1"))
-            log_id = pipeline_store.insert_pipeline_log("bronze", "success", "crawled successfully")
-            self.assertEqual(log_id, "log-id-123")
+        with patch("service.infrastructure.mongo.article_store._gold_coll", return_value=mock_coll):
+            doc = {"article_id": "art-1", "title": "Gold Title", "original_text": "Sample text"}
+            self.assertTrue(article_store.save_gold_content(doc))
+            self.assertTrue(article_store.delete_gold_content("art-1"))
+
 
     # ── 4. MinIO S3 Storage Layer ─────────────────────────────────────────────
 
@@ -321,31 +308,25 @@ class StudentArchitectureTests(TestCase):
             "word_count": 5,
         }
         mock_ai_result = {
-            "status": "completed",
-            "analysis": {"theme": "Science", "genre": "scientific"},
-            "exams": [{"exam_id": "EX_1", "quizzes": []}],
+            "keywords": ["Science"],
+            "summary": "Quantum summary",
+            "questions": [{"question": "Q1", "correct_answer": "A"}],
         }
 
         with (
-            patch("service.pipelines.crawl_article_content", return_value=mock_crawl),
-            patch("service.pipelines.object_store.save_bronze_html"),
-            patch("service.pipelines.object_store.save_bronze_meta"),
+            patch("service.pipelines.trafilatura.fetch_url", return_value="<html>Sample</html>"),
+            patch("service.pipelines.trafilatura.extract", return_value="Quantum computers leverage qubits for fast computation. " * 10),
             patch("service.pipelines.object_store.save_silver_clean"),
-            patch("service.pipelines.object_store.save_gold_enriched"),
-            patch("service.pipelines.article_store.update_article_stage"),
-            patch("service.pipelines.article_store.update_ai_status"),
-            patch("service.pipelines._run_ai_enrichment", return_value=mock_ai_result),
+            patch("service.pipelines.article_store.save_gold_content", return_value=True),
+            patch("service.pipelines.generate_quiz", return_value=mock_ai_result),
             patch("service.pipelines.exam_store.save_exam"),
-            patch("service.pipelines.vector_store.add_article_vector"),
-            patch("service.pipelines.vector_store.upsert_article_chunks"),
-            patch("service.pipelines.bm25_conn.rebuild_index"),
-            patch("service.pipelines.pipeline_store.insert_pipeline_log"),
+            patch("service.pipelines.index_article", return_value=True),
         ):
             res = ingest_and_enrich_article(article_id="art-pipeline-1", url="https://example.com/quantum")
             self.assertEqual(res["status"], "completed")
 
         with patch(
-            "ai_service.quiz_generator.run_explained_flow",
+            "ai_service.interface.explain_phrase",
             return_value={
                 "summary": "Quantum particle explanation",
                 "detailed_explanation": "Detailed physics concept",

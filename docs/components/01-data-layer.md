@@ -11,7 +11,7 @@ This document details the polyglot persistence architecture, datastore ownership
 | **PostgreSQL 15** | Relational user accounts, authentication, activity ledgers, and topic proficiency. | `auth_user`, `accounts_userprofile`, `service_examattemptlog`, `service_topicproficiency` |
 | **MongoDB 7** | Document storage for crawled articles, enriched gold articles, and generated quizzes. | `article_index`, `gold_articles`, `exams`, `reading_history`, `user_highlights` |
 | **MinIO (S3)** | Object store for raw crawled HTML snapshots (Silver layer cache). | `silver-clean`, `raw-html` |
-| **ChromaDB** | Vector database for article and paragraph semantic search. | `articles`, `news_chunks` |
+| **ChromaDB** | Vector database for article and paragraph semantic search. | `articles`, `gold_semantic_chunks` |
 | **BM25 Index** | Lexical keyword index using Okapi BM25 and spaCy tokenization. | In-memory with periodic disk persistence |
 
 ---

@@ -121,3 +121,16 @@ class BM25Resource(ConfigurableResource):
 
         logger.info(f"BM25Resource: Uploaded index for {len(docs)} documents to '{self.bucket}/{self.key}'.")
         return len(docs)
+
+    def load_index(self) -> BM25Okapi | None:
+        """Download and unpickle BM25Okapi index from MinIO."""
+        client = self._get_minio_client()
+        try:
+            resp = client.get_object(self.bucket, self.key)
+            data = pickle.loads(resp.read())
+            resp.close()
+            resp.release_conn()
+            return data.get("index")
+        except Exception as e:
+            logger.warning(f"BM25Resource: Failed to load index from MinIO: {e}")
+            return None

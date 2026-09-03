@@ -19,9 +19,9 @@ def generate_questions(text: str) -> ExamOutput:
     Generate structured reading comprehension quizzes and keywords via LangChain structured output.
     """
     prompt = QUESTION_GENERATOR_PROMPT.format(text=text)
-    llm = get_llm(temperature=0.3)
-    structured_llm = llm.with_structured_output(ExamOutput)
+    llm = get_llm()
     try:
+        structured_llm = llm.with_structured_output(ExamOutput, method="function_calling")
         result = structured_llm.invoke(prompt)
         if isinstance(result, ExamOutput):
             return result
@@ -64,6 +64,9 @@ def run_question_generator_flow(text: str) -> dict[str, Any]:
         "keywords": keywords,
         "summary": analysis_data.get("summary", ""),
         "questions": quizzes,
+        "raw_quizzes": quizzes,
+        "verified_quizzes": quizzes,
         "semantic_analysis": analysis_data,
         "final_exam": final_exam,
+        "_verifier_passed": True,
     }

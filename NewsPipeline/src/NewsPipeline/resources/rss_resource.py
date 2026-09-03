@@ -26,6 +26,42 @@ def _parse_entry_datetime(entry: Any) -> datetime:
     return datetime.now(UTC)
 
 
+def _extract_image_url_from_entry(entry: Any) -> str:
+    """Extract thumbnail image URL from RSS feed entry with multi-format fallback."""
+    # 1. Media thumbnail
+    if "media_thumbnail" in entry and entry["media_thumbnail"]:
+        thumb = entry["media_thumbnail"][0]
+        if isinstance(thumb, dict) and thumb.get("url"):
+            return str(thumb["url"]).strip()
+    # 2. Media content (images)
+    if "media_content" in entry and entry["media_content"]:
+        for media in entry["media_content"]:
+            if isinstance(media, dict) and media.get("url"):
+                medium = media.get("medium", "")
+                mtype = media.get("type", "")
+                if medium == "image" or "image" in mtype or not medium:
+                    return str(media["url"]).strip()
+    # 3. Enclosures
+    if "enclosures" in entry and entry["enclosures"]:
+        for enc in entry["enclosures"]:
+            if isinstance(enc, dict) and enc.get("href"):
+                if "image" in enc.get("type", "") or str(enc.get("href", "")).lower().endswith((".jpg", ".jpeg", ".png", ".webp")):
+                    return str(enc["href"]).strip()
+    # 4. Links with image type
+    if "links" in entry and entry["links"]:
+        for lk in entry["links"]:
+            if isinstance(lk, dict) and "image" in lk.get("type", "") and lk.get("href"):
+                return str(lk["href"]).strip()
+    # 5. Regex search for <img src="..."> in summary / description
+    desc = entry.get("summary") or entry.get("description") or ""
+    if "<img" in desc:
+        import re
+        match = re.search(r'<img[^>]+src=["\']([^"\']+)["\']', desc)
+        if match:
+            return match.group(1).strip()
+    return ""
+
+
 class RSSResource(ConfigurableResource):
     """
     Resource that parses configured RSS feeds from rss_feeds.txt,
@@ -84,6 +120,8 @@ class RSSResource(ConfigurableResource):
                     elif pub_dt < cutoff_7d:
                         continue
 
+                    image_url = _extract_image_url_from_entry(entry)
+
                     all_links.append(
                         {
                             "url": link.strip(),
@@ -91,6 +129,7 @@ class RSSResource(ConfigurableResource):
                             "source": source_name,
                             "published_at": pub_dt.isoformat(),
                             "published_date": pub_date_str,
+                            "image_url": image_url,
                             "collected_at": datetime.now(UTC).isoformat(),
                         }
                     )

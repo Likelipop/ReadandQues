@@ -63,9 +63,11 @@ def get_minio_client(
 
 class MinIOResource(ConfigurableResource):
     """
-    Resource for storing and retrieving raw HTML documents in MinIO S3.
-    Bucket: 'raw-html'
-    Path pattern: <partition_date>/<article_id>.html
+    Resource for storing and retrieving raw HTML and structured JSON documents in MinIO S3.
+    Buckets:
+      - 'raw-html': raw crawled HTML files (<date>/<article_id>.html)
+      - 'silver-cleaned': sanitized article JSON files (<date>/<article_id>.json)
+      - 'gold-content': curated gold article JSON files (<date>/<article_id>.json)
     """
 
     endpoint: str = "minio:9000"
@@ -73,6 +75,8 @@ class MinIOResource(ConfigurableResource):
     secret_key: str = "minioadmin"
     secure: bool = False
     bucket: str = "raw-html"
+    silver_bucket: str = "silver-cleaned"
+    gold_bucket: str = "gold-content"
 
     def get_client(self) -> Minio:
         return get_minio_client(
@@ -82,18 +86,19 @@ class MinIOResource(ConfigurableResource):
             secure=self.secure,
         )
 
-    def ensure_bucket(self) -> None:
+    def ensure_bucket(self, bucket_name: str | None = None) -> None:
+        target_bucket = bucket_name or self.bucket
         client = self.get_client()
         try:
-            if not client.bucket_exists(self.bucket):
-                client.make_bucket(self.bucket)
-                logger.info(f"MinIOResource: Created bucket '{self.bucket}'.")
+            if not client.bucket_exists(target_bucket):
+                client.make_bucket(target_bucket)
+                logger.info(f"MinIOResource: Created bucket '{target_bucket}'.")
         except Exception as e:
-            logger.debug(f"MinIOResource: Bucket check notice for '{self.bucket}': {e}")
+            logger.debug(f"MinIOResource: Bucket check notice for '{target_bucket}': {e}")
 
     def save_html(self, partition_date: str, article_id: str, html_str: str) -> str:
         """Save a single raw HTML document to MinIO under date directory."""
-        self.ensure_bucket()
+        self.ensure_bucket(self.bucket)
         client = self.get_client()
         key = f"{partition_date}/{article_id}.html"
         raw_bytes = html_str.encode("utf-8")
@@ -116,6 +121,51 @@ class MinIOResource(ConfigurableResource):
         response.close()
         response.release_conn()
         return content
+
+    def save_silver_article(self, partition_date: str, article_id: str, doc_dict: dict[str, Any]) -> str:
+        """Save a sanitized clean article JSON document to MinIO 'silver-cleaned' bucket."""
+        import json
+        self.ensure_bucket(self.silver_bucket)
+        client = self.get_client()
+        key = f"{partition_date}/{article_id}.json"
+        raw_bytes = json.dumps(doc_dict, ensure_ascii=False, default=str).encode("utf-8")
+
+        client.put_object(
+            bucket_name=self.silver_bucket,
+            object_name=key,
+            data=io.BytesIO(raw_bytes),
+            length=len(raw_bytes),
+            content_type="application/json; charset=utf-8",
+        )
+        return key
+
+    def read_silver_article(self, partition_date: str, article_id: str) -> dict[str, Any]:
+        """Read a sanitized clean article JSON document from MinIO 'silver-cleaned' bucket."""
+        import json
+        client = self.get_client()
+        key = f"{partition_date}/{article_id}.json"
+        response = client.get_object(self.silver_bucket, key)
+        content = response.read().decode("utf-8")
+        response.close()
+        response.release_conn()
+        return json.loads(content)
+
+    def save_gold_article(self, partition_date: str, article_id: str, doc_dict: dict[str, Any]) -> str:
+        """Save a curated gold article JSON document to MinIO 'gold-content' bucket."""
+        import json
+        self.ensure_bucket(self.gold_bucket)
+        client = self.get_client()
+        key = f"{partition_date}/{article_id}.json"
+        raw_bytes = json.dumps(doc_dict, ensure_ascii=False, default=str).encode("utf-8")
+
+        client.put_object(
+            bucket_name=self.gold_bucket,
+            object_name=key,
+            data=io.BytesIO(raw_bytes),
+            length=len(raw_bytes),
+            content_type="application/json; charset=utf-8",
+        )
+        return key
 
 
 class MinIOIOManager(ConfigurableIOManager):

@@ -83,7 +83,7 @@ export interface HomepageData {
   hero_article?: ArticleCard;
   hero_articles?: ArticleCard[];
   trending_topics?: Array<{ id: string; title: string }>;
-  daily_vocab: DailyVocab;
+  daily_vocab?: DailyVocab;
   paraphrase_demo?: ParaphraseDemo;
   recommended_articles?: ArticleCard[];
   recommendations?: ArticleCard[];

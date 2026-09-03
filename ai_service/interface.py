@@ -8,7 +8,8 @@ ALL comments and docstrings are in English.
 """
 
 from __future__ import annotations
-from typing import Any, Generator
+
+from typing import Any, AsyncGenerator, Generator
 
 
 def generate_quiz(article_text: str) -> dict[str, Any]:
@@ -40,7 +41,7 @@ def explain_phrase(phrase: str, context: str = "") -> dict[str, Any]:
     return run_explained_flow(phrase=phrase, paragraph_context=context)
 
 
-def stream_explanation(phrase: str, context: str = "") -> Generator[str, None, None]:
+def stream_explanation(phrase: str, context: str = "") -> Generator[str]:
     """
     Stream token-by-token explanation for real-time frontend display.
 
@@ -167,3 +168,212 @@ def get_passage_proof(article_id: str, question_idx: int) -> dict[str, Any] | No
     """
     from ai_service.rag.grounding.passage_proof import get_passage_proof as _get_proof
     return _get_proof(article_id=article_id, question_idx=question_idx)
+
+
+async def stream_study_dock(
+    query: str,
+    article_id: str = "",
+    page_context: str = "homepage",
+    article_text: str = "",
+    thread_id: str = "",
+    user_id: int | None = None,
+) -> AsyncGenerator[dict[str, Any]]:
+    """
+    Asynchronous streaming entry point for the Left AI Study Dock multi-agent system.
+    Executes LangGraph via astream_events(v2) and yields structured SSE event payloads
+    with TRUE REAL-TIME token streaming (no artificial buffering or delays).
+
+    Yields:
+        dict: SSE-ready events containing metadata, text deltas, or final metadata.
+    """
+    from langchain_core.messages import HumanMessage
+
+    from ai_service.agents.graph import get_study_graph
+    from ai_service.agents.state import StudyDockState
+
+    initial_state: StudyDockState = {
+        "messages": [HumanMessage(content=query)],
+        "article_id": article_id,
+        "page_context": page_context,
+        "article_text": article_text,
+        "user_id": user_id,
+        "conversation_summary": "",
+        "user_profile": {},
+        "intent": "general",
+        "response": "",
+        "citations": [],
+        "quiz_data": [],
+        "action_type": "chat",
+        "error": "",
+    }
+
+    import uuid
+    if not thread_id:
+        thread_id = f"thread_{uuid.uuid4().hex[:12]}"
+    config = {"configurable": {"thread_id": thread_id}}
+
+    graph = get_study_graph()
+    emitted_token_count = 0
+    final_output: dict[str, Any] = {}
+
+    # Yield initial metadata event
+    yield {
+        "type": "metadata",
+        "intent": "general",
+        "action_type": "chat",
+        "citations": [],
+        "quiz_data": [],
+        "error": "",
+    }
+
+    async for event in graph.astream_events(initial_state, config=config, version="v2"):
+        kind = event.get("event", "")
+
+        # 1. Native token chunk from Chat Model -> Stream delta immediately (True Streaming!)
+        if kind == "on_chat_model_stream":
+            chunk = event.get("data", {}).get("chunk")
+            content = chunk.content if hasattr(chunk, "content") else (chunk if isinstance(chunk, str) else "")
+            # Exclude function/tool call arguments from visible user text deltas
+            if content and not getattr(chunk, "tool_call_chunks", None):
+                emitted_token_count += 1
+                yield {
+                    "type": "delta",
+                    "text": content,
+                }
+
+        # 2. Entire LangGraph execution finished -> Save final state output
+        elif kind == "on_chain_end" and event.get("name") == "LangGraph":
+            out = event.get("data", {}).get("output", {})
+            if isinstance(out, dict):
+                final_output = out
+
+    # Final metadata emission
+    resp_text = final_output.get("response", "").strip()
+    if not resp_text and final_output.get("messages"):
+        last_msg = final_output["messages"][-1]
+        resp_text = last_msg.content if hasattr(last_msg, "content") else str(last_msg)
+
+    # If no tokens were streamed (e.g. static quiz generation response), emit response as a delta
+    if emitted_token_count == 0 and resp_text:
+        yield {
+            "type": "delta",
+            "text": resp_text,
+        }
+
+    yield {
+        "type": "metadata_final",
+        "response": resp_text,
+        "citations": final_output.get("citations", []),
+        "quiz_data": final_output.get("quiz_data", []),
+        "action_type": final_output.get("action_type", "chat"),
+        "intent": final_output.get("intent", "general"),
+        "error": final_output.get("error", ""),
+    }
+
+    yield {"type": "done"}
+
+
+def stream_study_dock_sync(
+    query: str,
+    article_id: str = "",
+    page_context: str = "homepage",
+    article_text: str = "",
+    thread_id: str = "",
+    user_id: int | None = None,
+) -> Generator[dict[str, Any]]:
+    """
+    Synchronous generator bridge for stream_study_dock.
+    Enables immediate token-by-token streaming in WSGI / gthread environments.
+    """
+    import asyncio
+
+    loop = asyncio.new_event_loop()
+    async_gen = stream_study_dock(
+        query=query,
+        article_id=article_id,
+        page_context=page_context,
+        article_text=article_text,
+        thread_id=thread_id,
+        user_id=user_id,
+    )
+    try:
+        while True:
+            try:
+                event = loop.run_until_complete(async_gen.__anext__())
+                yield event
+            except StopAsyncIteration:
+                break
+    finally:
+        loop.close()
+
+
+def ask_study_dock(
+    query: str,
+    article_id: str = "",
+    page_context: str = "homepage",
+    article_text: str = "",
+    thread_id: str = "",
+    user_id: int | None = None,
+) -> dict[str, Any]:
+    """
+    Unified entry point for the Left AI Study Dock multi-agent system.
+    Routes query through LangGraph with supervisor and checkpointer memory.
+    Synchronously invokes the compiled async LangGraph workflow.
+
+    Args:
+        query: User message or query.
+        article_id: Optional ID of the currently open article.
+        page_context: Current UI context ("readspace", "homepage", "all_tests").
+        article_text: Optional plain text of current article if available.
+        thread_id: Optional conversation thread ID for persistent memory.
+        user_id: Optional authenticated user ID for profile personalization.
+
+    Returns:
+        dict with keys: response (markdown), citations (list), quiz_data (list),
+                        action_type ("chat" | "quiz"), intent (str), error (str).
+    """
+    from asgiref.sync import async_to_sync
+    from langchain_core.messages import HumanMessage
+
+    from ai_service.agents.graph import get_study_graph
+    from ai_service.agents.state import StudyDockState
+
+    initial_state: StudyDockState = {
+        "messages": [HumanMessage(content=query)],
+        "article_id": article_id,
+        "page_context": page_context,
+        "article_text": article_text,
+        "user_id": user_id,
+        "conversation_summary": "",
+        "user_profile": {},
+        "intent": "general",
+        "response": "",
+        "citations": [],
+        "quiz_data": [],
+        "action_type": "chat",
+        "error": "",
+    }
+
+    import uuid
+    if not thread_id:
+        thread_id = f"thread_{uuid.uuid4().hex[:12]}"
+    config = {"configurable": {"thread_id": thread_id}}
+
+    graph = get_study_graph()
+    runner = async_to_sync(graph.ainvoke)
+    final_state = runner(initial_state, config=config)
+
+    resp_text = final_state.get("response", "")
+    if not resp_text and final_state.get("messages"):
+        last_msg = final_state["messages"][-1]
+        resp_text = last_msg.content if hasattr(last_msg, "content") else str(last_msg)
+
+    return {
+        "response": resp_text,
+        "citations": final_state.get("citations", []),
+        "quiz_data": final_state.get("quiz_data", []),
+        "action_type": final_state.get("action_type", "chat"),
+        "intent": final_state.get("intent", "general"),
+        "error": final_state.get("error", ""),
+    }
+

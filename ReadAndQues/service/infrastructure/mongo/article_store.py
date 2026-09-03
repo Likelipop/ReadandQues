@@ -1,13 +1,21 @@
 """
-service/infrastructure/mongo/article_store.py — Storage operations for article_index and homepage_sections.
-Enforces standard naming conventions: create_*, get_*, list_*, update_*, delete_*.
+service/infrastructure/mongo/article_store.py — Storage operations for gold_content and homepage_sections.
+
+Provides pure Gold layer operations against MongoDB collection 'gold_content':
+- get_gold_content(article_id)
+- get_gold_content_by_url(url)
+- list_gold_articles(limit, skip, sort_by)
+- search_gold_content_by_text(query, limit)
+- count_gold_articles()
+- homepage section caching
 """
 
 import logging
 import re
 from datetime import UTC, datetime, timedelta
+from typing import Any
 
-from pymongo import ASCENDING, DESCENDING
+from pymongo import DESCENDING
 from pymongo.errors import PyMongoError
 
 from service.infrastructure.mongo.connection import get_collection
@@ -15,149 +23,71 @@ from service.infrastructure.mongo.connection import get_collection
 logger = logging.getLogger(__name__)
 
 
-def _coll():
-    return get_collection("article_index")
+def _gold_coll():
+    """Returns the primary MongoDB 'gold_content' collection."""
+    return get_collection("gold_content")
 
 
-def create_article_index(
-    article_id: str,
-    url: str,
-    title: str = "",
-    source_name: str = "",
-    image_url: str | None = None,
-    published_at: datetime | None = None,
-    stage: str = "bronze",
-    ai_status: str = "pending",
-) -> bool:
+# ── Gold Content Operations ───────────────────────────────────────────────────
+
+
+def get_gold_content(article_id: str) -> dict[str, Any] | None:
     """
-    Insert a new article document into article_index if it does not already exist.
+    Fetch a single clean article document from 'gold_content' by article_id.
     """
-    now = datetime.now(UTC)
-    doc = {
-        "_id": article_id,
-        "url": url,
-        "title": title,
-        "source_name": source_name,
-        "image_url": image_url,
-        "published_at": published_at,
-        "stage": stage,
-        "ai_status": ai_status,
-        "error_message": "",
-        "created_at": now,
-        "updated_at": now,
-    }
+    if not article_id:
+        return None
     try:
-        result = _coll().update_one(
-            {"_id": article_id},
-            {"$setOnInsert": doc},
-            upsert=True,
-        )
-        return bool(result.acknowledged)
+        doc = _gold_coll().find_one({"$or": [{"article_id": article_id}, {"_id": article_id}]})
+        if doc and "_id" in doc:
+            doc["_id"] = str(doc["_id"])
+        return doc
     except PyMongoError as e:
-        logger.error(f"MongoDB error in create_article_index({article_id}): {e}")
-        return False
-
-
-def get_article_index(article_id: str) -> dict | None:
-    """
-    Fetch a single article index record by its unique article_id.
-    """
-    try:
-        return _coll().find_one({"_id": article_id})
-    except PyMongoError as e:
-        logger.error(f"MongoDB error in get_article_index({article_id}): {e}")
+        logger.error(f"MongoDB error in get_gold_content({article_id}): {e}")
         return None
 
 
-def get_article_index_by_url(url: str) -> dict | None:
+def get_gold_content_by_url(url: str) -> dict[str, Any] | None:
     """
-    Fetch a single article index record by its canonical URL.
+    Fetch a single clean article document from 'gold_content' by canonical URL.
     """
+    if not url:
+        return None
     try:
-        return _coll().find_one({"url": url})
+        doc = _gold_coll().find_one({"url": url})
+        if doc and "_id" in doc:
+            doc["_id"] = str(doc["_id"])
+        return doc
     except PyMongoError as e:
-        logger.error(f"MongoDB error in get_article_index_by_url({url}): {e}")
+        logger.error(f"MongoDB error in get_gold_content_by_url({url}): {e}")
         return None
 
 
-def update_article_stage(article_id: str, stage: str) -> bool:
+def list_gold_articles(
+    limit: int = 50,
+    skip: int = 0,
+    sort_by: str = "published_at",
+    sort_dir: int = DESCENDING,
+) -> list[dict[str, Any]]:
     """
-    Update the processing pipeline stage for an article (bronze, silver, gold).
-    """
-    try:
-        result = _coll().update_one(
-            {"_id": article_id},
-            {"$set": {"stage": stage, "updated_at": datetime.now(UTC)}},
-        )
-        return result.modified_count > 0
-    except PyMongoError as e:
-        logger.error(f"MongoDB error in update_article_stage({article_id}, {stage}): {e}")
-        return False
-
-
-def update_ai_status(article_id: str, ai_status: str, error_message: str = "") -> bool:
-    """
-    Update AI enrichment status (e.g. pending, completed, failed) and error detail.
+    Fetch articles from 'gold_content' with sorting and pagination.
     """
     try:
-        result = _coll().update_one(
-            {"_id": article_id},
-            {
-                "$set": {
-                    "ai_status": ai_status,
-                    "error_message": error_message,
-                    "updated_at": datetime.now(UTC),
-                }
-            },
-        )
-        return result.modified_count > 0
+        cursor = _gold_coll().find({"title": {"$ne": ""}}).sort(sort_by, sort_dir).skip(skip).limit(limit)
+        results = []
+        for doc in cursor:
+            if "_id" in doc:
+                doc["_id"] = str(doc["_id"])
+            results.append(doc)
+        return results
     except PyMongoError as e:
-        logger.error(f"MongoDB error in update_ai_status({article_id}, {ai_status}): {e}")
-        return False
-
-
-def update_article_title(article_id: str, title: str) -> bool:
-    """
-    Update the title for an article in article_index.
-    """
-    try:
-        result = _coll().update_one(
-            {"_id": article_id},
-            {"$set": {"title": title, "updated_at": datetime.now(UTC)}},
-        )
-        return result.modified_count > 0
-    except PyMongoError as e:
-        logger.error(f"MongoDB error in update_article_title({article_id}): {e}")
-        return False
-
-
-def list_by_stage(stage: str, limit: int = 50) -> list[dict]:
-    """
-    Fetch articles currently queued at a specific pipeline stage.
-    """
-    try:
-        cursor = _coll().find({"stage": stage}).sort("created_at", ASCENDING).limit(limit)
-        return list(cursor)
-    except PyMongoError as e:
-        logger.error(f"MongoDB error in list_by_stage({stage}): {e}")
+        logger.error(f"MongoDB error in list_gold_articles: {e}")
         return []
 
 
-def list_completed_articles(limit: int = 100) -> list[dict]:
+def search_gold_content_by_text(query: str, limit: int = 10) -> list[dict[str, Any]]:
     """
-    Fetch articles that have completed AI question generation, ordered by publish date.
-    """
-    try:
-        cursor = _coll().find({"ai_status": "completed"}).sort("published_at", DESCENDING).limit(limit)
-        return list(cursor)
-    except PyMongoError as e:
-        logger.error(f"MongoDB error in list_completed_articles: {e}")
-        return []
-
-
-def search_article_index_by_text(query: str, limit: int = 10) -> list[dict]:
-    """
-    Search completed articles in article_index by title, source_name, or URL.
+    Search articles in 'gold_content' by title, source, or URL using regex.
     """
     query_str = (query or "").strip()
     if not query_str:
@@ -165,36 +95,71 @@ def search_article_index_by_text(query: str, limit: int = 10) -> list[dict]:
     try:
         regex = re.compile(re.escape(query_str), re.IGNORECASE)
         cursor = (
-            _coll()
+            _gold_coll()
             .find(
                 {
-                    "ai_status": "completed",
                     "$or": [
                         {"title": regex},
-                        {"source_name": regex},
+                        {"source": regex},
                         {"url": regex},
                     ],
                 }
             )
-            .sort("created_at", DESCENDING)
+            .sort("published_at", DESCENDING)
             .limit(limit)
         )
-        return list(cursor)
+        results = []
+        for doc in cursor:
+            if "_id" in doc:
+                doc["_id"] = str(doc["_id"])
+            results.append(doc)
+        return results
     except PyMongoError as e:
-        logger.error(f"MongoDB error in search_article_index_by_text({query}): {e}")
+        logger.error(f"MongoDB error in search_gold_content_by_text({query}): {e}")
         return []
 
 
-def delete_article(article_id: str) -> bool:
+def count_gold_articles() -> int:
     """
-    Delete an article entry from article_index by article_id.
+    Count total number of documents in 'gold_content'.
     """
     try:
-        res = _coll().delete_one({"_id": article_id})
+        return _gold_coll().count_documents({"title": {"$ne": ""}})
+    except PyMongoError as e:
+        logger.error(f"MongoDB error in count_gold_articles: {e}")
+        return 0
+
+
+def save_gold_content(doc: dict[str, Any]) -> bool:
+    """
+    Insert or update a clean article document in MongoDB 'gold_content'.
+    """
+    article_id = doc.get("article_id") or doc.get("_id")
+    if not article_id:
+        return False
+    try:
+        result = _gold_coll().update_one(
+            {"$or": [{"article_id": article_id}, {"_id": article_id}]},
+            {"$set": doc},
+            upsert=True,
+        )
+        return bool(result.acknowledged)
+    except PyMongoError as e:
+        logger.error(f"MongoDB error in save_gold_content({article_id}): {e}")
+        return False
+
+
+def delete_gold_content(article_id: str) -> bool:
+    """
+    Delete an article entry from 'gold_content' by article_id.
+    """
+    try:
+        res = _gold_coll().delete_one({"$or": [{"article_id": article_id}, {"_id": article_id}]})
         return res.deleted_count > 0
     except PyMongoError as e:
-        logger.error(f"MongoDB error in delete_article({article_id}): {e}")
+        logger.error(f"MongoDB error in delete_gold_content({article_id}): {e}")
         return False
+
 
 
 # ── Homepage Sections Cache ───────────────────────────────────────────────────
@@ -235,3 +200,4 @@ def get_section_data(section_id: str) -> list | None:
     except PyMongoError as e:
         logger.error(f"MongoDB error in get_section_data({section_id}): {e}")
         return None
+

@@ -126,7 +126,7 @@ describe('Discovery & Exploration UI/UX Test Suite (Senior QA)', () => {
 
   // ── 1. HomePage Complete Bundle Rendering ──────────────────────────────────
 
-  it('renders HomePage with hero hot news, daily vocab card, and article grid', async () => {
+  it('renders HomePage with hero hot news, recommendations, and article grid', async () => {
     vi.mocked(api.homepage.get).mockResolvedValueOnce(mockHomepageBundle);
 
     const handleSelectArticle = vi.fn();
@@ -144,10 +144,6 @@ describe('Discovery & Exploration UI/UX Test Suite (Senior QA)', () => {
       expect(screen.getByText('Global Renewable Energy Summit 2026')).toBeInTheDocument();
     });
 
-    expect(screen.getByText('Resilience')).toBeInTheDocument();
-    expect(screen.getByText('/rɪˈzɪliəns/')).toBeInTheDocument();
-    expect(screen.getByText(/The capacity to withstand/i)).toBeInTheDocument();
-    expect(screen.getByText(/Practice Reading Tests with "Resilience"/i)).toBeInTheDocument();
     expect(screen.getByText('Deep-Sea Geothermal Extraction')).toBeInTheDocument();
 
     await waitFor(() => {
@@ -242,7 +238,7 @@ describe('Discovery & Exploration UI/UX Test Suite (Senior QA)', () => {
     const handleSelect = vi.fn();
     render(<OmniSearch onSelectArticle={handleSelect} />);
 
-    const searchInput = screen.getByPlaceholderText(/Paste URL to import, or search articles.../i);
+    const searchInput = screen.getByPlaceholderText(/Search articles/i);
     expect(searchInput).toBeInTheDocument();
 
     fireEvent.change(searchInput, { target: { value: 'Intelligence' } });

@@ -73,26 +73,33 @@ def _retrieve_hybrid_candidates(query: str, candidate_limit: int = 20, filters: 
     return results
 
 
-def run_news_agent(
-    query: str, filters: dict | None = None, top_candidates: int = 20, top_reranked: int = 5
-) -> AgentResult:
-    start_time = time.time()
-    candidates = _retrieve_hybrid_candidates(query, candidate_limit=top_candidates, filters=filters)
+def retrieve_and_rerank_context(
+    query: str,
+    filters: dict | None = None,
+    top_candidates: int = 20,
+    top_reranked: int = 5,
+) -> tuple[str, list[Citation], list[dict]]:
+    """
+    Retrieve candidate passages using hybrid vector + BM25 search, rerank them,
+    and format the grounded context string along with structured citations.
 
+    Args:
+        query: User search query.
+        filters: Optional metadata filters (e.g., {"article_id": "..."}).
+        top_candidates: Maximum initial candidates to gather across indices.
+        top_reranked: Top N ranked chunks to keep for context synthesis.
+
+    Returns:
+        tuple: (formatted_context, citations, retrieved_chunks)
+    """
+    candidates = _retrieve_hybrid_candidates(query, candidate_limit=top_candidates, filters=filters)
     if not candidates:
-        return AgentResult(
-            intent=AgentIntent.NEWS,
-            answer="The current articles in the system do not contain enough information to answer this question.",
-            citations=[],
-            retrieved_chunks_count=0,
-            confidence_score=0.0,
-            execution_time_ms=(time.time() - start_time) * 1000,
-        )
+        return "", [], []
 
     retrieved = rerank_chunks(query=query, candidates=candidates, top_k=top_reranked)
 
-    citations = []
-    seen = set()
+    citations: list[Citation] = []
+    seen: set[str] = set()
     for chunk in retrieved:
         meta = chunk.get("metadata", {})
         aid = meta.get("article_id")
@@ -110,7 +117,7 @@ def run_news_agent(
                 )
             )
 
-    context_lines = []
+    context_lines: list[str] = []
     for i, c in enumerate(retrieved, 1):
         m = c.get("metadata", {})
         title = m.get("title", "Untitled")
@@ -122,6 +129,30 @@ def run_news_agent(
         )
 
     formatted_context = "\n".join(context_lines)
+    return formatted_context, citations, retrieved
+
+
+def run_news_agent(
+    query: str, filters: dict | None = None, top_candidates: int = 20, top_reranked: int = 5
+) -> AgentResult:
+    """
+    Execute end-to-end synchronous RAG query against the news archive.
+    """
+    start_time = time.time()
+    formatted_context, citations, retrieved = retrieve_and_rerank_context(
+        query=query, filters=filters, top_candidates=top_candidates, top_reranked=top_reranked
+    )
+
+    if not retrieved:
+        return AgentResult(
+            intent=AgentIntent.NEWS,
+            answer="The current articles in the system do not contain enough information to answer this question.",
+            citations=[],
+            retrieved_chunks_count=0,
+            confidence_score=0.0,
+            execution_time_ms=(time.time() - start_time) * 1000,
+        )
+
     system_prompt = NEWS_AGENT_SYSTEM_PROMPT.format(context=formatted_context)
 
     api_key = os.getenv("AZURE_OPENAI_API_KEY") or os.getenv("OPENAI_API_KEY")
@@ -141,7 +172,7 @@ def run_news_agent(
 
     try:
         from ai_service.connection import get_llm
-        llm = get_llm(temperature=0.2)
+        llm = get_llm()
         from langchain_core.messages import HumanMessage, SystemMessage
         resp = llm.invoke([SystemMessage(content=system_prompt), HumanMessage(content=query)])
         answer = resp.content if hasattr(resp, "content") else str(resp)

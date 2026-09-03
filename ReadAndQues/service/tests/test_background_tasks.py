@@ -3,8 +3,9 @@ ReadAndQues/service/tests/test_background_tasks.py
 Tests for background task dispatcher using Python daemon threads.
 """
 
-from unittest.mock import MagicMock, patch
 import threading
+from unittest.mock import MagicMock, patch
+
 from django.test import TestCase
 
 from service.tasks import run_in_background

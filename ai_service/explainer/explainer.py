@@ -13,7 +13,7 @@ from ai_service.explainer.prompts import DYNAMIC_EXPLAINED_PROMPT
 logger = logging.getLogger(__name__)
 
 
-def stream_explained_tokens(phrase: str, paragraph_context: str = "") -> Generator[str, None, None]:
+def stream_explained_tokens(phrase: str, paragraph_context: str = "") -> Generator[str]:
     """
     Stream token-by-token explanation for a clicked term or sentence.
     """
@@ -22,7 +22,7 @@ def stream_explained_tokens(phrase: str, paragraph_context: str = "") -> Generat
     prompt_template = PromptTemplate.from_template(DYNAMIC_EXPLAINED_PROMPT)
 
     try:
-        llm = get_llm(temperature=0.3)
+        llm = get_llm()
         chain = prompt_template | llm
         for chunk in chain.stream(
             {

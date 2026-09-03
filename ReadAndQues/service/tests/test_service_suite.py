@@ -18,8 +18,8 @@ from django.db import transaction
 from django.test import Client, TestCase
 
 from accounts.models import UserProfile
-from readspace.utils import StarDeductionError, consume_user_star
 from ai_service.rag.grounding.passage_proof import get_passage_proof
+from readspace.utils import StarDeductionError, consume_user_star
 from service.pipelines import enrich_article_only, ingest_and_enrich_article
 from service.selectors import (
     get_article_detail,
@@ -79,39 +79,24 @@ class ServiceTestSuite(TestCase):
             ],
         }
 
-    # ── 1. Celery Asynchronous Pipeline & Orchestration Tests ───────────────────
+    # ── 1. Pipeline & Orchestration Tests ───────────────────
 
     def test_article_pipeline_full_ingestion_flow(self):
         """QA Test: Full ingestion pipeline crawls URL, cleans text, runs AI enrichment, and saves gold document."""
-        mock_crawl = {
-            "success": True,
-            "title": "Quantum Computing",
-            "author": "Dr. Smith",
-            "raw_text": "Quantum computers leverage qubits for fast computation.",
-            "html_content": "<p>Quantum computers leverage qubits for fast computation.</p>",
-            "source_name": "TechDaily",
-            "word_count": 8,
-        }
-
         mock_ai_result = {
-            "status": "completed",
-            "analysis": {"theme": "Technology", "genre": "scientific", "core": {"summary": "Quantum summary"}},
-            "exams": [{"exam_id": "EXAM_QC_101", "quizzes": [{"question": "Q1", "correct_answer": "A"}]}],
+            "keywords": ["Quantum", "Technology"],
+            "summary": "Quantum summary",
+            "questions": [{"question": "Q1", "correct_answer": "A"}],
         }
 
         with (
-            patch("service.pipelines.crawl_article_content", return_value=mock_crawl),
-            patch("service.pipelines.object_store.save_bronze_html"),
-            patch("service.pipelines.object_store.save_bronze_meta"),
+            patch("service.pipelines.trafilatura.fetch_url", return_value="<html>Sample</html>"),
+            patch("service.pipelines.trafilatura.extract", return_value="Quantum computers leverage qubits for fast computation. " * 10),
             patch("service.pipelines.object_store.save_silver_clean"),
-            patch("service.pipelines.object_store.save_gold_enriched"),
-            patch("service.pipelines.article_store.update_article_stage"),
-            patch("service.pipelines.article_store.update_ai_status"),
-            patch("service.pipelines._run_ai_enrichment", return_value=mock_ai_result),
+            patch("service.pipelines.article_store.save_gold_content", return_value=True),
+            patch("service.pipelines.generate_quiz", return_value=mock_ai_result),
             patch("service.pipelines.exam_store.save_exam"),
-            patch("service.pipelines.vector_store.add_article_vector"),
-            patch("service.pipelines.vector_store.upsert_article_chunks"),
-            patch("service.pipelines.bm25_conn.rebuild_index"),
+            patch("service.pipelines.index_article", return_value=True),
         ):
             result = ingest_and_enrich_article(article_id="art-test-123", url="https://example.com/quantum")
 
@@ -120,72 +105,74 @@ class ServiceTestSuite(TestCase):
 
     def test_article_pipeline_scrape_failure_records_error_status(self):
         """QA Test: When scraper fails or encounters 404, pipeline records failure status."""
-        mock_crawl_fail = {"success": False, "error": "404 Not Found"}
-
-        with (
-            patch("service.pipelines.crawl_article_content", return_value=mock_crawl_fail),
-            patch("service.pipelines.article_store.update_ai_status") as mock_update_ai,
-            patch("service.pipelines.pipeline_store.insert_pipeline_log"),
-        ):
+        with patch("service.pipelines.trafilatura.fetch_url", return_value=None):
             result = ingest_and_enrich_article(article_id="art-fail-404", url="https://invalid-url.com")
 
             self.assertEqual(result["status"], "failed")
-            self.assertEqual(result["error"], "404 Not Found")
+            self.assertEqual(result["error"], "Fetch failed")
 
     # ── 2. Data Selectors & Mongo Document Access Tests ────────────────────────
 
-    def test_get_article_detail_sample_fallback_normalization(self):
-        """QA Test: get_article_detail normalizes sample article documents."""
-        with patch("service.selectors.article_store.get_article_index", return_value=None):
-            doc = get_article_detail("art-sample-001")
+    def test_get_article_detail_gold_content(self):
+        """QA Test: get_article_detail retrieves clean document directly from gold_content."""
+        mock_gold = {
+            "article_id": "art-gold-001",
+            "title": "Quantum Computation in Modern Science",
+            "source": "MIT Tech Review",
+            "url": "https://example.com/quantum",
+            "original_text": "Quantum computing is computation using quantum states.",
+            "word_count": 8,
+            "published_at": "2026-09-01T00:00:00Z",
+        }
+        with patch("service.selectors.article_store.get_gold_content", return_value=mock_gold):
+            doc = get_article_detail("art-gold-001")
 
             self.assertIsNotNone(doc)
-            self.assertEqual(doc["article_id"], "art-sample-001")
-            self.assertTrue(doc["has_quiz"])
-            self.assertGreater(len(doc["exams"]), 0)
+            self.assertEqual(doc["article_id"], "art-gold-001")
+            self.assertEqual(doc["title"], "Quantum Computation in Modern Science")
+            self.assertEqual(doc["stage"], "gold")
 
     def test_get_article_detail_nonexistent_returns_none(self):
-        """QA Test: get_article_detail handles non-existent article gracefully returning None when no sample fallback."""
-        with (
-            patch("service.selectors.SAMPLE_ARTICLES", []),
-            patch("service.selectors.article_store.get_article_index", return_value=None),
-        ):
+        """QA Test: get_article_detail returns None when article does not exist in gold_content."""
+        with patch("service.selectors.article_store.get_gold_content", return_value=None):
             doc = get_article_detail("nonexistent-article-id-999")
             self.assertIsNone(doc)
 
     def test_list_completed_articles_filtering(self):
-        """QA Test: list_completed_articles filters by Theme and Genre correctly."""
-        mock_res = {
-            "articles": [{"article_id": "art-1", "theme": "Technology", "genre": "academic"}],
-            "total_count": 1,
-            "page": 1,
-            "total_pages": 1,
-        }
-        with patch("service.selectors.article_store.list_completed_articles", return_value=mock_res["articles"]):
-            res = list_completed_articles(theme="Technology", genre="academic", limit=10)
+        """QA Test: list_completed_articles filters articles from gold_content correctly."""
+        mock_articles = [
+            {
+                "article_id": "art-1",
+                "title": "AI in Education",
+                "source": "Nature News",
+                "keywords": ["Technology"],
+                "original_text": "AI transforms modern classrooms.",
+                "published_at": "2026-09-01T00:00:00Z",
+            }
+        ]
+        with patch("service.selectors.article_store.list_gold_articles", return_value=mock_articles):
+            res = list_completed_articles(keyword="Technology", limit=10)
             self.assertIn("articles", res)
             self.assertGreater(len(res["articles"]), 0)
-            self.assertEqual(res["articles"][0]["theme"], "Technology")
+            self.assertEqual(res["articles"][0]["article_id"], "art-1")
 
     def test_search_articles_keyword_bm25_ranking(self):
-        """QA Test: search_articles_keyword returns matched documents ranked by relevance."""
+        """QA Test: search_articles_keyword returns matched documents from gold_content."""
         mock_results = [
             {
                 "article_id": "art-sample-001",
                 "id": "art-sample-001",
                 "title": "The Evolution of Artificial Intelligence in Higher Education",
-                "source_name": "MIT Review",
-                "theme": "Technology",
-                "genre": "academic",
-                "summary": "AI education summary",
+                "source": "MIT Review",
+                "original_text": "AI education summary",
                 "word_count": 685,
-                "status": "completed",
             }
         ]
-        with patch("service.selectors.search_articles_keyword", return_value=mock_results):
-            results = search_articles_keyword("intelligence", limit=5)
-            self.assertEqual(len(results), 1)
-            self.assertEqual(results[0]["article_id"], "art-sample-001")
+        with patch("service.selectors.article_store.search_gold_content_by_text", return_value=mock_results):
+            with patch("service.selectors.get_bm25_index", return_value=(None, [])):
+                results = search_articles_keyword("intelligence", limit=5)
+                self.assertEqual(len(results), 1)
+                self.assertEqual(results[0]["article_id"], "art-sample-001")
 
     # ── 3. Passage Proof Grounding Service Tests ───────────────────────────────
 
@@ -198,9 +185,12 @@ class ServiceTestSuite(TestCase):
                 "score": 0.95,
             }
         ]
+        mock_client = MagicMock()
+        mock_client.get_database.return_value.__getitem__.return_value.find_one.return_value = self.mock_mongo_doc
+
         with (
-            patch("ai_service.rag.grounding.passage_proof.exam_store.get_exam", return_value=self.mock_mongo_doc),
-            patch("ai_service.rag.grounding.passage_proof.vector_store.vector_search_chunks", return_value=mock_hits),
+            patch("ai_service.rag.grounding.passage_proof.MongoClient", return_value=mock_client),
+            patch("ai_service.rag.grounding.passage_proof.vector_search_chunks", return_value=mock_hits),
         ):
             proof = get_passage_proof(self.sample_article_id, question_idx=0)
 
@@ -212,10 +202,14 @@ class ServiceTestSuite(TestCase):
 
     def test_passage_proof_unmatched_fallback(self):
         """QA Test: When question index is invalid or proof cannot be found, returns safe fallback."""
-        with patch("ai_service.rag.grounding.passage_proof.exam_store.get_exam", return_value=self.mock_mongo_doc):
+        mock_client = MagicMock()
+        mock_client.get_database.return_value.__getitem__.return_value.find_one.return_value = self.mock_mongo_doc
+
+        with patch("ai_service.rag.grounding.passage_proof.MongoClient", return_value=mock_client):
             proof = get_passage_proof(self.sample_article_id, question_idx=999)
 
             self.assertIsNone(proof)
+
 
     # ── 4. Account & User Star Economy Service Tests ───────────────────────────
 
@@ -298,14 +292,11 @@ class ServiceTestSuite(TestCase):
 
         with (
             patch("readspace.api.router.selectors.get_hot_news", return_value=[mock_article_item]),
-            patch("readspace.api.router.selectors.get_daily_vocab", return_value=mock_vocab),
             patch("readspace.api.router.selectors.get_recommendations", return_value=[mock_article_item]),
             patch(
                 "readspace.api.router.selectors.list_completed_articles",
                 return_value={"articles": [mock_article_item], "total_count": 1, "page": 1, "total_pages": 1},
             ),
-            patch("readspace.api.router.selectors.get_theme_choices", return_value=["Science"]),
-            patch("readspace.api.router.selectors.get_genre_choices", return_value=["academic"]),
         ):
             response = self.client.get("/api/v1/homepage/")
             self.assertEqual(response.status_code, 200)
@@ -313,8 +304,6 @@ class ServiceTestSuite(TestCase):
 
             self.assertEqual(data["status"], "success")
             self.assertIn("hero_articles", data)
-            self.assertIn("daily_vocab", data)
-            self.assertEqual(data["daily_vocab"]["word"], "paradigm")
             self.assertIn("recommended_articles", data)
             self.assertIn("articles", data)
 
@@ -350,27 +339,33 @@ class ServiceTestSuite(TestCase):
             self.assertIn("articles", data)
             self.assertEqual(len(data["articles"]), 1)
 
-    def test_offline_wordnet_dictionary_lookup(self):
-        """QA Test: GET /api/v1/dictionary/lookup/ returns offline dictionary definition and phonetics."""
+    def test_dictionary_lookup_endpoint(self):
+        """QA Test: GET /api/v1/dictionary/lookup/ returns real WordNet definitions, phonetics, and lemmas."""
+        # 1. Base word lookup
         response = self.client.get("/api/v1/dictionary/lookup/?word=resonance")
         self.assertEqual(response.status_code, 200)
         data = response.json()
-
         self.assertEqual(data["word"].lower(), "resonance")
         self.assertTrue(data["found"])
         self.assertGreater(len(data["definitions"]), 0)
         self.assertIn("definition", data["definitions"][0])
+        self.assertIsNotNone(data.get("phonetic"))
 
-    def test_deterministic_daily_vocab_consistency(self):
-        """QA Test: selectors.get_daily_vocab returns consistent deterministic word across calls."""
-        from service.selectors import DAILY_VOCAB_POOL, get_daily_vocab
+        # 2. Inflected verb lookup ('received' -> lemma 'receive' or verb definitions)
+        response_rec = self.client.get("/api/v1/dictionary/lookup/?word=received")
+        self.assertEqual(response_rec.status_code, 200)
+        data_rec = response_rec.json()
+        self.assertTrue(data_rec["found"])
+        self.assertEqual(data_rec["part_of_speech"], "verb")
+        self.assertGreater(len(data_rec["definitions"]), 0)
+        self.assertNotIn("Academic terminology", data_rec["definitions"][0]["definition"])
 
-        vocab1 = get_daily_vocab()
-        vocab2 = get_daily_vocab()
-        self.assertEqual(vocab1["word"], vocab2["word"])
-        self.assertEqual(vocab1["phonetic"], vocab2["phonetic"])
-        self.assertEqual(vocab1["definition"], vocab2["definition"])
-        self.assertTrue(any(v["word"] == vocab1["word"] for v in DAILY_VOCAB_POOL))
+        # 3. Unrecognized gibberish word
+        response_unf = self.client.get("/api/v1/dictionary/lookup/?word=xyzabc999nonexistent")
+        self.assertEqual(response_unf.status_code, 200)
+        data_unf = response_unf.json()
+        self.assertFalse(data_unf["found"])
+        self.assertEqual(len(data_unf["definitions"]), 0)
 
     def test_list_completed_articles_with_date_filters(self):
         """QA Test: list_completed_articles filters articles based on publication date."""

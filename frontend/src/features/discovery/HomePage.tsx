@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { HeroHotNews } from './HeroHotNews';
-import { DailyVocabCard } from './DailyVocabCard';
 import { Recommendations } from './Recommendations';
 import { ArticleGrid } from './ArticleGrid';
 import { HomepageData } from '../../types';
@@ -120,13 +119,7 @@ export const HomePage: React.FC<HomePageProps> = ({
         onSelectArticle={onSelectArticle}
       />
 
-      {/* 2. Word of the Day Spotlight Banner */}
-      <DailyVocabCard
-        vocab={data.daily_vocab}
-        onExploreTopic={onExploreTopic}
-      />
-
-      {/* 3. Adaptive Recommendations */}
+      {/* 2. Adaptive Recommendations */}
       {data.recommended_articles && data.recommended_articles.length > 0 && (
         <Recommendations
           articles={data.recommended_articles}

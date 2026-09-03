@@ -198,6 +198,37 @@ export function useHighlighter(
     [containerRef, highlightColor, saveHighlights]
   );
 
+  // Programmatic erase for selected highlights (e.g. from Contextual HUD)
+  const eraseSelection = useCallback(() => {
+    const container = containerRef.current;
+    if (!container) return false;
+
+    const sel = window.getSelection();
+    if (!sel || !sel.rangeCount) return false;
+
+    const marks = container.querySelectorAll('mark.user-highlight');
+    let erasedCount = 0;
+
+    marks.forEach((mark) => {
+      if (sel.containsNode(mark, true)) {
+        const parent = mark.parentNode;
+        if (parent) {
+          const textNode = document.createTextNode(mark.textContent || '');
+          parent.replaceChild(textNode, mark);
+          parent.normalize();
+          erasedCount++;
+        }
+      }
+    });
+
+    if (erasedCount > 0) {
+      saveHighlights();
+      sel.removeAllRanges();
+      return true;
+    }
+    return false;
+  }, [containerRef, saveHighlights]);
+
   // Handle mouseup for applying highlights or erasing
   useEffect(() => {
     const container = containerRef.current;
@@ -238,5 +269,5 @@ export function useHighlighter(
     return () => clearTimeout(timer);
   }, [restoreHighlights]);
 
-  return { saveHighlights, restoreHighlights, highlightSelection };
+  return { saveHighlights, restoreHighlights, highlightSelection, eraseSelection };
 }

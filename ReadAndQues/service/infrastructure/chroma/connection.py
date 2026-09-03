@@ -57,11 +57,18 @@ def get_collection(name: str = "articles"):
         return None
 
 
+def get_gold_semantic_chunks_collection():
+    """
+    Retrieve or create the primary gold_semantic_chunks ChromaDB collection.
+    """
+    return get_collection(name="gold_semantic_chunks")
+
+
 def get_news_chunks_collection():
     """
-    Retrieve or create the news_chunks collection.
+    Retrieve gold_semantic_chunks collection (deprecated alias for backward compatibility).
     """
-    return get_collection(name="news_chunks")
+    return get_gold_semantic_chunks_collection()
 
 
 class _CollectionProxy:
@@ -105,4 +112,6 @@ class _ClientProxy:
 
 chroma_client = _ClientProxy()
 articles_collection = _CollectionProxy("articles")
-news_chunks_collection = _CollectionProxy("news_chunks")
+gold_semantic_chunks_collection = _CollectionProxy("gold_semantic_chunks")
+news_chunks_collection = gold_semantic_chunks_collection
+

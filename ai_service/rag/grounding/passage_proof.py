@@ -5,6 +5,7 @@ ai_service/rag/grounding/passage_proof.py — Passage Proof & Grounding Service.
 import logging
 import os
 from typing import Any
+
 from pymongo import MongoClient
 
 from ai_service.rag.search.vector_store import vector_search_chunks

@@ -77,10 +77,10 @@ describe('AuraDock Unified Reading Suite - Senior QA & DevOps Verification', () 
     vi.restoreAllMocks();
   });
 
-  // ── 1. Floating Dock Rendering & 7 Tool Buttons ───────────────────────────
+  // ── 1. Floating Dock Rendering & Tool Buttons ───────────────────────────
 
   describe('1. Floating AuraDock UI Elements & Tool Toggles', () => {
-    it('renders all 7 tool buttons plus color swatch and keyboard shortcut helper', () => {
+    it('renders all tool buttons plus color swatch and omits zen mode, quiz, shortcuts buttons', () => {
       const handleToggleQuiz = vi.fn();
       render(<UnifiedReadingDock isQuizOpen={true} onToggleQuiz={handleToggleQuiz} />);
 
@@ -92,14 +92,15 @@ describe('AuraDock Unified Reading Suite - Senior QA & DevOps Verification', () 
       expect(screen.getByLabelText('Highlighter Tool')).toBeInTheDocument();
       expect(screen.getByLabelText('Highlight Color Picker')).toBeInTheDocument();
       expect(screen.getByLabelText('Eraser Tool')).toBeInTheDocument();
-      expect(screen.getByLabelText('Smart Ink Tool')).toBeInTheDocument();
       expect(screen.getByLabelText('Dictionary Tool')).toBeInTheDocument();
-      expect(screen.getByLabelText('Toggle Zen Mode')).toBeInTheDocument();
-      expect(screen.getByLabelText('Toggle AI Reading Quiz')).toBeInTheDocument();
-      expect(screen.getByLabelText('Keyboard Shortcuts')).toBeInTheDocument();
+
+      // Removed Buttons
+      expect(screen.queryByLabelText('Toggle Zen Mode')).not.toBeInTheDocument();
+      expect(screen.queryByLabelText('Toggle AI Reading Quiz')).not.toBeInTheDocument();
+      expect(screen.queryByLabelText('Keyboard Shortcuts')).not.toBeInTheDocument();
     });
 
-    it('toggles tool active states properly (pointer, marker, eraser, smart_ink, dictionary)', () => {
+    it('toggles tool active states properly (pointer, marker, eraser, dictionary)', () => {
       render(<UnifiedReadingDock isQuizOpen={false} onToggleQuiz={vi.fn()} />);
 
       // Default tool is null (pointer active by default)
@@ -113,10 +114,6 @@ describe('AuraDock Unified Reading Suite - Senior QA & DevOps Verification', () 
       fireEvent.click(screen.getByLabelText('Eraser Tool'));
       expect(workspaceStore.getState().activeTool).toBe('eraser');
 
-      // Activate Smart Ink
-      fireEvent.click(screen.getByLabelText('Smart Ink Tool'));
-      expect(workspaceStore.getState().activeTool).toBe('smart_ink');
-
       // Activate Dictionary
       fireEvent.click(screen.getByLabelText('Dictionary Tool'));
       expect(workspaceStore.getState().activeTool).toBe('dictionary');
@@ -126,33 +123,6 @@ describe('AuraDock Unified Reading Suite - Senior QA & DevOps Verification', () 
       expect(workspaceStore.getState().activeTool).toBeNull();
     });
 
-    it('toggles Zen Mode directly from dock button', () => {
-      render(<UnifiedReadingDock />);
-
-      const zenBtn = screen.getByLabelText('Toggle Zen Mode');
-      expect(workspaceStore.getState().isZenMode).toBe(false);
-
-      fireEvent.click(zenBtn);
-      expect(workspaceStore.getState().isZenMode).toBe(true);
-
-      fireEvent.click(zenBtn);
-      expect(workspaceStore.getState().isZenMode).toBe(false);
-    });
-
-    it('triggers onToggleQuiz callback when Quiz button is clicked', () => {
-      const handleToggleQuiz = vi.fn();
-      render(<UnifiedReadingDock isQuizOpen={false} onToggleQuiz={handleToggleQuiz} />);
-
-      const quizBtn = screen.getByLabelText('Toggle AI Reading Quiz');
-      fireEvent.click(quizBtn);
-      expect(handleToggleQuiz).toHaveBeenCalledTimes(1);
-    });
-
-    it('omits Quiz toggle button when onToggleQuiz is not provided', () => {
-      render(<UnifiedReadingDock />);
-      expect(screen.queryByLabelText('Toggle AI Reading Quiz')).not.toBeInTheDocument();
-    });
-
     it('works identically when wrapped via WorkspaceToolbar legacy component', () => {
       const handleToggleQuiz = vi.fn();
       render(<WorkspaceToolbar isQuizOpen={true} onToggleQuiz={handleToggleQuiz} />);
@@ -160,6 +130,8 @@ describe('AuraDock Unified Reading Suite - Senior QA & DevOps Verification', () 
       expect(screen.getByRole('navigation', { name: /Unified Reading Toolbox/i })).toBeInTheDocument();
       expect(screen.getByLabelText('Pointer Tool')).toBeInTheDocument();
       expect(screen.getByLabelText('Highlighter Tool')).toBeInTheDocument();
+      expect(screen.getByLabelText('Eraser Tool')).toBeInTheDocument();
+      expect(screen.getByLabelText('Dictionary Tool')).toBeInTheDocument();
     });
   });
 
@@ -218,61 +190,10 @@ describe('AuraDock Unified Reading Suite - Senior QA & DevOps Verification', () 
     });
   });
 
-  // ── 3. Keyboard Shortcuts Modal Dialog ────────────────────────────────────
-
-  describe('3. Keyboard Shortcuts Modal Dialog', () => {
-    it('opens cheat sheet modal and lists all shortcut key bindings', () => {
-      render(<UnifiedReadingDock />);
-
-      const shortcutsTrigger = screen.getByLabelText('Keyboard Shortcuts');
-      fireEvent.click(shortcutsTrigger);
-
-      const dialog = screen.getByRole('dialog', { name: /Keyboard Shortcuts Cheat Sheet/i });
-      expect(dialog).toBeInTheDocument();
-      expect(screen.getByText('Reading Space Shortcuts')).toBeInTheDocument();
-      expect(screen.getByText('Power user keyboard controls')).toBeInTheDocument();
-
-      // Check all shortcut descriptions
-      expect(screen.getByText('Pointer / Select Mode')).toBeInTheDocument();
-      expect(screen.getByText('Highlighter Tool')).toBeInTheDocument();
-      expect(screen.getByText('Eraser Tool')).toBeInTheDocument();
-      expect(screen.getByText('Smart Ink AI Stream')).toBeInTheDocument();
-      expect(screen.getByText('WordNet Dictionary')).toBeInTheDocument();
-      expect(screen.getByText('Paraphrase Selected Text')).toBeInTheDocument();
-      expect(screen.getByText('Toggle Zen Focus Mode')).toBeInTheDocument();
-      expect(screen.getByText('Toggle AI Reading Quiz')).toBeInTheDocument();
-      expect(screen.getByText('Highlight Colors')).toBeInTheDocument();
-    });
-
-    it('closes modal when clicking X button, Got it button, or backdrop', () => {
-      render(<UnifiedReadingDock />);
-
-      const shortcutsTrigger = screen.getByLabelText('Keyboard Shortcuts');
-
-      // 1. Close via X button
-      fireEvent.click(shortcutsTrigger);
-      expect(screen.getByRole('dialog')).toBeInTheDocument();
-      fireEvent.click(screen.getByLabelText('Close shortcuts dialog'));
-      expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
-
-      // 2. Close via "Got it" button
-      fireEvent.click(shortcutsTrigger);
-      expect(screen.getByRole('dialog')).toBeInTheDocument();
-      fireEvent.click(screen.getByRole('button', { name: /Got it/i }));
-      expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
-
-      // 3. Close via backdrop click
-      fireEvent.click(shortcutsTrigger);
-      const dialogBackdrop = screen.getByRole('dialog');
-      fireEvent.click(dialogBackdrop);
-      expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
-    });
-  });
-
   // ── 4. Keyboard Shortcuts Dispatching ─────────────────────────────────────
 
   describe('4. Keyboard Shortcuts Dispatching in ArticleReader', () => {
-    it('dispatches tool selection shortcuts: H, E, I, D, V, Esc', () => {
+    it('dispatches tool selection shortcuts: H, E, D, V, Esc', () => {
       const handleToast = vi.fn();
       render(<ArticleReader article={mockArticle} onShowToast={handleToast} />);
 
@@ -283,10 +204,6 @@ describe('AuraDock Unified Reading Suite - Senior QA & DevOps Verification', () 
       // Press 'E' -> Eraser
       fireEvent.keyDown(window, { key: 'e' });
       expect(workspaceStore.getState().activeTool).toBe('eraser');
-
-      // Press 'I' -> Smart Ink
-      fireEvent.keyDown(window, { key: 'i' });
-      expect(workspaceStore.getState().activeTool).toBe('smart_ink');
 
       // Press 'D' -> Dictionary
       fireEvent.keyDown(window, { key: 'd' });
@@ -404,8 +321,9 @@ describe('AuraDock Unified Reading Suite - Senior QA & DevOps Verification', () 
       });
 
       expect(screen.getByRole('button', { name: /Mark selection/i })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /Erase highlight/i })).toBeInTheDocument();
       expect(screen.getByRole('button', { name: /Define word/i })).toBeInTheDocument();
-      expect(screen.getByRole('button', { name: /Explain with Smart Ink/i })).toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: /Explain with Smart Ink/i })).not.toBeInTheDocument();
       expect(screen.queryByRole('button', { name: /Paraphrase selection/i })).not.toBeInTheDocument();
       expect(screen.getByRole('button', { name: /Copy selection/i })).toBeInTheDocument();
     });
@@ -468,45 +386,6 @@ describe('AuraDock Unified Reading Suite - Senior QA & DevOps Verification', () 
         'entanglement in computational systems'
       );
       expect(handleToast).toHaveBeenCalledWith('Copied text to clipboard', 'success');
-    });
-
-    it('triggers Smart Ink explanation from HUD Smart Ink button', async () => {
-      vi.mocked(api.articles.explain).mockResolvedValueOnce({
-        status: 'success',
-        phrase: 'Superconducting qubits enable superposition',
-        summary: 'Quantum computing summary',
-        detailed_explanation: 'Quantum bits allow multiple states at once',
-        simplified_version: 'Qubits can be in two states at once',
-        key_terms: [],
-      });
-
-      const { container } = render(<ArticleReader article={mockArticle} />);
-
-      const contentContainer = container.querySelector('.select-text')!;
-      const mockRange = {
-        commonAncestorContainer: contentContainer,
-        getBoundingClientRect: () => ({ left: 200, top: 300, width: 80, height: 20 }),
-      };
-
-      vi.spyOn(window, 'getSelection').mockReturnValue({
-        isCollapsed: false,
-        rangeCount: 1,
-        getRangeAt: () => mockRange,
-        toString: () => 'Superconducting qubits enable superposition',
-      } as any);
-
-      fireEvent(document, new Event('selectionchange'));
-
-      await waitFor(() => {
-        expect(screen.getByRole('button', { name: /Explain with Smart Ink/i })).toBeInTheDocument();
-      });
-
-      const smartInkBtn = screen.getByRole('button', { name: /Explain with Smart Ink/i });
-      fireEvent.mouseDown(smartInkBtn);
-
-      await waitFor(() => {
-        expect(screen.getByText('💡 Explained')).toBeInTheDocument();
-      });
     });
   });
 

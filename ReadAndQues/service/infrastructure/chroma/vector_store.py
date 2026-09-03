@@ -1,12 +1,16 @@
 """
-service/infrastructure/chroma/vector_store.py — Vector Store Operations for articles and news_chunks collections.
+service/infrastructure/chroma/vector_store.py — Vector Store Operations for articles and gold_semantic_chunks collections.
 Provides clean vector upsert, similarity search, and chunk deletion.
 """
 
 import logging
 
 from service.infrastructure.chroma.chunking import chunk_article_with_hierarchy
-from service.infrastructure.chroma.connection import articles_collection, news_chunks_collection
+from service.infrastructure.chroma.connection import (
+    articles_collection,
+    gold_semantic_chunks_collection,
+    news_chunks_collection,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -104,7 +108,7 @@ def upsert_article_chunks(
     published_at: str = "",
 ) -> bool:
     """
-    Split full article text into chunks and index them into news_chunks collection.
+    Split full article text into chunks and index them into gold_semantic_chunks collection.
     """
     if not full_text or not article_id:
         return False
@@ -141,7 +145,7 @@ def upsert_article_chunks(
 
 def vector_search_chunks(query: str, limit: int = 10, where_filter: dict | None = None) -> list[dict]:
     """
-    Search indexed paragraph chunks by query text, with optional metadata filters.
+    Search indexed paragraph chunks in gold_semantic_chunks by query text, with optional metadata filters.
     """
     if not query:
         return []

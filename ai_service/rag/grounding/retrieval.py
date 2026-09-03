@@ -3,6 +3,7 @@ ai_service/rag/grounding/retrieval.py — Article-scoped Lexical Retrieval.
 """
 
 from rank_bm25 import BM25Okapi
+
 from ai_service.rag.grounding.chunking import ArticleChunk
 from ai_service.rag.search.bm25_index import process_text_to_tokens
 

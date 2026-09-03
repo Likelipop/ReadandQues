@@ -102,7 +102,8 @@ describe('Reading Workspace UI/UX Test Suite (Senior QA)', () => {
       expect(screen.getAllByText('The Evolution of Neural Computing').length).toBeGreaterThan(0);
     });
 
-    expect(screen.getByText('MIT Technology Review • 550 words')).toBeInTheDocument();
+    expect(screen.getByText('MIT Technology Review')).toBeInTheDocument();
+    expect(screen.getByText(/550 words/i)).toBeInTheDocument();
     expect(screen.getByText(/Deep neural networks mimic biological synapses/i)).toBeInTheDocument();
   });
 
@@ -161,32 +162,7 @@ describe('Reading Workspace UI/UX Test Suite (Senior QA)', () => {
     });
   });
 
-  // ── 3. Smart Ink In-Place Contextual Explanation UX ────────────────
-  it('triggers Smart Ink explanation in paragraph and displays 💡 Explained badge', async () => {
-    vi.mocked(api.articles.explain).mockResolvedValueOnce({
-      status: 'success',
-      phrase: 'Deep neural networks mimic biological synapses to process non-linear representations.',
-      summary: 'Cognitive computing explanation',
-      detailed_explanation: 'Advanced AI systems copy the way human brain cells connect to learn patterns.',
-      simplified_version: 'AI copies brain neurons.',
-      key_terms: [],
-    });
-
-    workspaceStore.setState({ activeTool: 'smart_ink' });
-    render(<ArticleReader article={mockArticle} />);
-
-    const sentence = screen.getByText(/Deep neural networks mimic biological synapses/i);
-    fireEvent.click(sentence);
-
-    await waitFor(() => {
-      expect(
-        screen.getByText('Advanced AI systems copy the way human brain cells connect to learn patterns.')
-      ).toBeInTheDocument();
-      expect(screen.getByText('💡 Explained')).toBeInTheDocument();
-    });
-  });
-
-  // ── 4. StudyBuddy AI RAG Chat Dock UX ──────────────────────────────────────
+  // ── 3. StudyBuddy AI RAG Chat Dock UX ──────────────────────────────────────
 
   it('opens and closes StudyDock RAG bottom dock and handles input typing', () => {
     render(<BottomChatDock activeArticleId="art-workspace-qa-1" />);

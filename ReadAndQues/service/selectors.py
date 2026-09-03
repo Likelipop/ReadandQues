@@ -1,16 +1,22 @@
 """
 service/selectors.py — Centralized Read Operations (Queries).
-Views and APIs call these for fetching data. Pure read functions without side effects.
+
+Provides pure Gold layer query functions without side effects:
+- get_article_detail(article_id): 100% directly from MongoDB 'gold_content' & 'exams'.
+- list_completed_articles(): paginated retrieval from 'gold_content'.
+- get_hot_news(), get_recommendations(), get_related_articles().
+- search_articles_keyword(): queries MinIO pre-computed BM25 index.
 """
 
 import datetime
 import logging
 from typing import Any
 
-from shared.schemas import Article
+from service.infrastructure.bm25.connection import get_index as get_bm25_index
+from service.infrastructure.bm25.text_processing import process_text_to_tokens
 from service.infrastructure.mongo import article_store, exam_store
-from service.infrastructure.minio import object_store
 from service.models import ExamAttemptLog
+from shared.schemas import Article
 
 logger = logging.getLogger(__name__)
 
@@ -53,34 +59,41 @@ def _is_within_date_filter(published_at: Any, date_filter: str | None) -> bool:
 
 
 def get_article_detail(article_id: str) -> dict[str, Any] | None:
-    """Fetch complete article detail including clean text, keywords, and exam payload."""
-    index_doc = article_store.get_article_index(article_id)
-    if not index_doc:
+    """
+    Fetch complete article detail 100% from MongoDB 'gold_content' and 'exams'.
+    Returns None if the article does not exist in 'gold_content'.
+    """
+    gold_doc = article_store.get_gold_content(article_id)
+    if not gold_doc:
         return None
 
-    clean_data = object_store.read_silver_clean(article_id) or {}
-    original_text = clean_data.get("original_text", "")
-    html_content = clean_data.get("html_content", "")
+    original_text = gold_doc.get("original_text", "")
+    title = gold_doc.get("title", "Untitled Article")
+    source_name = gold_doc.get("source") or gold_doc.get("source_name") or "Academic News"
+    url = gold_doc.get("url", "")
+    word_count = gold_doc.get("word_count") or len(original_text.split())
 
     exam_doc = exam_store.get_exam(article_id) or {}
     exams_data = exam_doc.get("exams", [])
     analysis = exam_doc.get("analysis", {})
 
-    keywords = exam_doc.get("keywords") or index_doc.get("keywords") or ["General"]
+    keywords = exam_doc.get("keywords") or ["General"]
     if isinstance(keywords, str):
         keywords = [k.strip() for k in keywords.split(",") if k.strip()]
 
+    quizzes = exams_data[0].get("quizzes", []) if exams_data and isinstance(exams_data[0], dict) else []
+
     article_obj = Article(
         article_id=article_id,
-        url=index_doc.get("url", ""),
-        title=index_doc.get("title") or clean_data.get("title", "Loading..."),
-        source_name=index_doc.get("source_name") or clean_data.get("source_name", "Unknown"),
-        original_text=original_text or index_doc.get("original_text", ""),
-        word_count=index_doc.get("word_count", len(original_text.split()) if original_text else 0),
+        url=url,
+        title=title,
+        source_name=source_name,
+        original_text=original_text,
+        word_count=word_count,
         keywords=keywords,
         summary=exam_doc.get("summary") or analysis.get("core", {}).get("summary", ""),
         exams=exams_data,
-        created_at=str(index_doc.get("created_at") or datetime.datetime.now(datetime.UTC)),
+        created_at=gold_doc.get("created_at") or datetime.datetime.now(datetime.UTC),
     )
 
     data = {
@@ -91,42 +104,36 @@ def get_article_detail(article_id: str) -> dict[str, Any] | None:
         "source_name": article_obj.source_name,
         "original_text": article_obj.original_text,
         "clean_text": article_obj.original_text,
-        "html_content": html_content,
         "word_count": article_obj.word_count,
         "keywords": article_obj.keywords,
         "summary": article_obj.summary,
         "exams": article_obj.exams,
-        "quizzes": exams_data[0].get("quizzes", []) if exams_data and isinstance(exams_data[0], dict) else [],
-        "created_at": article_obj.created_at,
-        "status": index_doc.get("ai_status", "completed"),
-        "stage": index_doc.get("stage", "gold"),
-        "has_quiz": bool(exams_data),
-        "quiz_status": "completed" if exams_data else "pending",
+        "quizzes": quizzes,
+        "created_at": str(article_obj.created_at),
+        "status": "completed",
+        "stage": "gold",
+        "has_quiz": bool(quizzes),
+        "quiz_status": "completed" if quizzes else "pending",
     }
     return data
 
 
 def get_article_status(article_id: str) -> dict[str, Any] | None:
-    """Check ingestion and AI generation status for polling."""
-    index_doc = article_store.get_article_index(article_id)
-    if not index_doc:
+    """Check article status directly from Gold content and exams."""
+    gold_doc = article_store.get_gold_content(article_id)
+    if not gold_doc:
         return None
 
     exam_doc = exam_store.get_exam(article_id)
     has_quiz = bool(exam_doc and exam_doc.get("exams"))
 
-    stage = index_doc.get("stage", "bronze")
-    ai_status = index_doc.get("ai_status", "pending")
-    if stage == "gold" and not has_quiz:
-        has_quiz = True
-
     return {
         "article_id": article_id,
-        "stage": stage,
-        "ai_status": ai_status,
-        "status": "ready" if stage == "gold" else "processing",
+        "stage": "gold",
+        "ai_status": "completed",
+        "status": "ready",
         "has_quiz": has_quiz,
-        "error_message": index_doc.get("error_message", ""),
+        "error_message": "",
     }
 
 
@@ -138,11 +145,11 @@ def list_completed_articles(
     limit: int = 12,
     **kwargs,
 ) -> dict[str, Any]:
-    """List completed/gold articles with keyword filtering, search, and pagination."""
+    """List Gold articles with keyword filtering, search, and pagination."""
     if query and query.strip():
         items = search_articles_keyword(query.strip(), limit=limit * 3)
     else:
-        items = article_store.list_completed_articles(limit=200)
+        items = article_store.list_gold_articles(limit=200)
 
     all_items = []
     for doc in items:
@@ -166,14 +173,14 @@ def list_completed_articles(
             "article_id": aid,
             "id": aid,
             "title": doc.get("title", "Untitled Article"),
-            "source_name": doc.get("source_name", doc.get("source", "Unknown")),
+            "source_name": doc.get("source") or doc.get("source_name", "Academic News"),
             "keywords": doc_kws,
             "theme": doc.get("theme", doc_kws[0] if doc_kws else "News"),
             "summary": doc.get("summary", ""),
-            "original_text": doc.get("original_text", doc.get("clean_text", doc.get("summary", ""))),
-            "clean_text": doc.get("clean_text", doc.get("original_text", "")),
-            "image_url": doc.get("image_url") or doc.get("top_image", ""),
-            "word_count": doc.get("word_count", 0),
+            "original_text": doc.get("original_text", ""),
+            "clean_text": doc.get("original_text", ""),
+            "image_url": doc.get("image_url") or doc.get("thumbnail_url") or "",
+            "word_count": doc.get("word_count", len(doc.get("original_text", "").split())),
             "published_at": str(pub_at) if pub_at else "",
             "has_quiz": True,
         }
@@ -196,8 +203,8 @@ def list_completed_articles(
 
 def get_popular_keywords(limit: int = 10) -> list[str]:
     """Return top unique keywords across all gold articles."""
-    articles = article_store.list_completed_articles(limit=100)
-    seen = {}
+    articles = article_store.list_gold_articles(limit=100)
+    seen: dict[str, int] = {}
     for doc in articles:
         kws = doc.get("keywords", [])
         if isinstance(kws, str):
@@ -224,7 +231,7 @@ def get_recommendations(user=None, user_id=None, limit: int = 6) -> list[dict[st
 
 
 def get_related_articles(article_id: str, limit: int = 5) -> list[dict[str, Any]]:
-    """Fetch related articles."""
+    """Fetch related articles from Gold collection."""
     completed = list_completed_articles(limit=limit + 2).get("articles", [])
     filtered = [a for a in completed if a.get("article_id") != article_id and a.get("id") != article_id]
     return filtered[:limit]
@@ -253,20 +260,66 @@ def get_daily_vocab(user=None, user_id=None) -> dict[str, Any]:
 
 
 def search_articles_keyword(query: str, limit: int = 10) -> list[dict[str, Any]]:
-    """Search articles via AI service search interface."""
-    try:
-        from ai_service.interface import search_articles
-        return search_articles(query=query, method="keyword", limit=limit)
-    except Exception as e:
-        logger.warning(f"Search keyword fallback to Mongo text search: {e}")
-        return article_store.search_article_index_by_text(query, limit=limit)
+    """
+    Search articles using pre-computed BM25 index from MinIO,
+    fetching article details directly from MongoDB 'gold_content'.
+    """
+    raw_docs = []
+    bm25_index, corpus_ids = get_bm25_index()
+    if bm25_index and corpus_ids:
+        query_tokens = process_text_to_tokens(query)
+        if query_tokens:
+            try:
+                scores = bm25_index.get_scores(query_tokens)
+                ranked_indices = sorted(
+                    [i for i in range(len(corpus_ids)) if scores[i] > 0],
+                    key=lambda i: scores[i],
+                    reverse=True,
+                )[:limit]
+                matched_ids = [corpus_ids[i] for i in ranked_indices]
+                for aid in matched_ids:
+                    doc = article_store.get_gold_content(aid)
+                    if doc:
+                        raw_docs.append(doc)
+            except Exception as e:
+                logger.warning(f"BM25 search execution error: {e}")
+
+    if not raw_docs:
+        raw_docs = article_store.search_gold_content_by_text(query, limit=limit)
+
+    results = []
+    for doc in raw_docs:
+        aid = str(doc.get("article_id") or doc.get("_id") or "")
+        doc_kws = doc.get("keywords", [])
+        if isinstance(doc_kws, str):
+            doc_kws = [k.strip() for k in doc_kws.split(",") if k.strip()]
+        if not doc_kws:
+            doc_kws = ["General"]
+        pub_at = doc.get("published_at")
+        results.append({
+            "article_id": aid,
+            "id": aid,
+            "title": doc.get("title", "Untitled Article"),
+            "source_name": doc.get("source") or doc.get("source_name", "Academic News"),
+            "keywords": doc_kws,
+            "theme": doc.get("theme", doc_kws[0] if doc_kws else "News"),
+            "summary": doc.get("summary", ""),
+            "original_text": doc.get("original_text", ""),
+            "clean_text": doc.get("original_text", ""),
+            "image_url": doc.get("image_url") or doc.get("thumbnail_url") or "",
+            "word_count": doc.get("word_count", len(doc.get("original_text", "").split())),
+            "published_at": str(pub_at) if pub_at else "",
+            "has_quiz": True,
+        })
+    return results
 
 
 def search_articles_semantic(query: str, limit: int = 10) -> list[dict[str, Any]]:
-    """Semantic vector search for articles."""
+    """Semantic vector search for articles against Gold ChromaDB collection."""
     try:
         from ai_service.interface import search_articles
         return search_articles(query=query, method="semantic", limit=limit)
     except Exception as e:
-        logger.warning(f"Semantic search fallback: {e}")
+        logger.warning(f"Semantic search error: {e}")
         return []
+

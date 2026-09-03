@@ -41,13 +41,28 @@ def get_azure_llm(temperature: float = 1.0) -> AzureChatOpenAI:
         azure_deployment=deployment,
         api_version=api_version,
         temperature=temperature,
+        streaming=True,
         max_retries=3,
         timeout=60.0,
     )
 
 
-def get_llm(temperature: float = 0.3) -> AzureChatOpenAI:
+def get_llm(temperature: float = 1.0) -> AzureChatOpenAI:
     """
     Standard helper to retrieve the primary LLM instance.
+    Defaults to 1.0 for gpt-5-mini compatibility.
     """
     return get_azure_llm(temperature=temperature)
+
+
+class ModelRouter:
+    """
+    Model routing factory wrapper providing access to configured LLM instances.
+    """
+
+    @staticmethod
+    def get_llm(temperature: float = 1.0) -> AzureChatOpenAI:
+        """Retrieve the configured LLM instance."""
+        return get_azure_llm(temperature=temperature)
+
+

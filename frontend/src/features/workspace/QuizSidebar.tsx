@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { HelpCircle, Clock, CheckCircle2, XCircle, AlertCircle, RefreshCw, Loader2 } from 'lucide-react';
+import { HelpCircle, Clock, CheckCircle2, XCircle, AlertCircle, RefreshCw, Loader2, ChevronDown } from 'lucide-react';
 import { Article, Quiz } from '../../types';
 import { useWorkspace } from '../../store';
 import { CitationTooltip } from '../../components/ui/CitationTooltip';
@@ -85,26 +85,30 @@ export const QuizSidebar: React.FC<QuizSidebarProps> = ({
 
   // Helper to parse Summary Completion Fill-in-the-Blank [1]...[5] into inline inputs
   const renderFIBText = (questionText: string, quizIndex: number) => {
-    const parts = questionText.split(/(\[\d+\])/g);
+    const parts = (questionText || '').split(/(\[\d+\][\s_–—]*|\(\d+\)[\s_–—]*)/g);
     return (
-      <div className="text-xs text-slate-200 leading-relaxed font-sans">
+      <div className="text-xs text-slate-200 leading-loose font-sans">
         {parts.map((part, pIdx) => {
-          const match = part.match(/\[(\d+)\]/);
+          const match = part.match(/\[(\d+)\]/) || part.match(/\((\d+)\)/);
           if (match) {
             const blankNumber = match[1];
             const key = `q_${quizIndex}_blank_${blankNumber}`;
             const value = quizAnswers[key] || '';
 
             return (
-              <input
-                key={pIdx}
-                type="text"
-                value={value}
-                disabled={quizSubmitted}
-                onChange={(e) => setAnswer(key, e.target.value)}
-                placeholder={`[${blankNumber}]`}
-                className="inline-block mx-1 my-0.5 px-2 py-1 bg-white/[0.06] border border-cyber-cyan/40 focus:border-cyber-cyan rounded text-xs text-white focus:outline-none w-28 text-center"
-              />
+              <span key={pIdx} className="inline-flex items-center mx-1 my-0.5 align-baseline">
+                <span className="inline-flex items-center justify-center px-1.5 py-0.5 rounded-l-md bg-cyber-violet/20 border border-r-0 border-cyber-violet/40 text-cyber-violet font-mono text-[11px] font-bold select-none">
+                  [{blankNumber}]
+                </span>
+                <input
+                  type="text"
+                  value={value}
+                  disabled={quizSubmitted}
+                  onChange={(e) => setAnswer(key, e.target.value)}
+                  placeholder="type here..."
+                  className="px-2 py-0.5 bg-slate-900 border border-cyber-violet/40 focus:border-cyber-violet rounded-r-md text-xs text-white focus:outline-none w-28 sm:w-32"
+                />
+              </span>
             );
           }
           return <span key={pIdx}>{part}</span>;
@@ -211,8 +215,48 @@ export const QuizSidebar: React.FC<QuizSidebarProps> = ({
                     )}
                   </div>
 
-                  {/* Options for YES/NO/NOT GIVEN and Multiple Choice */}
-                  {quiz.quiz_type !== 'fill_in_blank' && quiz.options && (
+                  {/* 1. Dropdown for YES / NO / NOT GIVEN */}
+                  {quiz.quiz_type === 'yes_no_notgiven' && (
+                    <div className="mt-2 space-y-1.5">
+                      <label className="block text-[11px] font-medium text-slate-300">
+                        Select your response from dropdown:
+                      </label>
+                      <div className="relative">
+                        <select
+                          value={selectedValue}
+                          disabled={quizSubmitted}
+                          onChange={(e) => setAnswer(qKey, e.target.value)}
+                          className={`w-full px-3.5 py-2 text-xs rounded-xl bg-slate-900 border appearance-none cursor-pointer focus:outline-none transition-all pr-10 font-medium ${
+                            quizSubmitted
+                              ? isCorrect
+                                ? 'border-cyber-emerald/80 bg-emerald-950/30 text-emerald-200'
+                                : 'border-red-500/80 bg-rose-950/30 text-rose-200'
+                              : selectedValue
+                                ? 'border-cyber-violet/80 bg-cyber-violet/20 text-white'
+                                : 'border-white/10 text-slate-300 hover:border-white/20'
+                          }`}
+                        >
+                          <option value="" disabled className="bg-slate-900 text-slate-500">
+                            -- Select an option (YES / NO / NOT GIVEN) --
+                          </option>
+                          {(quiz.options && quiz.options.length > 0
+                            ? quiz.options
+                            : ['YES', 'NO', 'NOT GIVEN']
+                          ).map((opt: string, optIdx: number) => (
+                            <option key={optIdx} value={opt} className="bg-slate-900 text-slate-100">
+                              {opt}
+                            </option>
+                          ))}
+                        </select>
+                        <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-slate-400">
+                          <ChevronDown className="w-4 h-4" />
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* 2. Options for Multiple Choice */}
+                  {quiz.quiz_type === 'multiple_choice' && quiz.options && (
                     <div className="space-y-2 pt-1">
                       {quiz.options.map((opt, optIdx) => {
                         const isThisSelected = selectedValue === opt;
@@ -250,7 +294,7 @@ export const QuizSidebar: React.FC<QuizSidebarProps> = ({
                     </div>
                   )}
 
-                  {/* Fill in the Blank Render */}
+                  {/* 3. Fill in the Blank Render */}
                   {quiz.quiz_type === 'fill_in_blank' && (
                     <div className="p-3 rounded-xl bg-white/[0.02] border border-white/5">
                       {renderFIBText(quiz.question, idx)}

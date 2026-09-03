@@ -88,7 +88,7 @@ export const OmniSearch: React.FC<OmniSearchProps> = ({
           placeholder={
             isCurrentUrl
               ? 'Press Enter to import news URL...'
-              : 'Paste URL to import, or search articles...'
+              : 'Search articles...'
           }
           disabled={isImporting}
           className="w-full bg-white/[0.05] hover:bg-white/[0.08] focus:bg-white/[0.09] text-xs md:text-sm text-white font-medium rounded-full py-2 pl-10 pr-24 border border-white/10 focus:border-cyber-violet focus:ring-2 focus:ring-cyber-violet/20 transition-all outline-none"

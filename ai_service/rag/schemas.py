@@ -3,6 +3,7 @@ ai_service/rag/schemas.py — Pydantic schemas for RAG Engine & Router.
 """
 
 from typing import Any
+
 from pydantic import BaseModel, Field
 
 from shared.enums import AgentIntent

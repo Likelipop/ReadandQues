@@ -24,6 +24,9 @@ class AgentIntent(str, Enum):
     TEACHER = "teacher"
     QUIZ_HELPER = "quiz_helper"
     UNKNOWN = "unknown"
+    EXPLAIN = "explain"
+    RAG = "rag"
+    QUIZ = "quiz"
 
 
 class ThemeCategory(str, Enum):

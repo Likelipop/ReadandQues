@@ -12,11 +12,11 @@ import service.infrastructure.minio.object_store as object_store
 import service.infrastructure.mongo.activity_store as activity_store
 import service.infrastructure.mongo.article_store as article_store
 import service.infrastructure.mongo.exam_store as exam_store
-from shared.schemas import generate_article_id
-from shared.enums import Status as AIStatus
 from service.models import ExamAttemptLog, TopicProficiency
 from service.pipelines import enrich_article_only, ingest_and_enrich_article
 from service.tasks import run_in_background
+from shared.enums import Status as AIStatus
+from shared.schemas import generate_article_id
 
 logger = logging.getLogger(__name__)
 
@@ -24,16 +24,15 @@ logger = logging.getLogger(__name__)
 def import_article(url: str, user_id: int) -> dict[str, Any]:
     """
     User submits a new article URL to import.
-    Deduplicates against index; if new, triggers background ingestion pipeline.
+    Deduplicates against gold_content; if new, triggers background ingestion pipeline.
     """
-    existing = article_store.get_article_index_by_url(url)
+    existing = article_store.get_gold_content_by_url(url)
     if existing:
-        aid = str(existing["_id"])
+        aid = str(existing.get("article_id") or existing.get("_id"))
         logger.info(f"Article URL already exists: {url} → {aid}")
         return {"status": "exists", "article_id": aid, "is_new": False}
 
     article_id = generate_article_id(url)
-    article_store.create_article_index(article_id=article_id, url=url, stage="bronze", ai_status="pending")
 
     # Launch background ETL task
     run_in_background(ingest_and_enrich_article, article_id=article_id, url=url)
@@ -42,12 +41,11 @@ def import_article(url: str, user_id: int) -> dict[str, Any]:
 
 
 def trigger_quiz_generation(article_id: str) -> dict[str, Any]:
-    """Re-trigger AI quiz generation for an existing silver article."""
-    idx = article_store.get_article_index(article_id)
-    if not idx:
-        return {"status": "error", "message": "Article not found"}
+    """Re-trigger AI quiz generation for an existing gold article."""
+    gold_doc = article_store.get_gold_content(article_id)
+    if not gold_doc:
+        return {"status": "error", "message": "Article not found in gold_content"}
 
-    article_store.update_ai_status(article_id, AIStatus.PENDING_GENERATION)
     run_in_background(enrich_article_only, article_id=article_id)
 
     return {"status": "triggered", "article_id": article_id}
@@ -147,7 +145,7 @@ def ask_rag_question(question: str, article_id: str | None = None) -> dict[str, 
 
 
 def delete_article_hard(article_id: str) -> dict[str, Any]:
-    article_store.delete_article(article_id)
+    article_store.delete_gold_content(article_id)
     exam_store.delete_exam(article_id)
     activity_store.delete_article_activity(article_id)
     object_store.delete_article_objects(article_id)

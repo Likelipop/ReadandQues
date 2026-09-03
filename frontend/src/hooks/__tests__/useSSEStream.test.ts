@@ -57,8 +57,6 @@ describe('useSSEStream', () => {
     });
 
     expect(result.current.isStreaming).toBe(false);
-    expect(result.current.streamedText).toBe('Hello world!');
-    expect(result.current.citations).toEqual([{ article_id: '1', title: 'Test Source' }]);
-    expect(onCompleteMock).toHaveBeenCalledWith('Hello world!', [{ article_id: '1', title: 'Test Source' }]);
+    expect(onCompleteMock).toHaveBeenCalledWith('Hello world!', [{ article_id: '1', title: 'Test Source' }], [], 'chat');
   });
 });

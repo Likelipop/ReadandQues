@@ -5,6 +5,7 @@ ai_service/rag/search/vector_store.py — ChromaDB Vector Store Operations.
 import logging
 import os
 from typing import Any
+
 import chromadb
 
 logger = logging.getLogger(__name__)
@@ -33,11 +34,12 @@ def get_chroma_client():
         return _chroma_client
 
 
-def get_collection(name: str = "articles"):
+def get_collection(name: str = "gold_semantic_chunks"):
     """Retrieve or create a ChromaDB collection by name."""
     try:
         client = get_chroma_client()
-        return client.get_or_create_collection(name=name)
+        target_name = "gold_semantic_chunks" if name in ("news_chunks", "gold_semantic_chunks") else name
+        return client.get_or_create_collection(name=target_name)
     except Exception as e:
         logger.warning(f"Failed to get ChromaDB collection '{name}': {e}")
         return None
@@ -198,10 +200,10 @@ def upsert_article_chunks(
     keywords: list[str] | None = None,
     published_at: str = "",
 ) -> bool:
-    """Split full article text into chunks and index them into news_chunks collection."""
+    """Split full article text into chunks and index them into gold_semantic_chunks collection."""
     if not full_text or not article_id:
         return False
-    col = get_collection("news_chunks")
+    col = get_collection("gold_semantic_chunks")
     if not col:
         return False
 
@@ -234,10 +236,10 @@ def upsert_article_chunks(
 
 
 def vector_search_chunks(query: str, limit: int = 10, where_filter: dict | None = None) -> list[dict]:
-    """Search indexed paragraph chunks by query text, with optional metadata filters."""
+    """Search indexed paragraph chunks in gold_semantic_chunks by query text, with optional metadata filters."""
     if not query:
         return []
-    col = get_collection("news_chunks")
+    col = get_collection("gold_semantic_chunks")
     if not col:
         return []
 

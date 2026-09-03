@@ -3,13 +3,7 @@ import {
   MousePointer,
   Highlighter,
   Eraser,
-  Sparkles,
   BookOpen,
-  Maximize2,
-  Minimize2,
-  HelpCircle,
-  Keyboard,
-  X,
   Palette,
 } from 'lucide-react';
 import { useWorkspace, ActiveTool, HighlightColor } from '../../store';
@@ -35,8 +29,6 @@ const COLOR_OPTIONS: Array<{
 ];
 
 export const UnifiedReadingDock: React.FC<UnifiedReadingDockProps> = ({
-  isQuizOpen = false,
-  onToggleQuiz,
   className = '',
 }) => {
   const {
@@ -44,12 +36,9 @@ export const UnifiedReadingDock: React.FC<UnifiedReadingDockProps> = ({
     setActiveTool,
     highlightColor,
     setHighlightColor,
-    isZenMode,
-    toggleZenMode,
   } = useWorkspace();
 
   const [isColorPickerOpen, setIsColorPickerOpen] = useState(false);
-  const [isShortcutsOpen, setIsShortcutsOpen] = useState(false);
   const colorPickerRef = useRef<HTMLDivElement>(null);
 
   // Close color picker when clicking outside
@@ -197,24 +186,7 @@ export const UnifiedReadingDock: React.FC<UnifiedReadingDockProps> = ({
           </span>
         </button>
 
-        {/* 4. Smart Ink Tool */}
-        <button
-          onClick={() => handleToolClick('smart_ink')}
-          title="Smart Ink AI (I) - Click any sentence for live explanation"
-          aria-label="Smart Ink Tool"
-          className={`relative p-2 sm:p-2.5 rounded-xl transition flex items-center justify-center cursor-pointer group ${
-            activeTool === 'smart_ink'
-              ? 'bg-gradient-to-br from-indigo-500 to-purple-600 text-white font-bold shadow-lg glow-violet ring-2 ring-purple-400'
-              : 'text-slate-400 hover:text-purple-300 hover:bg-white/10'
-          }`}
-        >
-          <Sparkles className="w-4 h-4 sm:w-4.5 sm:h-4.5" />
-          <span className="hidden group-hover:block absolute -top-8 px-2 py-0.5 text-[10px] font-medium bg-slate-900/90 text-slate-200 rounded border border-white/10 shadow-lg pointer-events-none whitespace-nowrap">
-            Smart Ink <kbd className="text-purple-400 font-mono">I</kbd>
-          </span>
-        </button>
-
-        {/* 5. Dictionary Tool */}
+        {/* 4. Dictionary Tool */}
         <button
           onClick={() => handleToolClick('dictionary')}
           title="Dictionary (D) - Click any word for offline definitions"
@@ -230,193 +202,7 @@ export const UnifiedReadingDock: React.FC<UnifiedReadingDockProps> = ({
             Dictionary <kbd className="text-cyan-400 font-mono">D</kbd>
           </span>
         </button>
-
-        <div className="h-5 sm:h-6 w-px bg-white/10 mx-0.5 sm:mx-1" />
-
-        {/* 6. Zen Mode Toggle */}
-        <button
-          onClick={toggleZenMode}
-          title={isZenMode ? 'Exit Zen Mode (Z)' : 'Zen Focus Mode (Z)'}
-          aria-label="Toggle Zen Mode"
-          className={`relative p-2 sm:p-2.5 rounded-xl transition flex items-center justify-center cursor-pointer group ${
-            isZenMode
-              ? 'bg-emerald-500 text-slate-950 font-bold shadow-lg ring-2 ring-emerald-400'
-              : 'text-slate-400 hover:text-emerald-300 hover:bg-white/10'
-          }`}
-        >
-          {isZenMode ? (
-            <Minimize2 className="w-4 h-4 sm:w-4.5 sm:h-4.5" />
-          ) : (
-            <Maximize2 className="w-4 h-4 sm:w-4.5 sm:h-4.5" />
-          )}
-          <span className="hidden group-hover:block absolute -top-8 px-2 py-0.5 text-[10px] font-medium bg-slate-900/90 text-slate-200 rounded border border-white/10 shadow-lg pointer-events-none whitespace-nowrap">
-            {isZenMode ? 'Exit Zen' : 'Zen Mode'} <kbd className="text-emerald-400 font-mono">Z</kbd>
-          </span>
-        </button>
-
-        {/* 7. AI Quiz Toggle */}
-        {onToggleQuiz && (
-          <button
-            onClick={onToggleQuiz}
-            title={isQuizOpen ? 'Hide AI Quiz (Q)' : 'Show AI Quiz (Q)'}
-            aria-label="Toggle AI Reading Quiz"
-            className={`relative p-2 sm:p-2.5 rounded-xl transition flex items-center justify-center cursor-pointer group ${
-              isQuizOpen
-                ? 'bg-cyber-violet text-white font-bold shadow-lg glow-violet ring-2 ring-purple-400'
-                : 'text-slate-400 hover:text-cyber-violet hover:bg-white/10'
-            }`}
-          >
-            <HelpCircle className="w-4 h-4 sm:w-4.5 sm:h-4.5" />
-            <span className="hidden group-hover:block absolute -top-8 px-2 py-0.5 text-[10px] font-medium bg-slate-900/90 text-slate-200 rounded border border-white/10 shadow-lg pointer-events-none whitespace-nowrap">
-              Quiz <kbd className="text-cyber-violet font-mono">Q</kbd>
-            </span>
-          </button>
-        )}
-
-        {/* 8. Keyboard Shortcuts Help Trigger */}
-        <button
-          onClick={() => setIsShortcutsOpen(true)}
-          title="Keyboard Shortcuts (?)"
-          aria-label="Keyboard Shortcuts"
-          className="relative p-2 sm:p-2.5 rounded-xl text-slate-400 hover:text-white hover:bg-white/10 transition flex items-center justify-center cursor-pointer group"
-        >
-          <Keyboard className="w-4 h-4 sm:w-4.5 sm:h-4.5" />
-          <span className="hidden group-hover:block absolute -top-8 px-2 py-0.5 text-[10px] font-medium bg-slate-900/90 text-slate-200 rounded border border-white/10 shadow-lg pointer-events-none whitespace-nowrap">
-            Shortcuts <kbd className="text-cyan-400 font-mono">?</kbd>
-          </span>
-        </button>
       </nav>
-
-      {/* Keyboard Shortcuts Cheat Sheet Modal */}
-      {isShortcutsOpen && (
-        <div
-          role="dialog"
-          aria-label="Keyboard Shortcuts Cheat Sheet"
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md animate-in fade-in duration-200"
-          onClick={() => setIsShortcutsOpen(false)}
-        >
-          <div
-            className="w-full max-w-md p-6 rounded-3xl glass-card glow-violet backdrop-blur-2xl border border-white/20 shadow-2xl space-y-5 animate-in zoom-95 duration-150 text-slate-100"
-            onClick={(e) => e.stopPropagation()}
-          >
-            {/* Header */}
-            <div className="flex items-center justify-between border-b border-white/10 pb-3">
-              <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-xl bg-indigo-500/20 border border-indigo-500/30 flex items-center justify-center text-indigo-300">
-                  <Keyboard className="w-4.5 h-4.5" />
-                </div>
-                <div>
-                  <h3 className="font-extrabold text-sm text-white">Reading Space Shortcuts</h3>
-                  <p className="text-[11px] text-slate-400">Power user keyboard controls</p>
-                </div>
-              </div>
-
-              <button
-                onClick={() => setIsShortcutsOpen(false)}
-                aria-label="Close shortcuts dialog"
-                className="p-1.5 text-slate-400 hover:text-white rounded-lg hover:bg-white/10 transition cursor-pointer"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-
-            {/* Shortcuts List */}
-            <div className="space-y-2 text-xs">
-              <div className="grid grid-cols-1 gap-2">
-                <div className="flex items-center justify-between p-2 rounded-xl bg-white/[0.03] border border-white/5">
-                  <span className="text-slate-300 font-medium">Pointer / Select Mode</span>
-                  <div className="flex items-center gap-1">
-                    <kbd className="px-2 py-0.5 rounded bg-white/10 border border-white/20 font-mono text-[11px] text-cyan-300">
-                      V
-                    </kbd>
-                    <span className="text-slate-500">or</span>
-                    <kbd className="px-2 py-0.5 rounded bg-white/10 border border-white/20 font-mono text-[11px] text-cyan-300">
-                      Esc
-                    </kbd>
-                  </div>
-                </div>
-
-                <div className="flex items-center justify-between p-2 rounded-xl bg-white/[0.03] border border-white/5">
-                  <span className="text-slate-300 font-medium">Highlighter Tool</span>
-                  <kbd className="px-2 py-0.5 rounded bg-white/10 border border-white/20 font-mono text-[11px] text-amber-300">
-                    H
-                  </kbd>
-                </div>
-
-                <div className="flex items-center justify-between p-2 rounded-xl bg-white/[0.03] border border-white/5">
-                  <span className="text-slate-300 font-medium">Eraser Tool</span>
-                  <kbd className="px-2 py-0.5 rounded bg-white/10 border border-white/20 font-mono text-[11px] text-rose-300">
-                    E
-                  </kbd>
-                </div>
-
-                <div className="flex items-center justify-between p-2 rounded-xl bg-white/[0.03] border border-white/5">
-                  <span className="text-slate-300 font-medium">Smart Ink AI Stream</span>
-                  <kbd className="px-2 py-0.5 rounded bg-white/10 border border-white/20 font-mono text-[11px] text-purple-300">
-                    I
-                  </kbd>
-                </div>
-
-                <div className="flex items-center justify-between p-2 rounded-xl bg-white/[0.03] border border-white/5">
-                  <span className="text-slate-300 font-medium">WordNet Dictionary</span>
-                  <kbd className="px-2 py-0.5 rounded bg-white/10 border border-white/20 font-mono text-[11px] text-cyan-300">
-                    D
-                  </kbd>
-                </div>
-
-                <div className="flex items-center justify-between p-2 rounded-xl bg-white/[0.03] border border-white/5">
-                  <span className="text-slate-300 font-medium">Paraphrase Selected Text</span>
-                  <kbd className="px-2 py-0.5 rounded bg-white/10 border border-white/20 font-mono text-[11px] text-indigo-300">
-                    P
-                  </kbd>
-                </div>
-
-                <div className="flex items-center justify-between p-2 rounded-xl bg-white/[0.03] border border-white/5">
-                  <span className="text-slate-300 font-medium">Toggle Zen Focus Mode</span>
-                  <kbd className="px-2 py-0.5 rounded bg-white/10 border border-white/20 font-mono text-[11px] text-emerald-300">
-                    Z
-                  </kbd>
-                </div>
-
-                <div className="flex items-center justify-between p-2 rounded-xl bg-white/[0.03] border border-white/5">
-                  <span className="text-slate-300 font-medium">Toggle AI Reading Quiz</span>
-                  <kbd className="px-2 py-0.5 rounded bg-white/10 border border-white/20 font-mono text-[11px] text-cyber-violet">
-                    Q
-                  </kbd>
-                </div>
-
-                <div className="flex items-center justify-between p-2 rounded-xl bg-white/[0.03] border border-white/5">
-                  <span className="text-slate-300 font-medium">Highlight Colors</span>
-                  <div className="flex items-center gap-1 font-mono text-[11px]">
-                    <kbd className="px-1.5 py-0.5 rounded bg-amber-400/20 text-amber-300 border border-amber-400/30">
-                      1
-                    </kbd>
-                    <kbd className="px-1.5 py-0.5 rounded bg-emerald-400/20 text-emerald-300 border border-emerald-400/30">
-                      2
-                    </kbd>
-                    <kbd className="px-1.5 py-0.5 rounded bg-cyan-400/20 text-cyan-300 border border-cyan-400/30">
-                      3
-                    </kbd>
-                    <kbd className="px-1.5 py-0.5 rounded bg-rose-400/20 text-rose-300 border border-rose-400/30">
-                      4
-                    </kbd>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Footer */}
-            <div className="pt-2 border-t border-white/10 flex justify-end">
-              <button
-                onClick={() => setIsShortcutsOpen(false)}
-                className="px-4 py-1.5 text-xs font-bold text-slate-300 hover:text-white bg-white/10 hover:bg-white/15 rounded-xl cursor-pointer transition"
-              >
-                Got it
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </>
   );
 };

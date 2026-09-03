@@ -35,7 +35,7 @@ def classify_intent_node(state: RouterState) -> RouterState:
     article_id = state.get("article_id") or ""
 
     try:
-        llm = get_llm(temperature=0.0)
+        llm = get_llm()
         prompt = ROUTER_INTENT_CLASSIFIER_PROMPT.format(question=question, article_id=article_id)
         resp = llm.invoke([HumanMessage(content=prompt)])
         content = resp.content if hasattr(resp, "content") else str(resp)

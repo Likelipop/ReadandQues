@@ -1,0 +1,44 @@
+FROM python:3.13-slim
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PIP_NO_CACHE_DIR=1 \
+    PYTHONPATH=/app/src:/app
+
+WORKDIR /app
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY pyproject.toml /app/
+
+RUN pip install --upgrade pip && \
+    pip install \
+    dagster==1.13.20 \
+    dagster-postgres>=0.29.0 \
+    feedparser>=6.0.11 \
+    trafilatura>=2.0.0 \
+    beautifulsoup4>=4.12.0 \
+    lxml>=5.0.0 \
+    pymongo>=4.6.0 \
+    minio>=7.2.0 \
+    python-dotenv>=1.0.0 \
+    rank-bm25>=0.2.2 \
+    spacy>=3.8.0 \
+    chromadb>=1.5.0 \
+    langchain-text-splitters>=0.3.0 \
+    langchain-huggingface>=0.1.0 \
+    sentence-transformers>=2.0.0 \
+    langchain-experimental>=0.4.2 \
+    https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.8.0/en_core_web_sm-3.8.0-py3-none-any.whl
+
+COPY . /app
+
+EXPOSE 4000
+
+HEALTHCHECK --timeout=2s --start-period=5s --interval=5s --retries=10 \
+  CMD ["dagster", "api", "grpc-health-check", "-p", "4000"]
+
+CMD ["dagster", "api", "grpc", "-h", "0.0.0.0", "-p", "4000", "-m", "NewsPipeline.definitions"]

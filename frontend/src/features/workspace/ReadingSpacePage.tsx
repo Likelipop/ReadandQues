@@ -32,6 +32,7 @@ export const ReadingSpacePage: React.FC<ReadingSpacePageProps> = ({
   const {
     setArticle: setStoreArticle,
     activeDictionaryWord,
+    isDictionaryLoading,
     isZenMode,
     toggleZenMode,
   } = useWorkspace();
@@ -137,26 +138,15 @@ export const ReadingSpacePage: React.FC<ReadingSpacePageProps> = ({
               </button>
             ) : (
               <>
-                {/* Toggle Left Sidebar on mobile/tablet */}
-                <button
-                  onClick={() => setIsLeftPanelOpen(!isLeftPanelOpen)}
-                  className="lg:hidden flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-xl bg-white/5 text-slate-300 hover:text-white hover:bg-white/10 transition cursor-pointer"
-                >
-                  <span>{isLeftPanelOpen ? 'Hide Panel' : '📖 Outline & Lexicon'}</span>
-                </button>
-
-                {/* Toggle Quiz Button */}
-                <button
-                  onClick={() => setIsQuizOpen(!isQuizOpen)}
-                  className={`flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-bold rounded-xl transition cursor-pointer ${
-                    isQuizOpen
-                      ? 'bg-indigo-600 text-white shadow-lg glow-violet'
-                      : 'bg-white/5 text-slate-300 hover:text-white hover:bg-white/10'
-                  }`}
-                >
-                  <HelpCircle className="w-3.5 h-3.5" />
-                  <span>{isQuizOpen ? 'Hide Quiz' : 'Show AI Quiz'}</span>
-                </button>
+                {/* Toggle Left Sidebar on mobile/tablet (only when dictionary word is active) */}
+                {Boolean(activeDictionaryWord || isDictionaryLoading) && (
+                  <button
+                    onClick={() => setIsLeftPanelOpen(!isLeftPanelOpen)}
+                    className="lg:hidden flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-xl bg-cyan-500/10 text-cyan-300 hover:bg-cyan-500/20 border border-cyan-500/30 transition cursor-pointer"
+                  >
+                    <span>{isLeftPanelOpen ? 'Hide Lexicon' : '📖 Dictionary Lexicon'}</span>
+                  </button>
+                )}
               </>
             )}
           </div>
@@ -188,24 +178,30 @@ export const ReadingSpacePage: React.FC<ReadingSpacePageProps> = ({
             onToggleQuiz={() => setIsQuizOpen(!isQuizOpen)}
           />
 
-          {/* Left Column: Outline & WordNet Dictionary Card (Hidden when Quiz is open on desktop to prevent 3-column squeeze) */}
-          <div
-            className={`${
-              isLeftPanelOpen ? 'block' : 'hidden'
-            } ${isQuizOpen ? 'lg:hidden' : 'lg:block lg:col-span-3'}`}
-          >
-            <div className="sticky top-32 max-h-[calc(100vh-160px)] overflow-y-auto custom-scrollbar pr-2">
-              <LeftSidebar
-                article={article}
-                onScrollToParagraph={handleScrollToParagraph}
-              />
+          {/* Left Column: WordNet Dictionary Card (Visible only when dictionary lookup is active) */}
+          {(activeDictionaryWord || isDictionaryLoading) && (
+            <div
+              className={`${
+                isLeftPanelOpen ? 'block' : 'hidden'
+              } ${isQuizOpen ? 'lg:hidden' : 'lg:block lg:col-span-3'}`}
+            >
+              <div className="sticky top-32 max-h-[calc(100vh-160px)] overflow-y-auto custom-scrollbar pr-2">
+                <LeftSidebar
+                  article={article}
+                  onScrollToParagraph={handleScrollToParagraph}
+                />
+              </div>
             </div>
-          </div>
+          )}
 
           {/* Center / Reading Column: Reading Passage & Recommendations */}
           <div
             className={`${
-              isQuizOpen ? 'lg:col-span-7' : 'lg:col-span-9 max-w-4xl mx-auto w-full'
+              isQuizOpen
+                ? 'lg:col-span-7'
+                : activeDictionaryWord || isDictionaryLoading
+                ? 'lg:col-span-9'
+                : 'lg:col-span-12 max-w-4xl mx-auto w-full'
             } flex flex-col space-y-8 min-w-0 transition-all duration-300`}
           >
             <ArticleReader

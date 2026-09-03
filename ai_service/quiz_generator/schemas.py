@@ -3,6 +3,7 @@ ai_service/quiz_generator/schemas.py — Pydantic schemas for question generatio
 """
 
 from typing import Any, TypedDict
+
 from pydantic import BaseModel, Field
 
 
@@ -22,7 +23,9 @@ class SemanticAnalysis(BaseModel):
         default_factory=list, description="3 to 6 topic keywords and subject tags (e.g. ['AI', 'Medicine', 'Robotics'])"
     )
     summary: str = Field(default="", description="Concise 2-3 sentence summary of the passage")
-    core: dict[str, Any] = Field(default_factory=dict, description="Detailed core analysis dictionary")
+    main_idea: str = Field(default="", description="Core central theme or main thesis")
+    genre: str = Field(default="general", description="Article genre or domain classification")
+    theme: str = Field(default="General", description="Primary subject theme")
 
 
 class ExamOutput(BaseModel):

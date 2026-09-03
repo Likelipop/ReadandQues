@@ -5,6 +5,7 @@ Provides clean tokenization and lemmatization powered by spaCy.
 
 import logging
 import re
+
 import spacy
 
 logger = logging.getLogger(__name__)

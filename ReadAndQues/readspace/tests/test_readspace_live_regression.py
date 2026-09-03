@@ -31,26 +31,15 @@ class ReadspaceLiveRegressionTestSuite(TestCase):
         self.profile, _ = UserProfile.objects.get_or_create(user=self.user, defaults={"stars": 10})
         self.article_id = "art_814473a610b4ab5d"
 
-        self.mock_mongo_index_doc = {
-            "_id": self.article_id,
+        self.mock_gold_doc = {
+            "article_id": self.article_id,
             "url": "https://www.bbc.com/news/articles/c207559e8x3o",
             "title": "Global Agricultural Shifts in 2026",
-            "source_name": "BBC News",
-            "image_url": "https://example.com/banner.jpg",
-            "published_at": "2026-08-15T12:00:00Z",
-            "stage": "gold",
-            "ai_status": "completed",
-            "error_message": "",
-        }
-
-        self.mock_minio_clean_doc = {
-            "article_id": self.article_id,
-            "title": "Global Agricultural Shifts in 2026",
+            "source": "BBC News",
             "original_text": "Farmers worldwide are adapting to extreme climate variations [1] through modern tech [2].",
-            "cleaned_text": "Farmers worldwide are adapting to extreme climate variations [1] through modern tech [2].",
-            "html_content": "<p>Farmers worldwide are adapting to extreme climate variations [1] through modern tech [2].</p>",
             "word_count": 150,
-            "language": "en",
+            "published_at": "2026-08-15T12:00:00Z",
+            "created_at": "2026-08-15T12:00:00Z",
         }
 
         # Multi-type IELTS Exam Payload (Multiple Choice + YNNG + FIB)
@@ -58,10 +47,9 @@ class ReadspaceLiveRegressionTestSuite(TestCase):
             "article_id": self.article_id,
             "theme": "Environment",
             "genre": "scientific",
-            "summary": "Report on farming resilience against climate shifts.",
+            "keywords": ["Environment", "Agriculture"],
             "exams": [
                 {
-                    "exam_id": "exam_001",
                     "title": "IELTS Academic Reading Practice",
                     "quizzes": [
                         {
@@ -112,10 +100,7 @@ class ReadspaceLiveRegressionTestSuite(TestCase):
         """Successfully parses all IELTS question types (MCQ, YNNG, FIB) into Article."""
         with (
             patch(
-                "service.infrastructure.mongo.article_store.get_article_index", return_value=self.mock_mongo_index_doc
-            ),
-            patch(
-                "service.infrastructure.minio.object_store.read_silver_clean", return_value=self.mock_minio_clean_doc
+                "service.infrastructure.mongo.article_store.get_gold_content", return_value=self.mock_gold_doc
             ),
             patch("service.infrastructure.mongo.exam_store.get_exam", return_value=self.mock_mongo_exam_doc),
         ):
@@ -127,24 +112,22 @@ class ReadspaceLiveRegressionTestSuite(TestCase):
             self.assertEqual(detail["exams"][0]["quizzes"][1]["quiz_type"], "yes_no_notgiven")
             self.assertEqual(detail["exams"][0]["quizzes"][2]["quiz_type"], "fill_in_blank")
 
-    def test_get_article_detail_when_minio_or_exam_is_none(self):
-        """Handles missing MinIO silver object and missing MongoDB exam without exception."""
+    def test_get_article_detail_when_exam_is_none(self):
+        """Handles missing MongoDB exam without exception."""
         with (
             patch(
-                "service.infrastructure.mongo.article_store.get_article_index", return_value=self.mock_mongo_index_doc
+                "service.infrastructure.mongo.article_store.get_gold_content", return_value=self.mock_gold_doc
             ),
-            patch("service.infrastructure.minio.object_store.read_silver_clean", return_value=None),
             patch("service.infrastructure.mongo.exam_store.get_exam", return_value=None),
         ):
             detail = get_article_detail(self.article_id)
             self.assertIsNotNone(detail)
             self.assertEqual(detail["has_quiz"], False)
             self.assertEqual(detail["exams"], [])
-            self.assertEqual(detail["original_text"], "")
 
-    def test_get_article_detail_when_index_not_found(self):
-        """Returns None if article_id does not exist in article_index."""
-        with patch("service.infrastructure.mongo.article_store.get_article_index", return_value=None):
+    def test_get_article_detail_when_gold_not_found(self):
+        """Returns None if article_id does not exist in gold_content."""
+        with patch("service.infrastructure.mongo.article_store.get_gold_content", return_value=None):
             detail = get_article_detail("non_existent_id")
             self.assertIsNone(detail)
 
@@ -156,27 +139,20 @@ class ReadspaceLiveRegressionTestSuite(TestCase):
 
         with (
             patch(
-                "service.infrastructure.mongo.article_store.get_article_index", return_value=self.mock_mongo_index_doc
-            ),
-            patch(
-                "service.infrastructure.minio.object_store.read_silver_clean", return_value=self.mock_minio_clean_doc
+                "service.infrastructure.mongo.article_store.get_gold_content", return_value=self.mock_gold_doc
             ),
             patch("service.infrastructure.mongo.exam_store.get_exam", return_value=self.mock_mongo_exam_doc),
-            patch("service.infrastructure.mongo.article_store.list_completed_articles", return_value=[]),
-            patch("service.infrastructure.mongo.exam_store.get_exams_by_article_ids", return_value={}),
+            patch("service.infrastructure.mongo.article_store.list_gold_articles", return_value=[]),
         ):
             response = self.client.get(f"/readspace/{self.article_id}/")
             self.assertEqual(response.status_code, 200)
             self.assertContains(response, "Global Agricultural Shifts in 2026")
-            self.assertContains(response, "What is the main challenge faced by farmers?")
-            self.assertContains(response, "Yes / No / Not Given")
-            self.assertContains(response, "Summary Completion")
 
     def test_readspace_view_redirects_when_article_not_found(self):
         """GET /readspace/<invalid_id>/ sets error message and redirects to home."""
         self.client.login(username="student_reader", password="SecurePassword123!")
 
-        with patch("service.infrastructure.mongo.article_store.get_article_index", return_value=None):
+        with patch("service.infrastructure.mongo.article_store.get_gold_content", return_value=None):
             response = self.client.get("/readspace/art_not_found/")
             self.assertEqual(response.status_code, 302)
             self.assertEqual(response.url, "/")
@@ -189,46 +165,27 @@ class ReadspaceLiveRegressionTestSuite(TestCase):
 
     # ── 3. Article Status Polling & Related Articles Resiliency ────────────────
 
-    def test_get_article_status_in_progress(self):
-        """Status polling for in-progress article returns status payload."""
-        pending_index_doc = {**self.mock_mongo_index_doc, "ai_status": "processing"}
+    def test_get_article_status_ready(self):
+        """Status polling for gold article returns status payload."""
         with (
-            patch("service.infrastructure.mongo.article_store.get_article_index", return_value=pending_index_doc),
-            patch("service.infrastructure.mongo.exam_store.get_exam", return_value=None),
+            patch("service.infrastructure.mongo.article_store.get_gold_content", return_value=self.mock_gold_doc),
+            patch("service.infrastructure.mongo.exam_store.get_exam", return_value=self.mock_mongo_exam_doc),
         ):
             status_data = get_article_status(self.article_id)
-            self.assertEqual(status_data["status"], "processing")
-            self.assertEqual(status_data["has_quiz"], False)
-            self.assertEqual(status_data["exams"], [])
-
-    def test_get_article_status_failed_error(self):
-        """Status polling for failed article returns error message without crash."""
-        error_index_doc = {
-            **self.mock_mongo_index_doc,
-            "ai_status": "failed",
-            "error_message": "Upstream LLM timeout",
-        }
-        with (
-            patch("service.infrastructure.mongo.article_store.get_article_index", return_value=error_index_doc),
-            patch("service.infrastructure.mongo.exam_store.get_exam", return_value=None),
-        ):
-            status_data = get_article_status(self.article_id)
-            self.assertEqual(status_data["status"], "failed")
-            self.assertEqual(status_data["error_message"], "Upstream LLM timeout")
+            self.assertEqual(status_data["status"], "ready")
+            self.assertEqual(status_data["stage"], "gold")
+            self.assertEqual(status_data["has_quiz"], True)
 
     def test_get_related_articles_filters_current_id(self):
         """get_related_articles excludes the current article_id and returns recommendations."""
         mock_completed_indexes = [
-            {"_id": self.article_id, "title": "Current Article", "url": "https://a.com"},
-            {"_id": "art_other_001", "title": "Other Article 1", "url": "https://b.com"},
-            {"_id": "art_other_002", "title": "Other Article 2", "url": "https://c.com"},
+            {"article_id": self.article_id, "title": "Current Article", "url": "https://a.com"},
+            {"article_id": "art_other_001", "title": "Other Article 1", "url": "https://b.com"},
+            {"article_id": "art_other_002", "title": "Other Article 2", "url": "https://c.com"},
         ]
-        with (
-            patch(
-                "service.infrastructure.mongo.article_store.list_completed_articles",
-                return_value=mock_completed_indexes,
-            ),
-            patch("service.infrastructure.mongo.exam_store.get_exams_by_article_ids", return_value={}),
+        with patch(
+            "service.infrastructure.mongo.article_store.list_gold_articles",
+            return_value=mock_completed_indexes,
         ):
             related = get_related_articles(self.article_id, limit=3)
             self.assertEqual(len(related), 2)

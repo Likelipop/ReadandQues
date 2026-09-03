@@ -94,21 +94,19 @@ describe('Client Requests Verification Suite - QA & DevOps', () => {
 
   // ── Request 1: Removal of ParaphraseCard & Full-Width DailyVocabCard ──────
 
-  describe('Request 1: Paraphrase Card Removal & DailyVocab Spotlight', () => {
-    it('verifies HomePage renders DailyVocabCard spotlight and does NOT render ParaphraseCard', async () => {
+  describe('Request 1: Paraphrase Card Removal for Streamlined Layout', () => {
+    it('verifies HomePage renders streamlined feed and does NOT render ParaphraseCard', async () => {
       vi.mocked(api.homepage.get).mockResolvedValueOnce(mockHomepageData);
 
       const handleSelectArticle = vi.fn();
       render(<HomePage onSelectArticle={handleSelectArticle} selectedTheme="All" />);
 
       await waitFor(() => {
-        expect(screen.getByText('Solar and Hydrogen Microgrids')).toBeInTheDocument();
+        expect(screen.getAllByText('Solar and Hydrogen Microgrids')[0]).toBeInTheDocument();
       });
 
-      // 1. DailyVocab spotlight is present
-      expect(screen.getByText('Neuroplasticity')).toBeInTheDocument();
-      expect(screen.getByText('Word of the Day')).toBeInTheDocument();
-      expect(screen.getByText('/ˌnjʊərəʊplæˈstɪsɪti/')).toBeInTheDocument();
+      // 1. DailyVocab spotlight is NOT rendered on streamlined feed
+      expect(screen.queryByText('Word of the Day')).not.toBeInTheDocument();
 
       // 2. Paraphrase card / AI Smart Paraphrase Engine is NOT rendered
       expect(screen.queryByText(/AI Smart Paraphrase/i)).not.toBeInTheDocument();

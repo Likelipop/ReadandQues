@@ -20,6 +20,7 @@ urlpatterns = [
     path("api/ai/tool/run/", views.run_ai_tool_api, name="run_ai_tool_api"),
     # ── Streaming & Search ───────────────────────────────────────────────────
     path("api/rag/stream/", views.rag_stream_api, name="rag_stream_api"),
+    path("api/study-dock/stream/", views.study_dock_stream_api, name="study_dock_stream"),
     path("api/explain/stream/", views.explain_stream_api, name="explain_stream_api"),
     path("api/<str:pk>/explain/stream/", views.explain_stream_api, name="explain_stream_api_pk"),
     path("api/search/keyword/", views.search_bm25_api, name="search_bm25_api"),

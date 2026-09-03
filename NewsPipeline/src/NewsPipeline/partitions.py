@@ -5,12 +5,19 @@ NewsPipeline/partitions.py — Daily partition definitions for the pipeline.
 import hashlib
 import os
 
+from datetime import datetime, timedelta, timezone
+
 from dagster import DailyPartitionsDefinition
 from dotenv import find_dotenv, load_dotenv
 
-load_dotenv(find_dotenv(usecwd=True))
 
-START_DATE = os.getenv("START_DATE", "2026-08-01")
+def get_default_start_date() -> str:
+    """Returns the date 30 days prior to current date in YYYY-MM-DD format."""
+    past_30_days = datetime.now(timezone.utc) - timedelta(days=30)
+    return past_30_days.strftime("%Y-%m-%d")
+
+
+START_DATE = os.getenv("START_DATE") or get_default_start_date()
 
 # Daily partition definition (1 partition = 1 day, format: 'YYYY-MM-DD')
 daily_partitions = DailyPartitionsDefinition(

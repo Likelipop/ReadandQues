@@ -1,5 +1,6 @@
+from unittest import TestCase
+
 from shared.schemas import Article, generate_article_id
-from shared.enums import Status
 
 
 class DataIntegrityContractsTests(TestCase):
@@ -11,6 +12,8 @@ class DataIntegrityContractsTests(TestCase):
         self.assertTrue(id1.startswith("art_"))
 
     def test_article_contract_defaults(self):
-        contract = ArticleContract(article_id="art_123", url="https://example.com/a")
-        self.assertEqual(contract.status, ArticleStatus.CRAWLING)
-        self.assertEqual(contract.ai_status, AIStatus.PENDING_GENERATION)
+        article = Article(article_id="art_123", url="https://example.com/a")
+        self.assertEqual(article.article_id, "art_123")
+        self.assertEqual(article.url, "https://example.com/a")
+        self.assertEqual(article.keywords, [])
+        self.assertEqual(article.exams, [])

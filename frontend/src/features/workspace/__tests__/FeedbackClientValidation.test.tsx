@@ -97,168 +97,24 @@ describe('QA Validation Suite: Client 4 Feedback Items', () => {
   // FEEDBACK ITEM 1: Smart Ink In-Place Simplification & Eraser Revert
   // ══════════════════════════════════════════════════════════════════════════════
 
-  describe('Feedback Item 1: Smart Ink In-Place Explanation & Eraser Revert', () => {
-    it('explains sentence directly in paragraph with 💡 Explained badge and ↺ Original chip when Smart Ink is active', async () => {
-      vi.mocked(api.articles.explain).mockResolvedValueOnce({
-        status: 'success',
-        phrase: 'Autonomous robots utilize multi-modal sensor fusion to build spatial representations of dynamic environments.',
-        summary: 'Sensor fusion robotics explanation.',
-        detailed_explanation: 'Self-driving robots combine data from cameras and sensors to map changing surroundings.',
-        simplified_version: 'Robots use sensors to see.',
-        key_terms: [],
-      });
-
-      const handleToast = vi.fn();
-      workspaceStore.setState({ activeTool: 'smart_ink' });
-
-      render(<ArticleReader article={mockArticle} onShowToast={handleToast} />);
+  describe('Feedback Item 1: Selection HUD and Clean ArticleReader', () => {
+    it('renders article paragraphs cleanly without smart ink clutter', () => {
+      render(<ArticleReader article={mockArticle} />);
 
       const firstSentence = screen.getByText(
         /Autonomous robots utilize multi-modal sensor fusion/i
       );
       expect(firstSentence).toBeInTheDocument();
-
-      // Click the sentence with Smart Ink active
-      fireEvent.click(firstSentence);
-
-      expect(handleToast).toHaveBeenCalledWith(
-        '✨ Explaining with Smart Ink...',
-        'info'
-      );
-
-      // Verify API was called with the phrase and paragraph context
-      expect(api.articles.explain).toHaveBeenCalledWith(
-        'art-feedback-val-1',
-        expect.objectContaining({
-          phrase: expect.stringContaining('Autonomous robots utilize multi-modal sensor fusion'),
-        })
-      );
-
-      // Verify in-place explained text, badge, and restore button appear
-      await waitFor(() => {
-        expect(
-          screen.getByText(
-            'Self-driving robots combine data from cameras and sensors to map changing surroundings.'
-          )
-        ).toBeInTheDocument();
-        expect(screen.getByText('💡 Explained')).toBeInTheDocument();
-        expect(screen.getByRole('button', { name: /Restore original sentence/i })).toBeInTheDocument();
-      });
-
-      expect(handleToast).toHaveBeenCalledWith('Contextual explanation generated!', 'success');
+      expect(screen.queryByText('💡 Explained')).not.toBeInTheDocument();
     });
 
-    it('reverts explained sentence to original text when clicking ↺ Original chip', async () => {
-      vi.mocked(api.articles.explain).mockResolvedValueOnce({
-        status: 'success',
-        phrase: 'Autonomous robots utilize multi-modal sensor fusion to build spatial representations of dynamic environments.',
-        summary: 'Summary',
-        detailed_explanation: 'Robots combine sensors to map rooms.',
-        simplified_version: 'Robots use sensors.',
-        key_terms: [],
-      });
-
-      const handleToast = vi.fn();
-      workspaceStore.setState({ activeTool: 'smart_ink' });
-
-      render(<ArticleReader article={mockArticle} onShowToast={handleToast} />);
-
-      // Explain sentence
-      const firstSentence = screen.getByText(/Autonomous robots utilize multi-modal sensor fusion/i);
-      fireEvent.click(firstSentence);
-
-      await waitFor(() => {
-        expect(screen.getByText('💡 Explained')).toBeInTheDocument();
-      });
-
-      // Click "Original" restore button
-      const restoreBtn = screen.getByRole('button', { name: /Restore original sentence/i });
-      fireEvent.click(restoreBtn);
-
-      // Verify restored to original text and badge removed
-      await waitFor(() => {
-        expect(screen.queryByText('💡 Explained')).not.toBeInTheDocument();
-        expect(screen.queryByText('Robots combine sensors to map rooms.')).not.toBeInTheDocument();
-        expect(
-          screen.getByText(/Autonomous robots utilize multi-modal sensor fusion/i)
-        ).toBeInTheDocument();
-      });
-
-      expect(handleToast).toHaveBeenCalledWith('Restored original sentence', 'info');
-    });
-
-    it('reverts explained sentence when clicked with Eraser tool active', async () => {
-      vi.mocked(api.articles.explain).mockResolvedValueOnce({
-        status: 'success',
-        phrase: 'Autonomous robots utilize multi-modal sensor fusion to build spatial representations of dynamic environments.',
-        summary: 'Summary',
-        detailed_explanation: 'Robots combine sensors to map rooms.',
-        simplified_version: 'Robots use sensors.',
-        key_terms: [],
-      });
-
-      const handleToast = vi.fn();
-      workspaceStore.setState({ activeTool: 'smart_ink' });
-
-      const { rerender } = render(<ArticleReader article={mockArticle} onShowToast={handleToast} />);
-
-      // 1. Explain sentence with Smart Ink
-      fireEvent.click(screen.getByText(/Autonomous robots utilize multi-modal sensor fusion/i));
-
-      await waitFor(() => {
-        expect(screen.getByText('💡 Explained')).toBeInTheDocument();
-      });
-
-      // 2. Switch to Eraser tool
-      workspaceStore.setState({ activeTool: 'eraser' });
-      rerender(<ArticleReader article={mockArticle} onShowToast={handleToast} />);
-
-      // 3. Click the explained sentence with Eraser
-      const explainedContainer = screen.getByText('Robots combine sensors to map rooms.').closest('span');
-      expect(explainedContainer).toBeInTheDocument();
-      fireEvent.click(explainedContainer!);
-
-      // Verify restored
-      await waitFor(() => {
-        expect(screen.queryByText('💡 Explained')).not.toBeInTheDocument();
-        expect(screen.queryByText('Robots combine sensors to map rooms.')).not.toBeInTheDocument();
-        expect(
-          screen.getByText(/Autonomous robots utilize multi-modal sensor fusion/i)
-        ).toBeInTheDocument();
-      });
-      expect(handleToast).toHaveBeenCalledWith('Restored original sentence', 'info');
-    });
-
-    it('confirms LeftSidebar remains clean with zero streaming into left panel', () => {
-      render(<LeftSidebar article={mockArticle} />);
-
-      // LeftSidebar should show Overview, Section Jumps, and WordNet dictionary promo
-      expect(screen.getByText('Robotics & AI')).toBeInTheDocument();
-      expect(screen.getByText(/Passage Sections \(3\)/)).toBeInTheDocument();
-      expect(screen.getByText(/Interactive WordNet Dictionary/)).toBeInTheDocument();
+    it('confirms LeftSidebar remains clean and empty when idle with zero streaming into left panel', () => {
+      const { container } = render(<LeftSidebar article={mockArticle} />);
+      expect(container.firstChild).toBeNull();
 
       // Ensure NO streaming containers or notes containers exist in LeftSidebar
       expect(screen.queryByText(/AI Stream/i)).not.toBeInTheDocument();
       expect(screen.queryByText(/Streaming explanation/i)).not.toBeInTheDocument();
-    });
-
-    it('gracefully handles offline/network failure with fallback in-place explanation', async () => {
-      vi.mocked(api.articles.explain).mockRejectedValueOnce(new Error('Network error'));
-
-      const handleToast = vi.fn();
-      workspaceStore.setState({ activeTool: 'smart_ink' });
-
-      render(<ArticleReader article={mockArticle} onShowToast={handleToast} />);
-
-      const secondSentence = screen.getByText(/Path planning algorithms ensure deterministic trajectory/i);
-      fireEvent.click(secondSentence);
-
-      await waitFor(() => {
-        expect(screen.getByText(/💡 Explanation: Path planning algorithms/i)).toBeInTheDocument();
-        expect(screen.getByText('💡 Explained')).toBeInTheDocument();
-      });
-
-      expect(handleToast).toHaveBeenCalledWith('Contextual explanation (offline)', 'info');
     });
   });
 
@@ -383,25 +239,9 @@ describe('QA Validation Suite: Client 4 Feedback Items', () => {
   // ══════════════════════════════════════════════════════════════════════════════
 
   describe('Feedback Item 3: Left Panel Clean Design & WordNet Lexicon Card', () => {
-    it('displays article overview statistics and passage section jump buttons (§ 1, § 2, § 3)', () => {
-      const handleScroll = vi.fn();
-      render(<LeftSidebar article={mockArticle} onScrollToParagraph={handleScroll} />);
-
-      // Overview Stats
-      expect(screen.getByText('Robotics & AI')).toBeInTheDocument();
-      expect(screen.getByText('Cognitive Architecture in Autonomous Robotics')).toBeInTheDocument();
-      expect(screen.getByText('IEEE Transactions • 850 words')).toBeInTheDocument();
-      expect(screen.getByText(/5 min/i)).toBeInTheDocument(); // 850 / 200 = ceil(4.25) -> 5 min
-
-      // Section Jumps
-      expect(screen.getByText('Passage Sections (3)')).toBeInTheDocument();
-      expect(screen.getByTitle('Jump to paragraph 1')).toHaveTextContent('§ 1');
-      expect(screen.getByTitle('Jump to paragraph 2')).toHaveTextContent('§ 2');
-      expect(screen.getByTitle('Jump to paragraph 3')).toHaveTextContent('§ 3');
-
-      // Click jump button
-      fireEvent.click(screen.getByTitle('Jump to paragraph 2'));
-      expect(handleScroll).toHaveBeenCalledWith(1);
+    it('confirms LeftSidebar renders null when idle to maintain distraction-free workspace', () => {
+      const { container } = render(<LeftSidebar article={mockArticle} />);
+      expect(container.firstChild).toBeNull();
     });
 
     it('renders clean WordNet dictionary card with ZERO raw asterisks (***), pronunciation button, and synonym chips', () => {
@@ -424,10 +264,10 @@ describe('QA Validation Suite: Client 4 Feedback Items', () => {
 
       const { container } = render(<LeftSidebar article={mockArticle} />);
 
-      // Verify WordNet header and content
-      expect(screen.getByText('WordNet Lexicon')).toBeInTheDocument();
-      expect(screen.getByText('deterministic')).toBeInTheDocument();
-      expect(screen.getByText('adjective')).toBeInTheDocument();
+      // Verify Vocabulary header and content
+      expect(screen.getByText('Vocabulary Lexicon')).toBeInTheDocument();
+      expect(screen.getByRole('heading', { level: 4, name: /deterministic/i })).toBeInTheDocument();
+      expect(screen.getAllByText(/adjective/i).length).toBeGreaterThan(0);
       expect(screen.getByText(/Relating to the philosophical doctrine/i)).toBeInTheDocument();
       expect(screen.getByText('"A deterministic computational model."')).toBeInTheDocument();
 
@@ -480,7 +320,7 @@ describe('QA Validation Suite: Client 4 Feedback Items', () => {
   // ══════════════════════════════════════════════════════════════════════════════
 
   describe('Feedback Item 4: Workspace Layout & Default Quiz State', () => {
-    it('defaults to isQuizOpen = false on article load with generous 9-column reader width and 3-col left panel', async () => {
+    it('defaults to isQuizOpen = false on article load with generous reader width', async () => {
       vi.mocked(api.articles.get).mockResolvedValueOnce({
         status: 'success',
         article: mockArticle,
@@ -501,22 +341,16 @@ describe('QA Validation Suite: Client 4 Feedback Items', () => {
         ).toBeGreaterThan(0);
       });
 
-      // 1. Verify Quiz is closed by default
-      expect(screen.getByText('Show AI Quiz')).toBeInTheDocument();
+      // 1. Verify Quiz is handled cleanly via Left AI Study Dock and not cluttering top bar
+      expect(screen.queryByText('Show AI Quiz')).not.toBeInTheDocument();
       expect(screen.queryByText('Hide Quiz')).not.toBeInTheDocument();
-      expect(screen.queryByText('Robotics Cognitive Architecture Exam')).not.toBeInTheDocument();
 
-      // 2. Left panel container is visible (lg:col-span-3)
-      const leftPanelWrapper = container.querySelector('.lg\\:col-span-3');
-      expect(leftPanelWrapper).toBeInTheDocument();
-
-      // 3. Reader container gets generous 9-column width (lg:col-span-9 max-w-4xl)
-      const readerWrapper = container.querySelector('.lg\\:col-span-9');
+      // 2. Reader container gets generous width (max-w-4xl)
+      const readerWrapper = container.querySelector('.max-w-4xl');
       expect(readerWrapper).toBeInTheDocument();
-      expect(readerWrapper?.className).toContain('max-w-4xl');
     });
 
-    it('transitions to clean 7-col reader / 5-col quiz split (no 3-column squeeze) when Quiz is opened', async () => {
+    it('renders clean full-width reader container when lexicon is not active', async () => {
       vi.mocked(api.articles.get).mockResolvedValueOnce({
         status: 'success',
         article: mockArticle,
@@ -537,34 +371,11 @@ describe('QA Validation Suite: Client 4 Feedback Items', () => {
         ).toBeGreaterThan(0);
       });
 
-      // Open AI Quiz
-      const showQuizBtn = screen.getByRole('button', { name: /Show AI Quiz/i });
-      fireEvent.click(showQuizBtn);
+      // Reader takes clean 12-col max-w-4xl space
+      const reader12Col = container.querySelector('.lg\\:col-span-12');
+      expect(reader12Col).toBeInTheDocument();
 
-      // Quiz button now says "Hide Quiz"
-      expect(screen.getByText('Hide Quiz')).toBeInTheDocument();
-
-      // Left panel is hidden on desktop (lg:hidden) to avoid 3-column squeeze
-      const leftPanelHidden = container.querySelector('.lg\\:hidden');
-      expect(leftPanelHidden).toBeInTheDocument();
-
-      // Reader is now 7 columns (lg:col-span-7)
-      const reader7Col = container.querySelector('.lg\\:col-span-7');
-      expect(reader7Col).toBeInTheDocument();
-
-      // Quiz column is 5 columns (lg:col-span-5)
-      const quiz5Col = container.querySelector('.lg\\:col-span-5');
-      expect(quiz5Col).toBeInTheDocument();
-      expect(screen.getByText('Academic AI Quiz')).toBeInTheDocument();
-      expect(screen.getByText('What do autonomous robots utilize for spatial representation?')).toBeInTheDocument();
-
-      // Close AI Quiz again
-      const hideQuizBtn = screen.getByRole('button', { name: /Hide Quiz/i });
-      fireEvent.click(hideQuizBtn);
-
-      // Returns to 9-col reader and 3-col left panel
-      expect(container.querySelector('.lg\\:col-span-9')).toBeInTheDocument();
-      expect(container.querySelector('.lg\\:col-span-3')).toBeInTheDocument();
+      // Returns to generous reader and no quiz column
       expect(container.querySelector('.lg\\:col-span-5')).not.toBeInTheDocument();
     });
 
