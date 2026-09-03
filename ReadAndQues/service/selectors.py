@@ -203,7 +203,12 @@ def list_completed_articles(
 
 def get_popular_keywords(limit: int = 10) -> list[str]:
     """Return top unique keywords across all gold articles."""
-    articles = article_store.list_gold_articles(limit=100)
+    try:
+        articles = article_store.list_gold_articles(limit=100)
+    except Exception as e:
+        logger.debug(f"Could not load articles for popular keywords ({e}), using default fallbacks.")
+        articles = []
+
     seen: dict[str, int] = {}
     for doc in articles:
         kws = doc.get("keywords", [])
@@ -322,4 +327,15 @@ def search_articles_semantic(query: str, limit: int = 10) -> list[dict[str, Any]
     except Exception as e:
         logger.warning(f"Semantic search error: {e}")
         return []
+
+
+def get_theme_choices() -> list[str]:
+    """Return all available IELTS theme categories."""
+    from shared.enums import ThemeCategory
+    return [t.value for t in ThemeCategory]
+
+
+def get_genre_choices() -> list[str]:
+    """Return reading genre choices."""
+    return ["Academic", "Journalistic", "Essay", "Report", "Interview", "General"]
 
