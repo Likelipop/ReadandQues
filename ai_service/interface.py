@@ -56,27 +56,6 @@ def stream_explanation(phrase: str, context: str = "") -> Generator[str]:
     yield from stream_explained_tokens(phrase=phrase, paragraph_context=context)
 
 
-def ask_question(question: str, article_id: str | None = None) -> dict[str, Any]:
-    """
-    Answer a question using the multi-agent RAG pipeline.
-
-    Args:
-        question: User query in English or Vietnamese.
-        article_id: Optional article ID to restrict retrieval scope.
-
-    Returns:
-        dict with keys: answer (markdown string), citations (list of dicts).
-    """
-    from ai_service.rag import execute_rag_pipeline
-    result = execute_rag_pipeline(question=question, article_id=article_id)
-    return {
-        "answer": result.answer,
-        "citations": [c if isinstance(c, dict) else c.model_dump() for c in result.citations],
-        "retrieved_chunks_count": result.retrieved_chunks_count,
-        "intent": result.intent.value if hasattr(result.intent, "value") else str(result.intent),
-    }
-
-
 def search_articles(query: str, method: str = "hybrid", limit: int = 10) -> list[dict[str, Any]]:
     """
     Search articles by keyword (BM25), semantic vector (ChromaDB), or hybrid.

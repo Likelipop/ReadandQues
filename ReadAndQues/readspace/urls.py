@@ -17,9 +17,7 @@ urlpatterns = [
     path("<str:pk>/submit/", views.submit_exam_attempt, name="submit_exam_attempt"),
     path("<str:pk>/proof/<int:idx>/", views.passage_proof_api, name="passage_proof_api"),
     path("api/<str:pk>/save_markers/", views.save_markers_api, name="save_markers"),
-    path("api/ai/tool/run/", views.run_ai_tool_api, name="run_ai_tool_api"),
     # ── Streaming & Search ───────────────────────────────────────────────────
-    path("api/rag/stream/", views.rag_stream_api, name="rag_stream_api"),
     path("api/study-dock/stream/", views.study_dock_stream_api, name="study_dock_stream"),
     path("api/explain/stream/", views.explain_stream_api, name="explain_stream_api"),
     path("api/<str:pk>/explain/stream/", views.explain_stream_api, name="explain_stream_api_pk"),

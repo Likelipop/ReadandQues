@@ -40,7 +40,6 @@ from .schemas import (
     ExamSubmitOut,
     ExplainPhraseIn,
     ExplainPhraseOut,
-    GenericAiToolIn,
     HomepageDataOut,
     LoginIn,
     PassageProofOut,
@@ -203,22 +202,7 @@ def list_articles(
     }
 
 
-@router.get("/articles/{pk}/", response=ArticleDetailOut, summary="Get Article Detail")
-def get_article_detail(request: HttpRequest, pk: str):
-    """Retrieve full article detail (clean markdown text, IELTS exams, metadata)."""
-    doc = selectors.get_article_detail(pk)
-    if not doc:
-        raise HttpError(404, "Article not found")
-
-    related = selectors.get_related_articles(pk, limit=5)
-    return {
-        "status": "success",
-        "article": doc,
-        "related_articles": related,
-    }
-
-
-@router.post("/articles/import/", response=ArticleImportOut, summary="Import Article URL")
+@router.post("/articles/import/", response=ArticleImportOut, auth=django_auth, summary="Import Article URL")
 def import_article(request: HttpRequest, data: ArticleImportIn):
     """Submit a news article URL to crawl, clean, and generate questions."""
     url = data.url.strip()
@@ -255,6 +239,21 @@ def import_article(request: HttpRequest, data: ArticleImportIn):
     }
 
 
+@router.get("/articles/{pk}/", response=ArticleDetailOut, summary="Get Article Detail")
+def get_article_detail(request: HttpRequest, pk: str):
+    """Retrieve full article detail (clean markdown text, IELTS exams, metadata)."""
+    doc = selectors.get_article_detail(pk)
+    if not doc:
+        raise HttpError(404, "Article not found")
+
+    related = selectors.get_related_articles(pk, limit=5)
+    return {
+        "status": "success",
+        "article": doc,
+        "related_articles": related,
+    }
+
+
 # ── 3. Status & Background Task Polling ───────────────────────────────────────
 
 
@@ -266,8 +265,8 @@ def get_article_status(request: HttpRequest, pk: str):
     return payload
 
 
-@router.post("/trigger-quiz/{pk}/", response=StatusResponse, summary="Trigger Quiz Generation")
-@router.post("/articles/{pk}/trigger-quiz/", response=StatusResponse, summary="Trigger Quiz Generation (Alias)")
+@router.post("/trigger-quiz/{pk}/", response=StatusResponse, auth=django_auth, summary="Trigger Quiz Generation")
+@router.post("/articles/{pk}/trigger-quiz/", response=StatusResponse, auth=django_auth, summary="Trigger Quiz Generation (Alias)")
 def trigger_quiz(request: HttpRequest, pk: str):
     """Trigger background AI quiz generation for an existing article."""
     res = services.trigger_quiz_generation(pk)
@@ -301,8 +300,8 @@ def submit_exam_attempt(request: HttpRequest, pk: str, data: ExamSubmitIn):
     }
 
 
-@router.post("/{pk}/explain/", response=ExplainPhraseOut, summary="Explain Phrase (New Smart Ink Graph)")
-@router.post("/articles/{pk}/explain/", response=ExplainPhraseOut, summary="Explain Phrase (Alias)")
+@router.post("/{pk}/explain/", response=ExplainPhraseOut, auth=django_auth, summary="Explain Phrase (New Smart Ink Graph)")
+@router.post("/articles/{pk}/explain/", response=ExplainPhraseOut, auth=django_auth, summary="Explain Phrase (Alias)")
 def explain_phrase_endpoint(request: HttpRequest, pk: str, data: ExplainPhraseIn):
     """Explain a target phrase or sentence within its surrounding paragraph context."""
     phrase = data.phrase.strip()
@@ -367,15 +366,6 @@ def search_semantic(request: HttpRequest, q: str):
     results = selectors.search_articles_semantic(q.strip())
     return {"status": "success", "results": results}
 
-
-@router.post("/ai/tool/run/", response=dict[str, Any], summary="Generic AI Tool Gateway")
-def run_ai_tool(request: HttpRequest, data: GenericAiToolIn):
-    """Gateway endpoint for invoking RAG tool questions."""
-    question = data.question or (data.input_data.get("question") if data.input_data else "") or ""
-    if not question.strip():
-        raise HttpError(400, "Missing question in request")
-    res = services.ask_rag_question(question=question, article_id=data.article_id)
-    return res
 
 
 @router.get("/dictionary/lookup/", response=DictionaryLookupOut, summary="Dictionary Lookup")
