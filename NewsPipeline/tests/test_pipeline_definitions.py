@@ -89,43 +89,58 @@ def test_rss_date_parsing():
 
 
 def test_sanitize_article_text():
-    """Verify that sanitize_article_text strips leading metadata, trailing footers, and normalizes headings."""
+    """Verify that sanitize_article_text truncates footers and normalizes headings without false positives."""
     from NewsPipeline.assets.silver import sanitize_article_text
 
-    raw_sample = (
-        "- Date:\n"
-        "- August 29, 2026\n"
-        "- Source:\n"
-        "- University News\n"
-        "- Summary:\n"
-        "- Brief summary text.\n"
-        "- Share:\n"
-        "This is the first real paragraph of the news article.\n\n"
-        "**Subheading Section**\n"
-        "This is the second paragraph describing research in detail.\n\n"
+    # Test 1: ScienceDaily footer truncated
+    sd_input = (
+        "This is the actual body of the article.\n\n"
         "**Story Source:**\n"
-        "Materials provided by University. Note: Content edited.\n"
+        "Materials provided by University.\n"
         "**Journal Reference:**\n"
         "1. Author et al. Paper title.\n"
         "**Cite This Page:**\n"
         "ScienceDaily 2026."
     )
+    sd_cleaned = sanitize_article_text(sd_input)
+    assert "This is the actual body of the article." in sd_cleaned
+    assert "Story Source:" not in sd_cleaned
+    assert "Journal Reference:" not in sd_cleaned
+    assert "Cite This Page:" not in sd_cleaned
 
-    cleaned = sanitize_article_text(raw_sample)
+    # Test 2: Guardian bullet list NOT stripped
+    guardian_input = (
+        "The report highlighted several key issues:\n"
+        "- Arctic sea ice at record low\n"
+        "- Ocean temperatures breaking records"
+    )
+    guardian_cleaned = sanitize_article_text(guardian_input)
+    assert "- Arctic sea ice at record low" in guardian_cleaned
+    assert "- Ocean temperatures breaking records" in guardian_cleaned
 
-    # Asserts leading metadata stripped
-    assert "- Date:" not in cleaned
-    assert "- Source:" not in cleaned
-    assert "- Share:" not in cleaned
-    # Asserts body kept
-    assert "This is the first real paragraph of the news article." in cleaned
-    # Asserts heading normalized
-    assert "### Subheading Section" in cleaned
-    assert "This is the second paragraph describing research in detail." in cleaned
-    # Asserts footer stripped
-    assert "Story Source:" not in cleaned
-    assert "Journal Reference:" not in cleaned
-    assert "Cite This Page:" not in cleaned
+    # Test 3: Reuters unchanged
+    reuters_input = "WASHINGTON (Reuters) - The Federal Reserve held interest rates steady."
+    reuters_cleaned = sanitize_article_text(reuters_input)
+    assert reuters_cleaned == reuters_input
+
+    # Test 4: Bold heading normalized
+    heading_input = (
+        "Previous paragraph.\n\n"
+        "**Subheading Section**\n\n"
+        "Next paragraph."
+    )
+    heading_cleaned = sanitize_article_text(heading_input)
+    assert "### Subheading Section" in heading_cleaned
+    assert "**Subheading Section**" not in heading_cleaned
+
+    # Test 5: Sentence with "source:" in text is NOT deleted (False positive in old logic)
+    false_positive_input = (
+        "Source: The data comes from 3,000 weather stations worldwide.\n"
+        "This line should remain."
+    )
+    false_positive_cleaned = sanitize_article_text(false_positive_input)
+    assert "Source: The data comes from 3,000 weather stations worldwide." in false_positive_cleaned
+    assert "This line should remain." in false_positive_cleaned
 
 
 def test_extract_keywords_from_bm25():
