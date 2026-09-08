@@ -13,6 +13,7 @@ interface ReadingSpacePageProps {
   articleId: string;
   onNavigateHome: () => void;
   onSelectArticle: (id: string) => void;
+  onOpenAuth?: (mode?: 'login' | 'register') => void;
   onShowToast?: (msg: string, type: 'success' | 'error' | 'info') => void;
 }
 
@@ -20,6 +21,7 @@ export const ReadingSpacePage: React.FC<ReadingSpacePageProps> = ({
   articleId,
   onNavigateHome,
   onSelectArticle,
+  onOpenAuth,
   onShowToast,
 }) => {
   const [article, setLocalArticle] = useState<Article | null>(null);
@@ -222,6 +224,8 @@ export const ReadingSpacePage: React.FC<ReadingSpacePageProps> = ({
                 <QuizSidebar
                   article={article}
                   onRefreshArticle={fetchArticle}
+                  onOpenAuth={onOpenAuth}
+                  onShowToast={onShowToast}
                 />
               </div>
             </div>

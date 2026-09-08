@@ -17,10 +17,11 @@ import {
   Layers,
   ChevronDown,
   PenLine,
+  Lock,
 } from 'lucide-react';
 import { useSSEStream, Citation } from '../../hooks/useSSEStream';
 import { MarkdownView } from '../../components/common/MarkdownView';
-import { useWorkspace } from '../../store';
+import { useWorkspace, useAuth } from '../../store';
 
 export interface LeftAiDockProps {
   activeArticleId?: string;
@@ -28,6 +29,8 @@ export interface LeftAiDockProps {
   pageContext?: 'readspace' | 'homepage' | 'all-tests' | 'profile' | 'home';
   isOpen?: boolean;
   onToggle?: (open: boolean) => void;
+  onOpenAuth?: (mode?: 'login' | 'register') => void;
+  onShowToast?: (msg: string, type: 'success' | 'error' | 'info') => void;
 }
 
 interface Message {
@@ -118,7 +121,12 @@ export const LeftAiDock: React.FC<LeftAiDockProps> = ({
   pageContext = 'homepage',
   isOpen: controlledIsOpen,
   onToggle: controlledOnToggle,
+  onOpenAuth,
+  onShowToast,
 }) => {
+  const { user } = useAuth();
+  const isAuthenticated = !!user?.is_authenticated;
+
   const [internalIsOpen, setInternalIsOpen] = useState(false);
   const isExpanded = controlledIsOpen !== undefined ? controlledIsOpen : internalIsOpen;
 
@@ -192,6 +200,13 @@ export const LeftAiDock: React.FC<LeftAiDockProps> = ({
   // Listen to custom window event to trigger quiz from other components
   useEffect(() => {
     const handleTriggerQuizEvent = (event: Event) => {
+      if (!isAuthenticated) {
+        if (onShowToast) {
+          onShowToast('Please sign in to generate AI quizzes.', 'info');
+        }
+        onOpenAuth?.('login');
+        return;
+      }
       const customEvent = event as CustomEvent<{ query?: string }>;
       setIsExpanded(true);
       const query = customEvent.detail?.query || 'Generate a reading comprehension quiz for this article';
@@ -200,7 +215,7 @@ export const LeftAiDock: React.FC<LeftAiDockProps> = ({
 
     window.addEventListener('trigger-ai-quiz', handleTriggerQuizEvent);
     return () => window.removeEventListener('trigger-ai-quiz', handleTriggerQuizEvent);
-  }, [currentArticleId, currentArticleText]);
+  }, [currentArticleId, currentArticleText, isAuthenticated, onShowToast, onOpenAuth]);
 
   // Attempt to close dock with confirmation if unsaved quiz exists
   const handleAttemptClose = () => {
@@ -224,6 +239,14 @@ export const LeftAiDock: React.FC<LeftAiDockProps> = ({
   };
 
   const handleSend = async (customQuery?: string) => {
+    if (!isAuthenticated) {
+      if (onShowToast) {
+        onShowToast('Please sign in to chat with AI Study Assistant.', 'info');
+      }
+      onOpenAuth?.('login');
+      return;
+    }
+
     const queryToSend = (customQuery || input).trim();
     if (!queryToSend || isStreaming) return;
 
@@ -346,8 +369,17 @@ export const LeftAiDock: React.FC<LeftAiDockProps> = ({
           title="Open AI Study Dock (Ctrl + K)"
         >
           <div className="flex flex-col items-center gap-3">
-            <div className="w-8 h-8 rounded-xl bg-cyber-cyan/10 border border-cyber-cyan/30 flex items-center justify-center text-cyber-cyan group-hover:scale-110 transition-transform">
+            <div className="w-8 h-8 rounded-xl bg-cyber-cyan/10 border border-cyber-cyan/30 flex items-center justify-center text-cyber-cyan group-hover:scale-110 transition-transform relative">
               <Bot className="w-4 h-4" />
+              {!isAuthenticated && (
+                <span
+                  data-testid="ai-dock-lock-badge"
+                  className="absolute -top-1 -right-1 w-3.5 h-3.5 rounded-full bg-amber-500/90 text-slate-950 flex items-center justify-center text-[9px] shadow ring-1 ring-slate-950"
+                  title="Sign in required for AI features"
+                >
+                  <Lock className="w-2 h-2 stroke-[2.5]" />
+                </span>
+              )}
             </div>
             <span
               className="text-xs font-bold tracking-wider uppercase text-slate-300 group-hover:text-cyber-cyan select-none"
@@ -461,6 +493,41 @@ export const LeftAiDock: React.FC<LeftAiDockProps> = ({
           {/* ── Mode 1: CHAT VIEW ── */}
           {mode === 'chat' && (
             <div className="flex-1 overflow-y-auto p-4 space-y-4 text-sm font-sans">
+              {/* Feature Preview & Auth Gate Card */}
+              {!isAuthenticated && (
+                <div
+                  data-testid="ai-dock-auth-gate"
+                  className="p-4 rounded-2xl bg-gradient-to-b from-cyber-cyan/15 via-indigo-950/40 to-white/[0.02] border border-cyber-cyan/30 text-center space-y-3 shadow-xl shadow-cyan-950/40 animate-in fade-in duration-200"
+                >
+                  <div className="w-10 h-10 mx-auto rounded-xl bg-cyber-cyan/20 border border-cyber-cyan/40 flex items-center justify-center text-cyber-cyan shadow-md shadow-cyan-500/20">
+                    <Lock className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h4 className="text-sm font-bold text-white">Sign In to Unlock AI Study Assistant</h4>
+                    <p className="text-xs text-slate-300 mt-1 leading-relaxed">
+                      AI features require an account. Sign in to chat with our Multi-Agent tutor, get contextual grammar explanations, and generate reading comprehension quizzes.
+                    </p>
+                  </div>
+                  <div className="flex flex-col sm:flex-row items-center justify-center gap-2 pt-1">
+                    <button
+                      type="button"
+                      onClick={() => onOpenAuth?.('login')}
+                      className="w-full sm:w-auto px-5 py-2 rounded-xl bg-gradient-to-r from-cyber-cyan to-indigo-500 hover:from-cyan-400 hover:to-indigo-400 text-slate-950 font-bold text-xs shadow-lg shadow-cyan-500/20 transition cursor-pointer flex items-center justify-center gap-1.5"
+                    >
+                      <Sparkles className="w-3.5 h-3.5" />
+                      <span>Sign In Now</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => onOpenAuth?.('register')}
+                      className="w-full sm:w-auto px-4 py-2 rounded-xl bg-white/5 hover:bg-white/10 text-slate-300 hover:text-white font-medium text-xs border border-white/10 transition cursor-pointer"
+                    >
+                      Create Account
+                    </button>
+                  </div>
+                </div>
+              )}
+
               {messages.map((msg) => (
                 <div
                   key={msg.id}
@@ -906,7 +973,9 @@ export const LeftAiDock: React.FC<LeftAiDockProps> = ({
                     value={input}
                     onChange={(e) => setInput(e.target.value)}
                     placeholder={
-                      pageContext === 'readspace'
+                      !isAuthenticated
+                        ? 'Sign in to chat with AI Study Assistant...'
+                        : pageContext === 'readspace'
                         ? 'Ask about this article, words, or create a quiz...'
                         : 'Ask anything across news or reading topics...'
                     }
@@ -926,11 +995,11 @@ export const LeftAiDock: React.FC<LeftAiDockProps> = ({
 
                 <button
                   type="submit"
-                  disabled={!input.trim() || isStreaming}
+                  disabled={isStreaming || (isAuthenticated && !input.trim())}
                   className="p-2.5 rounded-xl bg-cyber-cyan hover:bg-cyan-400 disabled:opacity-30 disabled:hover:bg-cyber-cyan text-slate-950 font-bold transition shadow-lg hover:shadow-cyan-500/30 shrink-0 cursor-pointer disabled:cursor-not-allowed"
-                  title="Send message (Enter)"
+                  title={!isAuthenticated ? 'Sign in to use AI Study Assistant' : 'Send message (Enter)'}
                 >
-                  <Send className="w-4 h-4" />
+                  {!isAuthenticated ? <Lock className="w-4 h-4" /> : <Send className="w-4 h-4" />}
                 </button>
               </form>
             </div>

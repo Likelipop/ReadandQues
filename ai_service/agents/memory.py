@@ -53,9 +53,12 @@ def get_checkpointer():
 
             # Fast host check to avoid hanging connection pool retries
             try:
-                socket.getaddrinfo(db_host, db_port, timeout=1.0)
+                sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                sock.settimeout(1.0)
+                sock.connect((db_host, int(db_port)))
+                sock.close()
             except Exception as se:
-                raise ConnectionError(f"Database host {db_host}:{db_port} not resolvable: {se}")
+                raise ConnectionError(f"Database host {db_host}:{db_port} not reachable: {se}")
 
             from langgraph.checkpoint.postgres import PostgresSaver
             from psycopg_pool import ConnectionPool
@@ -83,6 +86,22 @@ def get_checkpointer():
 # ── Context Window Management ─────────────────────────────────────────────────
 
 
+def _approx_token_count(msgs: list[BaseMessage]) -> int:
+    """Approximate token count using word-based heuristic (~1.33 tokens per word)."""
+    total = 0
+    for m in msgs:
+        content = m.content if hasattr(m, "content") else str(m)
+        if isinstance(content, str):
+            total += len(content.split()) * 4 // 3
+        elif isinstance(content, list):
+            for block in content:
+                if isinstance(block, dict):
+                    total += len(block.get("text", "").split()) * 4 // 3
+                else:
+                    total += len(str(block).split()) * 4 // 3
+    return total
+
+
 def trim_conversation_history(
     messages: list[BaseMessage], max_tokens: int = 3500
 ) -> list[BaseMessage]:
@@ -100,7 +119,7 @@ def trim_conversation_history(
             messages,
             max_tokens=max_tokens,
             strategy="last",
-            token_counter=len,  # Word/approx token counter for speed & reliability
+            token_counter=_approx_token_count,  # Word/approx token counter for speed & reliability
             allow_partial=False,
             include_system=True,
         )
@@ -119,12 +138,29 @@ def should_summarize(messages: list[BaseMessage], threshold: int = 8) -> bool:
     return len(non_system) >= threshold
 
 
+from pydantic import BaseModel, Field
+
+class VocabularyUpdate(BaseModel):
+    """Structured extraction of linguistic items the user asked about."""
+    lexical_items: list[str] = Field(default_factory=list, description="Single words (e.g., ubiquitous, ephemeral)")
+    phrasal_verbs: list[str] = Field(default_factory=list, description="Phrasal verbs (e.g., make up, look forward to)")
+    collocations: list[str] = Field(default_factory=list, description="Common word combinations (e.g., heavy rain, commit a crime)")
+    idioms: list[str] = Field(default_factory=list, description="Idiomatic expressions (e.g., once in a blue moon)")
+    grammar_patterns: list[str] = Field(default_factory=list, description="Grammar structures (e.g., Inversion, Conditional)")
+
+class SessionSummary(BaseModel):
+    """The structured output of the rolling summarizer."""
+    conversation_summary: str = Field(description="Brief factual summary of the chat so far")
+    vocabulary: VocabularyUpdate = Field(description="Linguistic items the user struggled with or asked about")
+    weak_skills: list[str] = Field(default_factory=list, description="Reading skills the user struggled with")
+    learning_notes: str = Field(description="Observations about the user's learning behavior or goals")
+
 def generate_rolling_summary(
     messages: list[BaseMessage], existing_summary: str = ""
-) -> str:
+) -> SessionSummary | None:
     """
-    Generate a concise factual rolling summary of older conversation turns.
-    Preserves discussed topics, tricky vocabulary, and weak skills.
+    Generate a concise factual rolling summary of older conversation turns
+    and extract vocabulary/skills using LLM structured output.
     """
     try:
         dialogue_lines = []
@@ -137,16 +173,18 @@ def generate_rolling_summary(
             dialogue_lines.append(f"{role}: {content[:300]}")
 
         if not dialogue_lines:
-            return existing_summary
+            return None
 
-        llm = get_llm(temperature=1.0)
+        llm = get_llm()
+        structured_llm = llm.with_structured_output(SessionSummary)
         prompt = ROLLING_SUMMARIZER_PROMPT.format(messages_text="\n".join(dialogue_lines))
-        resp = llm.invoke([HumanMessage(content=prompt)])
-        summary = resp.content if hasattr(resp, "content") else str(resp)
-        return summary.strip()
+        
+        # We need to pass it as a message to structured_llm
+        resp = structured_llm.invoke([HumanMessage(content=prompt)])
+        return resp
     except Exception as e:
-        logger.warning(f"[Memory] Failed to generate rolling summary: {e}")
-        return existing_summary
+        logger.warning(f"[Memory] Failed to generate structured rolling summary: {e}")
+        return None
 
 
 # ── Long-Term Memory (User Learning Profile) ──────────────────────────────────
@@ -160,7 +198,13 @@ def get_default_user_profile() -> dict[str, Any]:
         "cefr_level": "B1",
         "interests": ["General", "Technology", "Education"],
         "weak_skills": ["TrueFalseNotgiven", "Inference"],
-        "tricky_words": [],
+        "vocabulary_profile": {
+            "lexical_items": [],
+            "phrasal_verbs": [],
+            "collocations": [],
+            "idioms": [],
+            "grammar_patterns": []
+        },
         "reading_notes": "Learner is currently developing comprehension of academic syntax and inference questions.",
         "language_preference": "Bilingual En-Vi",
     }
@@ -180,9 +224,9 @@ def get_user_learning_profile(user_id: int | None) -> dict[str, Any]:
 
     # Try fetching from Mongo article store client if available
     try:
-        try:
-            import service.infrastructure.mongo.article_store as article_store
-            client = article_store.get_mongo_client()
+        from ai_service.adapters import get_mongo_client
+        client = get_mongo_client()
+        if client:
             db = client.get_default_database()
             doc = db["user_learning_profiles"].find_one({"user_id": user_id})
             if doc:
@@ -190,14 +234,12 @@ def get_user_learning_profile(user_id: int | None) -> dict[str, Any]:
                     "cefr_level": doc.get("cefr_level", "B1"),
                     "interests": doc.get("interests", ["General"]),
                     "weak_skills": doc.get("weak_skills", ["TrueFalseNotgiven"]),
-                    "tricky_words": doc.get("tricky_words", []),
+                    "vocabulary_profile": doc.get("vocabulary_profile", profile["vocabulary_profile"]),
                     "reading_notes": doc.get("reading_notes", ""),
                     "language_preference": doc.get("language_preference", "Bilingual En-Vi"),
                 })
-        except Exception as e:
-            logger.debug(f"[Memory] Could not load profile from MongoDB ({e}). Using default.")
-    except Exception:
-        pass
+    except Exception as e:
+        logger.debug(f"[Memory] Could not load profile from MongoDB ({e}). Using default.")
 
     _LTM_CACHE[user_id] = profile
     return profile
@@ -211,23 +253,31 @@ def update_user_learning_profile(user_id: int | None, updates: dict[str, Any]) -
         return
 
     profile = get_user_learning_profile(user_id)
+    
+    # Handle deep merge for vocabulary_profile if present
+    if "vocabulary_profile" in updates:
+        vocab_updates = updates.pop("vocabulary_profile")
+        for k, v in vocab_updates.items():
+            if isinstance(v, list):
+                # Merge lists and remove duplicates
+                current_list = profile["vocabulary_profile"].get(k, [])
+                profile["vocabulary_profile"][k] = list(set(current_list + v))
+
     profile.update(updates)
     _LTM_CACHE[user_id] = profile
 
     try:
-        try:
-            import service.infrastructure.mongo.article_store as article_store
-            client = article_store.get_mongo_client()
+        from ai_service.adapters import get_mongo_client
+        client = get_mongo_client()
+        if client:
             db = client.get_default_database()
             db["user_learning_profiles"].update_one(
                 {"user_id": user_id},
                 {"$set": profile},
                 upsert=True,
             )
-        except Exception as e:
-            logger.debug(f"[Memory] Could not persist profile update to MongoDB: {e}")
-    except Exception:
-        pass
+    except Exception as e:
+        logger.debug(f"[Memory] Could not persist profile update to MongoDB: {e}")
 
 
 def format_user_profile_for_prompt(profile: dict[str, Any]) -> str:
@@ -235,15 +285,24 @@ def format_user_profile_for_prompt(profile: dict[str, Any]) -> str:
     cefr = profile.get("cefr_level", "B1")
     interests = ", ".join(profile.get("interests", ["General"]))
     weak_skills = ", ".join(profile.get("weak_skills", ["TrueFalseNotgiven"]))
-    tricky_words = ", ".join(profile.get("tricky_words", [])[-10:]) or "None recorded yet"
+    
+    vocab_profile = profile.get("vocabulary_profile", {})
+    vocab_lines = []
+    for category, items in vocab_profile.items():
+        if items:
+            # Show up to 5 most recent items per category
+            recent_items = items[-5:]
+            vocab_lines.append(f"  - {category.replace('_', ' ').title()}: {', '.join(recent_items)}")
+            
+    vocab_str = "\n".join(vocab_lines) if vocab_lines else "  - None recorded yet"
     notes = profile.get("reading_notes", "")[:200]
-    lang_pref = profile.get("language_preference", "Bilingual En-Vi")
+    lang_pref = profile.get("language_preference", "En")
 
     return (
         f"- Target CEFR Reading Level: {cefr}\n"
         f"- Topics of Interest: {interests}\n"
         f"- Challenging Question Types: {weak_skills}\n"
-        f"- Recent Tricky Words: {tricky_words}\n"
+        f"- Recent Tricky Language Items:\n{vocab_str}\n"
         f"- Reading Needs Note: {notes}\n"
         f"- Preferred Explanation Style: {lang_pref}"
     )

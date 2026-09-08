@@ -367,8 +367,10 @@ class ServiceTestSuite(TestCase):
         self.assertFalse(data_unf["found"])
         self.assertEqual(len(data_unf["definitions"]), 0)
 
-    def test_list_completed_articles_with_date_filters(self):
+    @patch("service.selectors.article_store.list_gold_articles")
+    def test_list_completed_articles_with_date_filters(self, mock_list):
         """QA Test: list_completed_articles filters articles based on publication date."""
+        mock_list.return_value = [self.mock_mongo_doc]
         from service.selectors import list_completed_articles
 
         res_all = list_completed_articles(date_filter="all")

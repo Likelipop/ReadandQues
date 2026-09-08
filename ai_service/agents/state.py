@@ -9,8 +9,6 @@ from typing import Any
 
 from langgraph.graph import MessagesState
 
-from ai_service.quiz_generator.schemas import QuizItem
-
 
 class StudyDockState(MessagesState):
     """
@@ -28,12 +26,12 @@ class StudyDockState(MessagesState):
     user_profile: dict[str, Any]  # CEFR level, topics, tricky words, weak skills
 
     # Router / Intent classification
-    intent: str  # "explain" | "rag" | "quiz" | "general"
+    intent: str  # Set by router_node: "quiz" | "general"
 
     # Agent output attributes
     response: str
     citations: list[dict[str, Any]]
-    quiz_data: list[dict[str, Any] | QuizItem]
+    quiz_data: list[dict[str, Any]]
     action_type: str  # "chat" | "quiz"
     error: str
 

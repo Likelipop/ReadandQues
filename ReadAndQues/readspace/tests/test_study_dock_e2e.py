@@ -14,6 +14,7 @@ Tests:
 import json
 from unittest.mock import AsyncMock, MagicMock, patch
 
+from django.contrib.auth.models import User
 from django.test import Client, TestCase
 from django.urls import reverse
 from langchain_core.messages import AIMessage, HumanMessage
@@ -30,6 +31,12 @@ from ai_service.interface import ask_study_dock
 class StudyDockE2ETestCase(TestCase):
     def setUp(self):
         self.client = Client()
+        self.user = User.objects.create_user(
+            username="e2e_user",
+            email="e2e@example.com",
+            password="Password123!",
+        )
+        self.client.force_login(self.user)
         self.article_id = "test-art-e2e-123"
         self.sample_text = (
             "Extremophiles are organisms that thrive in extreme environments such as hydrothermal vents "
@@ -38,16 +45,21 @@ class StudyDockE2ETestCase(TestCase):
 
     # ── 1. Supervisor Direct Explanation & Intent Tests ───────────────────────
 
-    @patch("ai_service.agents.supervisor.get_llm")
-    def test_explainer_agent_routing(self, mock_get_llm):
-        """User asking to explain a word receives direct explanation from Supervisor."""
-        mock_llm = MagicMock()
+    @patch("ai_service.agents.router.get_llm")
+    @patch("ai_service.agents.general_agent.get_llm")
+    def test_explainer_agent_routing(self, mock_general_llm, mock_router_llm):
+        """User asking to explain a word receives direct explanation from General Agent."""
+        from ai_service.agents.router import IntentClassification
+
+        mock_structured = MagicMock()
+        mock_structured.ainvoke = AsyncMock(
+            return_value=IntentClassification(intent="general", reasoning="User asked for word explanation.")
+        )
+        mock_router_llm.return_value.with_structured_output.return_value = mock_structured
+
         mock_resp = AIMessage(content="**💡 In Simple Words:** Organisms that love extreme conditions.")
-        
-        # Support both synchronous and async ainvoke
-        mock_llm.ainvoke = AsyncMock(return_value=mock_resp)
-        mock_llm.bind_tools.return_value = mock_llm
-        mock_get_llm.return_value = mock_llm
+        mock_general_llm.return_value.ainvoke = AsyncMock(return_value=mock_resp)
+        mock_general_llm.return_value.bind_tools.return_value = mock_general_llm.return_value
 
         res = ask_study_dock(
             query="Explain the word 'extremophiles'",
@@ -56,18 +68,24 @@ class StudyDockE2ETestCase(TestCase):
             article_text=self.sample_text,
         )
 
-        self.assertEqual(res["intent"], "explain")
         self.assertEqual(res["action_type"], "chat")
         self.assertIn("Organisms that love extreme conditions", res["response"])
 
-    @patch("ai_service.agents.supervisor.get_llm")
-    def test_rag_agent_routing(self, mock_get_llm):
-        """User asking a factual news question receives answer from Supervisor."""
-        mock_llm = MagicMock()
+    @patch("ai_service.agents.router.get_llm")
+    @patch("ai_service.agents.general_agent.get_llm")
+    def test_rag_agent_routing(self, mock_general_llm, mock_router_llm):
+        """User asking a factual news question receives answer from General Agent."""
+        from ai_service.agents.router import IntentClassification
+
+        mock_structured = MagicMock()
+        mock_structured.ainvoke = AsyncMock(
+            return_value=IntentClassification(intent="general", reasoning="User asked a factual question.")
+        )
+        mock_router_llm.return_value.with_structured_output.return_value = mock_structured
+
         mock_resp = AIMessage(content="Climate change affects ocean biodiversity severely.")
-        mock_llm.ainvoke = AsyncMock(return_value=mock_resp)
-        mock_llm.bind_tools.return_value = mock_llm
-        mock_get_llm.return_value = mock_llm
+        mock_general_llm.return_value.ainvoke = AsyncMock(return_value=mock_resp)
+        mock_general_llm.return_value.bind_tools.return_value = mock_general_llm.return_value
 
         res = ask_study_dock(
             query="What are the latest facts about climate change?",
@@ -79,9 +97,18 @@ class StudyDockE2ETestCase(TestCase):
 
     # ── 2. Quiz Sub-Agent Delegation Tests ───────────────────────────────────
 
+    @patch("ai_service.agents.router.get_llm")
     @patch("ai_service.agents.quiz_agent.generate_questions")
-    def test_quiz_agent_routing(self, mock_gen_questions):
+    def test_quiz_agent_routing(self, mock_gen_questions, mock_router_llm):
         """User requesting a quiz delegates to Quiz Sub-Agent and returns quiz_data."""
+        from ai_service.agents.router import IntentClassification
+
+        mock_structured = MagicMock()
+        mock_structured.ainvoke = AsyncMock(
+            return_value=IntentClassification(intent="quiz", reasoning="User requested quiz creation.")
+        )
+        mock_router_llm.return_value.with_structured_output.return_value = mock_structured
+
         mock_exam_output = MagicMock()
         mock_quiz_item = MagicMock()
         mock_quiz_item.model_dump.return_value = {
@@ -108,8 +135,17 @@ class StudyDockE2ETestCase(TestCase):
         self.assertEqual(len(res["quiz_data"]), 1)
         self.assertEqual(res["quiz_data"][0]["question"], "What are extremophiles?")
 
-    def test_quiz_agent_without_article_returns_clear_message(self):
+    @patch("ai_service.agents.router.get_llm")
+    def test_quiz_agent_without_article_returns_clear_message(self, mock_router_llm):
         """When on homepage without an active article, quiz generation reports clean guidance."""
+        from ai_service.agents.router import IntentClassification
+
+        mock_structured = MagicMock()
+        mock_structured.ainvoke = AsyncMock(
+            return_value=IntentClassification(intent="quiz", reasoning="User requested quiz creation.")
+        )
+        mock_router_llm.return_value.with_structured_output.return_value = mock_structured
+
         res = ask_study_dock(
             query="Generate quiz",
             article_id="",

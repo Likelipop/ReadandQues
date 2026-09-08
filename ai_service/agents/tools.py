@@ -12,19 +12,19 @@ from langchain_core.tools import tool
 
 from ai_service.rag.agents.news_agent import retrieve_and_rerank_context
 
+from ai_service.adapters import get_article_store
+
 logger = logging.getLogger(__name__)
 
 
 def _get_article_metadata(article_id: str) -> dict[str, Any]:
     """Safely fetch gold article metadata for rich card presentation."""
     try:
-        try:
-            import service.infrastructure.mongo.article_store as article_store
-        except ImportError:
-            import ReadAndQues.service.infrastructure.mongo.article_store as article_store
-        doc = article_store.get_gold_content(article_id)
-        if doc:
-            return doc
+        article_store = get_article_store()
+        if article_store:
+            doc = article_store.get_gold_content(article_id)
+            if doc:
+                return doc
     except Exception as e:
         logger.debug(f"Could not fetch metadata from article_store for {article_id}: {e}")
     return {}
