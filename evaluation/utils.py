@@ -13,10 +13,11 @@ def setup_evaluation_environment():
         sys.path.insert(0, str(PROJECT_ROOT))
     load_dotenv(PROJECT_ROOT / ".env")
     
-    # Overrides for accessing dockerized services from host
-    os.environ.setdefault("MONGO_URI", "mongodb://admin:changeme@localhost:27017/articlesDB?authSource=admin")
-    os.environ.setdefault("CHROMA_HOST", "localhost")
-    os.environ.setdefault("CHROMA_PORT", "8002")
+    # Force overrides for accessing dockerized services from host during evaluation
+    os.environ["MONGO_URI"] = os.getenv("MONGO_HOST_URI", "mongodb://admin:changeme@localhost:27017/articlesDB?authSource=admin")
+    os.environ["CHROMA_HOST"] = "localhost"
+    os.environ["CHROMA_PORT"] = "8002"
+    os.environ["DEEPEVAL_TELEMETRY_OPT_OUT"] = "YES"
 
 def setup_judge_model():
     """Initialize Azure OpenAI judge model for DeepEval."""
@@ -34,29 +35,70 @@ def load_dataset(dataset_name: str = "rag_eval_dataset.json") -> list[dict]:
     with open(dataset_path, "r", encoding="utf-8") as f:
         return json.load(f)
 
-def save_evaluation_results(test_cases, output_name: str = "rag_eval_results.json"):
+def save_evaluation_results(eval_result, output_name: str = "rag_triad_results.json"):
     """Extract metrics from evaluated test cases and save to JSON."""
     results_dir = PROJECT_ROOT / "evaluation" / "results"
     results_dir.mkdir(parents=True, exist_ok=True)
     
     extracted_results = []
-    for tc in test_cases:
-        tc_data = {
-            "input": tc.input,
-            "actual_output": tc.actual_output,
+    test_results = getattr(eval_result, "test_results", eval_result)
+    
+    metrics_summary = {}
+    
+    for tr in test_results:
+        tr_data = {
+            "name": getattr(tr, "name", ""),
+            "input": getattr(tr, "input", ""),
+            "actual_output": getattr(tr, "actual_output", ""),
+            "retrieval_context": getattr(tr, "retrieval_context", []),
+            "success": getattr(tr, "success", False),
             "metrics": {}
         }
-        if hasattr(tc, 'metrics'):
-            for m in tc.metrics:
-                tc_data["metrics"][m.__class__.__name__] = {
-                    "score": getattr(m, 'score', None),
-                    "reason": getattr(m, 'reason', None),
-                    "success": getattr(m, 'success', getattr(m, 'is_successful', None))
-                }
-        extracted_results.append(tc_data)
+        metrics_data = getattr(tr, "metrics_data", []) or []
+        for m in metrics_data:
+            metric_name = getattr(m, "name", m.__class__.__name__)
+            score = getattr(m, "score", None)
+            threshold = getattr(m, "threshold", 0.7)
+            success = getattr(m, "success", False)
+            reason = getattr(m, "reason", None)
+            error = getattr(m, "error", None)
+            
+            tr_data["metrics"][metric_name] = {
+                "score": score,
+                "threshold": threshold,
+                "success": success,
+                "reason": reason,
+                "error": error
+            }
+            
+            if metric_name not in metrics_summary:
+                metrics_summary[metric_name] = {"scores": [], "passed": 0, "total": 0}
+            metrics_summary[metric_name]["total"] += 1
+            if score is not None:
+                metrics_summary[metric_name]["scores"].append(score)
+            if success:
+                metrics_summary[metric_name]["passed"] += 1
+                
+        extracted_results.append(tr_data)
         
+    summary_report = {
+        "total_test_cases": len(extracted_results),
+        "passed_test_cases": sum(1 for tr in extracted_results if tr.get("success", False)),
+        "metrics_summary": {
+            m_name: {
+                "average_score": round(sum(data["scores"]) / len(data["scores"]), 4) if data["scores"] else 0.0,
+                "pass_rate": f"{(data['passed'] / data['total'] * 100):.2f}%" if data["total"] > 0 else "0.00%",
+                "passed": data["passed"],
+                "total": data["total"]
+            }
+            for m_name, data in metrics_summary.items()
+        },
+        "results": extracted_results
+    }
+    
     output_path = results_dir / output_name
     with open(output_path, "w", encoding="utf-8") as f:
-        json.dump(extracted_results, f, indent=2, ensure_ascii=False)
+        json.dump(summary_report, f, indent=2, ensure_ascii=False)
     
     print(f"\n💾 Đã lưu kết quả đánh giá chi tiết tại: {output_path}")
+    return summary_report

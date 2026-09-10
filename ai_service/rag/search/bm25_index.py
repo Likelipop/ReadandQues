@@ -66,15 +66,42 @@ def rebuild_index() -> None:
     """Fetch all indexed article titles from MongoDB and build a fresh BM25Okapi index."""
     global _bm25_index, _corpus_ids
 
-    logger.info("[BM25] Building index from gold_articles / article_index...")
+    logger.info("[BM25] Building index from gold_content / gold_articles / article_index...")
     mongo_uri = os.getenv("MONGO_URI", "mongodb://admin:changeme@localhost:27017/articlesDB?authSource=admin")
 
+    client = None
     try:
-        client = MongoClient(mongo_uri, serverSelectionTimeoutMS=3000)
+        client = MongoClient(mongo_uri, serverSelectionTimeoutMS=2000)
         db = client.get_database()
-        
-        # Try gold_articles first, then fallback to article_index
-        col = db["gold_articles"] if "gold_articles" in db.list_collection_names() else db["article_index"]
+        db.list_collection_names()
+    except Exception as e:
+        logger.debug(f"[BM25] Primary MongoDB connection failed ({e}), trying localhost:27017...")
+        if "mongo:27017" in mongo_uri:
+            try:
+                fallback_uri = mongo_uri.replace("mongo:27017", "localhost:27017")
+                client = MongoClient(fallback_uri, serverSelectionTimeoutMS=2000)
+                db = client.get_database()
+                db.list_collection_names()
+            except Exception as ex:
+                logger.warning(f"[BM25] Fallback MongoDB connection failed: {ex}")
+                client = None
+
+    if client is None:
+        logger.warning("[BM25] Could not connect to MongoDB for index build.")
+        _bm25_index = None
+        _corpus_ids = []
+        return
+
+    try:
+        db = client.get_database()
+        cols = db.list_collection_names()
+        if "gold_content" in cols and db["gold_content"].count_documents({}) > 0:
+            col = db["gold_content"]
+        elif "gold_articles" in cols and db["gold_articles"].count_documents({}) > 0:
+            col = db["gold_articles"]
+        else:
+            col = db["article_index"]
+
         docs = list(col.find({"title": {"$ne": ""}}, {"article_id": 1, "title": 1, "_id": 1}))
     except Exception as e:
         logger.warning(f"[BM25] Could not load articles for index build: {e}")

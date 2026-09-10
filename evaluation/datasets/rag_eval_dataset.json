@@ -1,46 +1,152 @@
 [
   {
-    "input": "What is magnetite, and what role does it play in naturally generating hydrogen in Western Australia?",
-    "target_article_id": "art_126cca51bbe42a0b"
+    "input": "What atmospheric phenomenon contributed to the temporary net ice sheet mass gain of about 695 billion tons over East Antarctica?",
+    "target_article_id": "art_b63f7920e6650b13",
+    "topic": "Environment & Climate"
   },
   {
-    "input": "What needs to happen for the iron-rich rock formations beneath the Pilbara to become a large-scale, low-emission energy source for Australia?",
-    "target_article_id": "art_126cca51bbe42a0b"
+    "input": "Which satellite mission observed the largest Antarctic ice mass gain between 2021 and 2023?",
+    "target_article_id": "art_b63f7920e6650b13",
+    "topic": "Environment & Climate"
   },
   {
-    "input": "What was the main challenge in printing certain configurations before using AI, according to Azza Fadhel?",
-    "target_article_id": "art_a009616ef1586305"
+    "input": "According to the large study of over 270,000 people, which common amino acid supplement was linked to lifespan differences in men?",
+    "target_article_id": "art_db53477a0482ae61",
+    "topic": "Medicine & Longevity"
   },
   {
-    "input": "How many printing configurations had already failed in earlier experiments when the researchers started their work?",
-    "target_article_id": "art_a009616ef1586305"
+    "input": "What subatomic particle do traditional experiments try to convert into photons to detect dark matter?",
+    "target_article_id": "art_6c7ada9c1ac79a01",
+    "topic": "Physics & Astronomy"
   },
   {
-    "input": "What are the potential gastrointestinal side effects of taking too much Vitamin C?",
-    "target_article_id": "art_41eacdc167cd47be"
+    "input": "What percentage of the universe do astronomers estimate is composed of dark matter?",
+    "target_article_id": "art_6c7ada9c1ac79a01",
+    "topic": "Physics & Astronomy"
   },
   {
-    "input": "Why might excessive Vitamin C intake lead to kidney stones?",
-    "target_article_id": "art_41eacdc167cd47be"
+    "input": "Which institutions collaborated to build the detailed cellular map of breast tumors revealing cancer cell shields?",
+    "target_article_id": "art_76bb0df1a86080d8",
+    "topic": "Oncology & Health"
   },
   {
-    "input": "Which foundation provided early funding for the project in 2016?",
-    "target_article_id": "art_a511c815af64bf16"
+    "input": "Besides cancer cells, what other types of cells make up the complex microenvironment of breast tumors?",
+    "target_article_id": "art_76bb0df1a86080d8",
+    "topic": "Oncology & Health"
   },
   {
-    "input": "Who is Lucia Crivelli and what is her role in the lifestyle intervention study?",
-    "target_article_id": "art_50093d064b156524"
+    "input": "Why do tropical peatland fires in Indonesia burn underground rather than through trees?",
+    "target_article_id": "art_b7f7b0c9af89abbf",
+    "topic": "Environment & Forestry"
   },
   {
-    "input": "How did the researchers modify the U.S. POINTER model for Latin American populations?",
-    "target_article_id": "art_50093d064b156524"
+    "input": "Which NASA satellite instrument captured imagery of Indonesia peatland fire season in 2026?",
+    "target_article_id": "art_b7f7b0c9af89abbf",
+    "topic": "Environment & Forestry"
   },
   {
-    "input": "How many study sites across Latin America were included in the lifestyle intervention analysis?",
-    "target_article_id": "art_50093d064b156524"
+    "input": "Which sugar substitute was found to have unexpected metabolic effects in the study led by WashU Medicine?",
+    "target_article_id": "art_8d2a19e9569caafc",
+    "topic": "Nutrition & Metabolism"
   },
   {
-    "input": "What specific activities and support did the Systematic Lifestyle Intervention (SLI) group receive?",
-    "target_article_id": "art_50093d064b156524"
+    "input": "Who is the lead researcher from WashU Medicine investigating the metabolic effects of sugar substitutes?",
+    "target_article_id": "art_8d2a19e9569caafc",
+    "topic": "Nutrition & Metabolism"
+  },
+  {
+    "input": "At which international conference were the findings about the lifestyle program improving cognition presented?",
+    "target_article_id": "art_50093d064b156524",
+    "topic": "Neurology & Aging"
+  },
+  {
+    "input": "How many study sites across Latin America participated in the culturally adapted lifestyle intervention?",
+    "target_article_id": "art_50093d064b156524",
+    "topic": "Neurology & Aging"
+  },
+  {
+    "input": "Which specific protein stood out as a weak spot when blocked in glioblastoma brain cancer research?",
+    "target_article_id": "art_260b3821987228bd",
+    "topic": "Oncology & Genetics"
+  },
+  {
+    "input": "Why have treatment options for glioblastoma historically seen relatively little progress?",
+    "target_article_id": "art_260b3821987228bd",
+    "topic": "Oncology & Genetics"
+  },
+  {
+    "input": "At which archaeological site in Uzbekistan were the 80,000-year-old microlithic projectile points identified?",
+    "target_article_id": "art_c7e20b62edee46c2",
+    "topic": "Archaeology & Anthropology"
+  },
+  {
+    "input": "In which country were the foundational anthropological frameworks of prehistory originally created?",
+    "target_article_id": "art_c7e20b62edee46c2",
+    "topic": "Archaeology & Anthropology"
+  },
+  {
+    "input": "What is the name of the AI framework developed to predict and control nuclear fusion plasma instabilities?",
+    "target_article_id": "art_0e3f3666946f1632",
+    "topic": "Energy & Artificial Intelligence"
+  },
+  {
+    "input": "How fast can particles become unstable inside certain nuclear fusion systems compared to human reaction time?",
+    "target_article_id": "art_0e3f3666946f1632",
+    "topic": "Energy & Artificial Intelligence"
+  },
+  {
+    "input": "Which organization issued the first guidelines dedicated to managing cardiovascular disease alongside chronic kidney disease?",
+    "target_article_id": "art_a19c0fc0966d9e68",
+    "topic": "Cardiology & Nephrology"
+  },
+  {
+    "input": "What health risk was linked to common dry-cleaning chemicals in recent medical studies?",
+    "target_article_id": "art_77a09464a9c526a3",
+    "topic": "Environmental Health & Toxicology"
+  },
+  {
+    "input": "By what percentage could worldwide cancer cases surge by 2050 according to the American Cancer Society?",
+    "target_article_id": "art_d33d11bf479aef5a",
+    "topic": "Global Health & Epidemiology"
+  },
+  {
+    "input": "Which university professor developed mathematical models treating romantic relationships as dynamic systems?",
+    "target_article_id": "art_728dcae0f8fcb3a8",
+    "topic": "Mathematics & Social Sciences"
+  },
+  {
+    "input": "Which eye condition has been linked to long-term use of Cialis for prostate symptoms in a large study?",
+    "target_article_id": "art_e8a5efef07fdd506",
+    "topic": "Pharmacology & Ophthalmology"
+  },
+  {
+    "input": "What technological driver is producing data at an unprecedented scale, necessitating more energy-efficient computer memory?",
+    "target_article_id": "art_fdc3865a31fc3874",
+    "topic": "Computer Science & Hardware"
+  },
+  {
+    "input": "What vital biological functions are shaped by the microorganisms in the human gut microbiome?",
+    "target_article_id": "art_6c93a900e6e20a65",
+    "topic": "Microbiology & Digestion"
+  },
+  {
+    "input": "Approximately how many people in the United States are currently waiting for a liver transplant?",
+    "target_article_id": "art_0cd8f87eb2744df4",
+    "topic": "Bioengineering & Organ Transplants"
+  },
+  {
+    "input": "Which university researchers discovered toxin-blocking proteins in rattlesnake blood to create new antivenom?",
+    "target_article_id": "art_e90e6080efc670d7",
+    "topic": "Biochemistry & Pharmacology"
+  },
+  {
+    "input": "Where was the newly identified giant dinosaur species discovered beneath a construction site?",
+    "target_article_id": "art_948ce40af204c8ae",
+    "topic": "Paleontology"
+  },
+  {
+    "input": "What insights does the newly discovered Brazilian dinosaur provide about ancient prehistoric continents?",
+    "target_article_id": "art_948ce40af204c8ae",
+    "topic": "Paleontology"
   }
 ]

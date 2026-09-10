@@ -37,10 +37,9 @@ def run_evaluation():
     
     test_cases = []
     
-    # 2. Chạy từng câu hỏi qua hệ thống RAG
-    for item in dataset:
+    for idx, item in enumerate(dataset, 1):
         query = item["input"]
-        print(f"\n❓ Đang xử lý câu hỏi: {query}")
+        print(f"\n[{idx}/{len(dataset)}] ❓ Đang xử lý: {query}")
         
         _, _, retrieved_chunks = retrieve_and_rerank_context(query)
         retrieval_context = [chunk.get("text", "") for chunk in retrieved_chunks]
@@ -54,14 +53,14 @@ def run_evaluation():
             retrieval_context=retrieval_context
         )
         test_cases.append(test_case)
-        print("✅ Đã sinh xong câu trả lời.")
+        print(f"[{idx}/{len(dataset)}] ✅ Đã sinh xong câu trả lời.")
 
     # 3. Chấm điểm bằng DeepEval
     print("\n⚖️ Đang để LLM Judge chấm điểm (có thể mất vài phút)...")
-    evaluate(test_cases=test_cases, metrics=metrics)
+    eval_result = evaluate(test_cases=test_cases, metrics=metrics)
     
     # 4. Lưu kết quả ra file JSON
-    save_evaluation_results(test_cases, "rag_triad_results.json")
+    save_evaluation_results(eval_result, "rag_triad_results.json")
     
     print("\n🎉 Đã hoàn tất đánh giá!")
 

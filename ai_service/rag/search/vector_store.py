@@ -28,10 +28,23 @@ def get_chroma_client():
         _chroma_client = client
         return _chroma_client
     except Exception as e:
-        logger.info(f"ChromaDB HttpClient not reachable ({e}), using PersistentClient fallback.")
-        storage_path = os.getenv("CHROMA_PERSISTENT_DIR", "./chroma_data")
-        _chroma_client = chromadb.PersistentClient(path=storage_path)
-        return _chroma_client
+        logger.debug(f"ChromaDB primary connection to {host}:{port} failed ({e})")
+
+    # Smart local fallbacks when running on host machine outside docker network
+    for trial_host, trial_port in [("localhost", 8002), ("127.0.0.1", 8002), ("localhost", 8000)]:
+        try:
+            client = chromadb.HttpClient(host=trial_host, port=trial_port)
+            client.heartbeat()
+            logger.info(f"Connected to ChromaDB on fallback {trial_host}:{trial_port}")
+            _chroma_client = client
+            return _chroma_client
+        except Exception:
+            continue
+
+    logger.info("ChromaDB HttpClient not reachable, using PersistentClient fallback.")
+    storage_path = os.getenv("CHROMA_PERSISTENT_DIR", "./chroma_data")
+    _chroma_client = chromadb.PersistentClient(path=storage_path)
+    return _chroma_client
 
 
 def get_collection(name: str = "gold_semantic_chunks"):
