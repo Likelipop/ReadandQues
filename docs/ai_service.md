@@ -1,45 +1,10 @@
 # AI Service (LangGraph Multi-Agent)
 
-## 1. Overview
-The AI Service (`ai_service/`) is the brain of ReadAndQues. It is built entirely on **LangChain** and **LangGraph**, operating as a stateful multi-agent system known as the **Study Dock**. 
+The AI Service documentation has been expanded into a comprehensive, production-grade suite located under **[`docs/ai_service/`](./ai_service/overview.md)**:
 
-## 2. Architecture & LangGraph Flow
-The system uses a Supervisor-Worker pattern. A routing agent determines the user's intent and delegates the task to the appropriate specialized agent.
-
-```mermaid
-flowchart TD
-    Input(("User Query"))
-    State["StudyDockState (Memory)"]
-    Supervisor{"Supervisor Agent"}
-    
-    AgentQuiz["Quiz Agent\n(Generates IELTS Quizzes)"]
-    AgentExplainer["Explainer Agent\n(Vocabulary/Grammar)"]
-    AgentGeneral["General Agent\n(Chit-chat & RAG)"]
-    
-    ToolNews["search_articles Tool\n(news_agent.py)"]
-    
-    Input --> State
-    State --> Supervisor
-    Supervisor -->|intent: quiz| AgentQuiz
-    Supervisor -->|intent: explain| AgentExplainer
-    Supervisor -->|intent: general| AgentGeneral
-    
-    AgentGeneral --> ToolNews
-    
-    AgentQuiz --> Output(("Response"))
-    AgentExplainer --> Output
-    AgentGeneral --> Output
-```
-
-## 3. Key Directories & Files
-*   **`ai_service/agents/graph.py`**: Defines the LangGraph state machine, nodes, and routing logic.
-*   **`ai_service/agents/state.py`**: Defines `StudyDockState` (the shared memory state passed across agents).
-*   **`ai_service/agents/tools.py`**: Contains executable tools like `search_articles` that agents can invoke dynamically.
-*   **`ai_service/rag/agents/news_agent.py`**: The core RAG engine performing Hybrid Search (BM25 + ChromaDB) and Cross-Encoder reranking.
-*   **`ai_service/interface.py`**: The **strictly defined public boundary**. The Django backend interacts with the AI Service *only* through functions exported here (e.g., `ask_study_dock`, `stream_study_dock_sync`).
-*   **`ai_service/prompts/`**: Stores system prompts to keep agent behavior decoupled from core execution logic.
-
-## 4. Best Practices Adopted
-*   **Encapsulation**: The AI subsystem is fully isolated. The backend never imports LangChain directly.
-*   **Streaming**: Delivers true token-by-token real-time streaming to the user interface via LangGraph's native `astream_events(v2)`.
-*   **Modularity**: Legacy monolithic flows have been removed. Tools can be easily added to the General Agent without disrupting existing workflows.
+1. **[Overview & Architecture](./ai_service/overview.md)** — Architectural design, Facade pattern (`ai_service.interface`), request flow.
+2. **[Multi-Agent System (Study Dock)](./ai_service/multi_agent_system.md)** — LangGraph state machine, Supervisor intent router, memory checkpointer, real-time token streaming.
+3. **[Hybrid RAG Pipeline](./ai_service/rag_pipeline.md)** — Dense ChromaDB + Sparse BM25 retrieval, RRF & Cross-Encoder reranking, passage proof.
+4. **[Specialized Services](./ai_service/specialized_services.md)** — Pydantic-enforced IELTS Quiz Generator and Contextual Linguistic Explainer.
+5. **[Continuous Evaluation](./ai_service/evaluation.md)** — DeepEval test suite, RAG Triad metrics (Faithfulness, Relevancy, Precision), golden datasets.
+6. **[Developer Guide & API Reference](./ai_service/dev_guide.md)** — Public API signatures, environment variables, testing runbooks, troubleshooting.
