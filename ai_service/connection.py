@@ -58,11 +58,10 @@ def get_llm(temperature: float = 1.0) -> AzureChatOpenAI:
 class ModelRouter:
     """
     Model routing factory wrapper providing access to configured LLM instances.
+    Maintained for backward compatibility.
     """
 
     @staticmethod
     def get_llm(temperature: float = 1.0) -> AzureChatOpenAI:
         """Retrieve the configured LLM instance."""
         return get_azure_llm(temperature=temperature)
-
-

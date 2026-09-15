@@ -2,7 +2,7 @@
 ai_service/quiz_generator/schemas.py — Pydantic schemas for question generation and keyword extraction.
 """
 
-from typing import Any, TypedDict
+from typing import Any
 
 from pydantic import BaseModel, Field
 
@@ -32,11 +32,3 @@ class ExamOutput(BaseModel):
     quizzes: list[QuizItem] = Field(default_factory=list, description="List of generated quiz questions")
     semantic_analysis: SemanticAnalysis | None = Field(default=None, description="Extracted semantic metadata & keywords")
 
-
-class GraphState(TypedDict, total=False):
-    original_text: str
-    semantic_analysis: dict[str, Any]
-    exam_config: dict[str, Any]
-    raw_quizzes: list[dict[str, Any]]
-    verified_quizzes: list[dict[str, Any]]
-    final_exam: dict[str, Any]

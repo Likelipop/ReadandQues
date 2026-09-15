@@ -18,7 +18,7 @@ export function useOmniSearch(onNavigateToArticle?: (id: string) => void) {
   const [error, setError] = useState<string | null>(null);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
 
-  const { deductStar } = useAuth();
+  const { deductStar, user } = useAuth();
   const typingTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const performSearch = useCallback(
@@ -82,6 +82,11 @@ export function useOmniSearch(onNavigateToArticle?: (id: string) => void) {
   }, [query, performSearch]);
 
   const handleImport = async (urlToImport: string) => {
+    if (!user || !user.is_authenticated) {
+      const authErr = new Error('Authentication required. Please log in to import articles.');
+      setError(authErr.message);
+      throw authErr;
+    }
     setIsImporting(true);
     setError(null);
     try {

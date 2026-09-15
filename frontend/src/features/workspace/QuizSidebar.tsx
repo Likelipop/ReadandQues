@@ -1,18 +1,22 @@
 import React, { useEffect, useState } from 'react';
 import { HelpCircle, Clock, CheckCircle2, XCircle, AlertCircle, RefreshCw, Loader2, ChevronDown } from 'lucide-react';
 import { Article, Quiz } from '../../types';
-import { useWorkspace } from '../../store';
+import { useWorkspace, useAuth } from '../../store';
 import { CitationTooltip } from '../../components/ui/CitationTooltip';
 import { api } from '../../api/client';
 
 interface QuizSidebarProps {
   article: Article;
   onRefreshArticle?: () => void;
+  onOpenAuth?: (mode?: 'login' | 'register') => void;
+  onShowToast?: (msg: string, type: 'success' | 'error' | 'info') => void;
 }
 
 export const QuizSidebar: React.FC<QuizSidebarProps> = ({
   article,
   onRefreshArticle,
+  onOpenAuth,
+  onShowToast,
 }) => {
   const {
     quizAnswers,
@@ -24,6 +28,7 @@ export const QuizSidebar: React.FC<QuizSidebarProps> = ({
     elapsedSeconds,
     tickTimer,
   } = useWorkspace();
+  const { user } = useAuth();
 
   const [isPolling, setIsPolling] = useState(false);
   const [pollStatus, setPollStatus] = useState(article.status || 'pending');
@@ -74,6 +79,13 @@ export const QuizSidebar: React.FC<QuizSidebarProps> = ({
   }, [articleId, quizzes.length, quizSubmitted, onRefreshArticle]);
 
   const handleTriggerQuiz = async () => {
+    if (!user || !user.is_authenticated) {
+      if (onShowToast) {
+        onShowToast('Please log in to generate AI comprehension quizzes.', 'info');
+      }
+      onOpenAuth?.('login');
+      return;
+    }
     try {
       await api.articles.triggerQuiz(articleId);
       setIsPolling(true);

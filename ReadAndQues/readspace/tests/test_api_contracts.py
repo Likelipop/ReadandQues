@@ -109,44 +109,6 @@ class APIContractsTestCase(TestCase):
                 elapsed_time=240,
             )
 
-    # ── 4. run_ai_tool_api / Ask AI Tickets Contract Tests ─────────────────────
-
-    def test_run_ai_tool_handles_legacy_input_data_and_normalized_output(self):
-        """run_ai_tool_api parses input_data.question and returns output.status='RESOLVED'."""
-        self.client.login(username="contract_user", password="SecurePassword123!")
-
-        mock_rag_response = {
-            "status": "success",
-            "answer": "The main conclusion is carbon reduction.",
-            "citations": [{"source": "Para 1", "quote": "Carbon emissions must decline."}],
-        }
-
-        with patch("service.services.ask_rag_question", return_value=mock_rag_response) as mock_rag:
-            payload = {
-                "tool_name": "ask_article",
-                "article_id": self.article_id,
-                "input_data": {
-                    "question": "What is the conclusion?",
-                    "article_text": "Sample passage...",
-                },
-            }
-            response = self.client.post(
-                reverse("readspace:run_ai_tool_api"),
-                data=json.dumps(payload),
-                content_type="application/json",
-            )
-            self.assertEqual(response.status_code, 200)
-            data = response.json()
-            self.assertEqual(data["status"], "success")
-            self.assertEqual(data["answer"], "The main conclusion is carbon reduction.")
-            self.assertIn("output", data)
-            self.assertEqual(data["output"]["status"], "RESOLVED")
-            self.assertEqual(data["output"]["answer"], "The main conclusion is carbon reduction.")
-            self.assertEqual(data["output"]["citation_quote"], "Carbon emissions must decline.")
-            mock_rag.assert_called_once_with(
-                question="What is the conclusion?",
-                article_id=self.article_id,
-            )
 
     # ── 5. Ninja REST API Discovery & Auth Endpoints ─────────────────────────
 

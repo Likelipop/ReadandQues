@@ -1,0 +1,204 @@
+[
+  {
+    "category": "vocabulary_explanation",
+    "input": "What does 'ubiquitous' mean in this article about technology?",
+    "expected_output": "The word 'ubiquitous' means present, appearing, or found everywhere. In the context of technology, it describes how a technology has become so widespread and commonplace that it is encountered in nearly every aspect of daily life.",
+    "retrieval_context": [
+      "Technology has become ubiquitous in modern society. From smartphones to smart home devices, digital tools are now embedded in almost every aspect of daily life. The proliferation of Internet of Things (IoT) devices means that connectivity is no longer limited to computers and phones."
+    ]
+  },
+  {
+    "category": "vocabulary_explanation",
+    "input": "Can you explain the word 'resilient' as used in the passage about ecosystems?",
+    "expected_output": "The word 'resilient' means able to recover quickly from difficulties or damage. In the context of ecosystems, it describes an ecosystem's capacity to absorb disturbance and reorganize while undergoing change, so as to retain essentially the same function and structure.",
+    "retrieval_context": [
+      "Healthy ecosystems are remarkably resilient. They can absorb significant environmental disturbances — such as droughts, floods, or even moderate pollution events — and still bounce back to their original state. This resilience depends on biodiversity: the more diverse the species in an ecosystem, the more pathways exist for recovery."
+    ]
+  },
+  {
+    "category": "vocabulary_explanation",
+    "input": "What does 'exacerbate' mean?",
+    "expected_output": "'Exacerbate' means to make a problem, situation, or negative feeling worse. For example, climate change can exacerbate existing environmental issues like droughts and flooding.",
+    "retrieval_context": [
+      "Rising global temperatures exacerbate existing environmental challenges. Droughts become more severe, flooding events become more frequent, and biodiversity loss accelerates. Scientists warn that without urgent action, these compounding effects will become increasingly difficult to reverse."
+    ]
+  },
+  {
+    "category": "vocabulary_explanation",
+    "input": "Explain the phrase 'peer-reviewed' in academic context.",
+    "expected_output": "'Peer-reviewed' refers to the process by which academic work (such as research papers) is evaluated by other experts (peers) in the same field before publication. This process helps ensure the quality, validity, and reliability of the research.",
+    "retrieval_context": [
+      "The study was published in a peer-reviewed journal, meaning it underwent rigorous evaluation by independent experts in the field before acceptance. Peer review is considered the gold standard for validating scientific research, although it is not without criticism regarding potential bias and delays in publication."
+    ]
+  },
+  {
+    "category": "vocabulary_explanation",
+    "input": "What is the meaning of 'paradigm shift'?",
+    "expected_output": "A 'paradigm shift' is a fundamental change in the basic concepts and experimental practices of a scientific discipline or field. It refers to a major transformation in how something is understood or approached, often replacing the previously accepted framework entirely.",
+    "retrieval_context": [
+      "The discovery of CRISPR gene editing technology represents a paradigm shift in molecular biology. Previously, modifying DNA sequences was a slow, expensive, and imprecise process. CRISPR allows scientists to edit genes quickly and accurately, opening up possibilities that were once considered science fiction."
+    ]
+  },
+  {
+    "category": "article_comprehension",
+    "input": "What are the main benefits of renewable energy mentioned in this article?",
+    "expected_output": "According to the article, the main benefits of renewable energy include: (1) reducing greenhouse gas emissions and air pollution, (2) decreasing dependence on fossil fuels and improving energy security, (3) creating new jobs in the clean energy sector, and (4) long-term cost savings as technology prices continue to fall.",
+    "retrieval_context": [
+      "Renewable energy sources such as solar and wind power offer multiple benefits. First, they produce little to no greenhouse gas emissions during operation, significantly reducing air pollution and combating climate change. Second, they reduce dependence on imported fossil fuels, enhancing national energy security. Third, the renewable energy sector has become a major job creator, employing millions worldwide. Finally, the cost of solar panels and wind turbines has dropped dramatically over the past decade, making renewable energy increasingly cost-competitive with traditional sources."
+    ]
+  },
+  {
+    "category": "article_comprehension",
+    "input": "According to the passage, how does sleep deprivation affect cognitive performance?",
+    "expected_output": "According to the passage, sleep deprivation impairs cognitive performance in several ways: it reduces attention and concentration, weakens working memory, slows reaction times, and impairs decision-making ability. Chronic sleep deprivation can also lead to mood disturbances and increased risk of accidents.",
+    "retrieval_context": [
+      "Research consistently shows that sleep deprivation has profound effects on cognitive performance. Even a single night of poor sleep can reduce attention span, weaken working memory capacity, and slow reaction times. Decision-making ability is particularly compromised, as sleep-deprived individuals tend to take greater risks and show impaired judgment. Chronic sleep deprivation compounds these effects, leading to persistent mood disturbances, increased irritability, and a significantly elevated risk of accidents in both workplace and driving contexts."
+    ]
+  },
+  {
+    "category": "article_comprehension",
+    "input": "What did the researchers find about the relationship between exercise and mental health?",
+    "expected_output": "The researchers found that regular physical exercise has significant positive effects on mental health. Specifically, moderate exercise (such as 30 minutes of brisk walking five days a week) was associated with reduced symptoms of depression and anxiety, improved mood, better sleep quality, and enhanced self-esteem.",
+    "retrieval_context": [
+      "A large-scale meta-analysis published in JAMA Psychiatry examined 49 prospective studies involving over 260,000 participants. The researchers found that regular physical exercise was associated with a 25% reduction in the risk of developing depression. Moderate-intensity exercise, such as 30 minutes of brisk walking five times per week, was sufficient to achieve significant mental health benefits including reduced anxiety symptoms, improved mood regulation, better sleep quality, and enhanced self-esteem. The effects were consistent across age groups and genders."
+    ]
+  },
+  {
+    "category": "article_comprehension",
+    "input": "What challenges does the article identify with implementing AI in healthcare?",
+    "expected_output": "The article identifies several challenges with implementing AI in healthcare: (1) concerns about data privacy and patient confidentiality, (2) potential biases in training data leading to inequitable outcomes, (3) lack of transparency in AI decision-making (the 'black box' problem), (4) regulatory hurdles and the need for new approval frameworks, and (5) resistance from healthcare professionals who may distrust AI recommendations.",
+    "retrieval_context": [
+      "While AI shows tremendous promise in healthcare diagnostics and treatment planning, several significant challenges remain. Patient data privacy is a primary concern, as AI systems require vast amounts of sensitive medical data for training. Algorithmic bias presents another risk — if training data underrepresents certain demographic groups, AI tools may produce inequitable outcomes. The 'black box' nature of deep learning models makes it difficult for clinicians to understand how AI reaches its conclusions, eroding trust. Additionally, existing regulatory frameworks were not designed for AI-based medical devices, creating uncertainty around approval processes. Many healthcare professionals also express skepticism about delegating clinical decisions to algorithms."
+    ]
+  },
+  {
+    "category": "article_comprehension",
+    "input": "Summarize the key findings about microplastics in ocean ecosystems.",
+    "expected_output": "The key findings about microplastics in ocean ecosystems include: microplastics have been found in every ocean and at all depths, from surface waters to deep-sea sediments. Marine organisms from plankton to whales ingest these particles, leading to bioaccumulation through the food chain. The chemicals in microplastics can disrupt hormonal systems in marine life and ultimately pose risks to human health through seafood consumption.",
+    "retrieval_context": [
+      "A comprehensive survey conducted across all five major oceans revealed that microplastics — plastic particles smaller than 5 millimeters — are now present in every marine environment sampled, from Arctic sea ice to deep-sea trenches exceeding 10,000 meters. Marine organisms at every trophic level, from microscopic plankton to large cetaceans, have been found to ingest these particles. Bioaccumulation occurs as larger predators consume contaminated prey, concentrating toxic chemicals up the food chain. Laboratory studies have demonstrated that chemicals leaching from microplastics, including phthalates and bisphenol A, can disrupt endocrine systems in fish and invertebrates. Public health researchers warn that these contaminants ultimately reach human consumers through seafood."
+    ]
+  },
+  {
+    "category": "news_search_grounding",
+    "input": "Can you recommend some articles about artificial intelligence?",
+    "expected_output": "Based on the available articles in our database, here are some recommendations about artificial intelligence: 1. 'How AI Is Transforming Drug Discovery' - explores how machine learning accelerates pharmaceutical research. 2. 'The Ethics of Autonomous Vehicles' - discusses the moral dilemmas facing self-driving car developers.",
+    "retrieval_context": [
+      "Article: How AI Is Transforming Drug Discovery. Artificial intelligence and machine learning are revolutionizing the pharmaceutical industry by dramatically accelerating the drug discovery process. Traditional drug development takes an average of 12-15 years; AI-powered platforms can identify promising drug candidates in a fraction of that time.",
+      "Article: The Ethics of Autonomous Vehicles. As self-driving cars move closer to widespread deployment, difficult ethical questions arise. How should an autonomous vehicle's algorithm decide between two harmful outcomes in an unavoidable accident? Engineers and ethicists are grappling with programming moral decision-making into machines."
+    ]
+  },
+  {
+    "category": "news_search_grounding",
+    "input": "What recent articles do we have about climate change?",
+    "expected_output": "Here are recent articles related to climate change in our database: 1. 'Arctic Ice Loss Accelerating Beyond Predictions' - reports that Arctic sea ice is melting faster than climate models predicted, with potential global consequences. 2. 'Urban Heat Islands: Cities Fighting Rising Temperatures' - covers strategies cities are using to combat extreme heat.",
+    "retrieval_context": [
+      "Article: Arctic Ice Loss Accelerating Beyond Predictions. New satellite data reveals that Arctic sea ice is declining at a rate 30% faster than the most pessimistic climate models predicted just five years ago. Scientists warn this acceleration could trigger feedback loops that further amplify global warming.",
+      "Article: Urban Heat Islands: Cities Fighting Rising Temperatures. Major cities worldwide are experiencing temperatures up to 8°C higher than surrounding rural areas due to the urban heat island effect. Metropolitan governments are responding with innovative strategies including reflective roofing, expanded tree canopy coverage, and permeable pavement installations."
+    ]
+  },
+  {
+    "category": "news_search_grounding",
+    "input": "Find articles about space exploration.",
+    "expected_output": "Here are articles about space exploration from our archive: 1. 'Mars Sample Return Mission Faces Engineering Challenges' - discusses the technical difficulties of bringing Martian soil samples back to Earth for analysis. The article highlights the innovative solutions being developed by NASA and ESA.",
+    "retrieval_context": [
+      "Article: Mars Sample Return Mission Faces Engineering Challenges. The joint NASA-ESA Mars Sample Return mission represents one of the most ambitious undertakings in space exploration history. Collecting and returning soil and rock samples from the Martian surface to Earth laboratories requires solving unprecedented engineering challenges, including autonomous sample caching, orbital rendezvous around Mars, and interplanetary sample containment."
+    ]
+  },
+  {
+    "category": "news_search_grounding",
+    "input": "Are there any articles about neuroscience or brain research?",
+    "expected_output": "Yes, we have articles related to neuroscience: 1. 'Mapping the Human Connectome: A New Frontier in Brain Science' - explores the ambitious project to map all neural connections in the human brain, which could revolutionize our understanding of consciousness and neurological disorders.",
+    "retrieval_context": [
+      "Article: Mapping the Human Connectome: A New Frontier in Brain Science. The Human Connectome Project aims to create a comprehensive map of all neural connections in the human brain — estimated at over 100 trillion synapses. Using advanced diffusion tensor imaging (DTI) and functional MRI, researchers are building increasingly detailed models of brain connectivity. Understanding these neural pathways could transform treatment of conditions ranging from Alzheimer's disease to depression."
+    ]
+  },
+  {
+    "category": "news_search_grounding",
+    "input": "Do we have articles about sustainable agriculture or food production?",
+    "expected_output": "Here is a relevant article about sustainable agriculture: 'Vertical Farming: Growing Food in the Age of Urbanization' - explores how indoor vertical farms use hydroponics and LED lighting to produce crops year-round with significantly less water and land than traditional agriculture.",
+    "retrieval_context": [
+      "Article: Vertical Farming: Growing Food in the Age of Urbanization. As the global population approaches 10 billion, traditional agriculture faces mounting pressure from urbanization and climate change. Vertical farms — multi-story indoor facilities using hydroponics, aeroponics, and LED grow lights — offer a potential solution. These facilities can produce crops year-round regardless of weather, using up to 95% less water and a fraction of the land area required by conventional farming."
+    ]
+  },
+  {
+    "category": "out_of_domain_hallucination",
+    "input": "What is Elon Musk's net worth in 2026?",
+    "expected_output": "I don't have information about Elon Musk's net worth in the current articles available in the system. The articles in our database focus on academic and scientific topics for IELTS reading practice. For up-to-date financial information about public figures, I'd recommend checking financial news sources.",
+    "retrieval_context": [
+      "Technology has become ubiquitous in modern society. From smartphones to smart home devices, digital tools are now embedded in almost every aspect of daily life."
+    ]
+  },
+  {
+    "category": "out_of_domain_hallucination",
+    "input": "Who won the 2026 FIFA World Cup?",
+    "expected_output": "I don't have information about the 2026 FIFA World Cup results in our article database. The articles in our system focus on academic and science topics for IELTS reading practice, not sports results. For sports news, please check dedicated sports news websites.",
+    "retrieval_context": [
+      "A comprehensive survey conducted across all five major oceans revealed that microplastics are now present in every marine environment sampled."
+    ]
+  },
+  {
+    "category": "out_of_domain_hallucination",
+    "input": "Can you tell me the current stock price of Apple?",
+    "expected_output": "I'm unable to provide real-time stock price information. Our article database contains academic and scientific content for IELTS reading practice. For current stock prices, please use a financial data service or brokerage platform.",
+    "retrieval_context": [
+      "Renewable energy sources such as solar and wind power offer multiple benefits including reducing greenhouse gas emissions."
+    ]
+  },
+  {
+    "category": "out_of_domain_hallucination",
+    "input": "Write me a Python script to sort a list.",
+    "expected_output": "I'm designed to help you with English reading comprehension and IELTS practice. Writing code is outside my scope. I can help you with vocabulary explanations, article comprehension, quiz practice, or finding relevant reading materials in our archive.",
+    "retrieval_context": [
+      "The discovery of CRISPR gene editing technology represents a paradigm shift in molecular biology."
+    ]
+  },
+  {
+    "category": "out_of_domain_hallucination",
+    "input": "What's the recipe for chocolate cake?",
+    "expected_output": "Cooking recipes are outside the scope of our reading platform. I'm here to help you practice English reading comprehension with academic and scientific articles. Would you like me to recommend an article or explain a vocabulary word instead?",
+    "retrieval_context": [
+      "Research consistently shows that sleep deprivation has profound effects on cognitive performance."
+    ]
+  },
+  {
+    "category": "quiz_quality",
+    "input": "Generate a Yes/No/Not Given question from this passage about climate change.",
+    "expected_output": "Here is a Yes/No/Not Given question: 'Statement: Arctic sea ice is melting at a rate 30% faster than predicted by climate models five years ago.' Answer: YES. The passage explicitly states: 'Arctic sea ice is declining at a rate 30% faster than the most pessimistic climate models predicted just five years ago.'",
+    "retrieval_context": [
+      "New satellite data reveals that Arctic sea ice is declining at a rate 30% faster than the most pessimistic climate models predicted just five years ago. Scientists warn this acceleration could trigger feedback loops that further amplify global warming, potentially leading to ice-free Arctic summers within the next two decades."
+    ]
+  },
+  {
+    "category": "quiz_quality",
+    "input": "Create a fill-in-the-blank question from this passage about vertical farming.",
+    "expected_output": "Fill-in-the-blank question: 'Vertical farms can produce crops year-round using up to [1] less water compared to conventional farming.' Answer: [1] = 95%. Citation: 'using up to 95% less water and a fraction of the land area required by conventional farming.'",
+    "retrieval_context": [
+      "Vertical farms — multi-story indoor facilities using hydroponics, aeroponics, and LED grow lights — offer a potential solution. These facilities can produce crops year-round regardless of weather, using up to 95% less water and a fraction of the land area required by conventional farming. Major companies including AeroFarms and Plenty have attracted billions in venture capital investment."
+    ]
+  },
+  {
+    "category": "quiz_quality",
+    "input": "Generate a multiple choice question about AI in healthcare from this passage.",
+    "expected_output": "Multiple Choice Question: 'Which of the following is identified as a challenge of implementing AI in healthcare?' A) AI systems are too expensive to develop. B) Training data may underrepresent certain demographic groups, leading to biased outcomes. C) AI cannot process medical images. D) Patients prefer AI over human doctors. Correct Answer: B. Citation: 'if training data underrepresents certain demographic groups, AI tools may produce inequitable outcomes.'",
+    "retrieval_context": [
+      "While AI shows tremendous promise in healthcare diagnostics and treatment planning, several significant challenges remain. Algorithmic bias presents a serious risk — if training data underrepresents certain demographic groups, AI tools may produce inequitable outcomes. The 'black box' nature of deep learning models makes it difficult for clinicians to understand how AI reaches its conclusions."
+    ]
+  },
+  {
+    "category": "quiz_quality",
+    "input": "Create a True/False/Not Given question from this passage about the Human Connectome Project.",
+    "expected_output": "True/False/Not Given question: 'Statement: The Human Connectome Project has successfully mapped all neural connections in the human brain.' Answer: NOT GIVEN. The passage states the project 'aims to create a comprehensive map' but does not state it has been completed. Citation: 'The Human Connectome Project aims to create a comprehensive map of all neural connections in the human brain.'",
+    "retrieval_context": [
+      "The Human Connectome Project aims to create a comprehensive map of all neural connections in the human brain — estimated at over 100 trillion synapses. Using advanced diffusion tensor imaging (DTI) and functional MRI, researchers are building increasingly detailed models of brain connectivity."
+    ]
+  },
+  {
+    "category": "quiz_quality",
+    "input": "Generate a summary completion question from this passage about microplastics.",
+    "expected_output": "Summary Completion: 'Microplastics, defined as plastic particles smaller than [1] millimeters, have been detected in marine environments ranging from [2] to deep-sea trenches. Through the process of [3], toxic chemicals become concentrated at higher levels of the food chain.' Answers: [1] = 5, [2] = Arctic sea ice, [3] = bioaccumulation.",
+    "retrieval_context": [
+      "A comprehensive survey revealed that microplastics — plastic particles smaller than 5 millimeters — are now present in every marine environment sampled, from Arctic sea ice to deep-sea trenches exceeding 10,000 meters. Marine organisms at every trophic level ingest these particles. Bioaccumulation occurs as larger predators consume contaminated prey, concentrating toxic chemicals up the food chain."
+    ]
+  }
+]

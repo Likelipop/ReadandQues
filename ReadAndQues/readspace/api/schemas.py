@@ -92,11 +92,6 @@ class SearchResponseOut(Schema):
     results: list[dict[str, Any]] = []
 
 
-class GenericAiToolIn(Schema):
-    question: str | None = None
-    article_id: str | None = None
-    input_data: dict[str, Any] | None = None
-
 
 # ── Article List & Detail Schemas ─────────────────────────────────────────────
 

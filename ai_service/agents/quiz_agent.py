@@ -10,15 +10,13 @@ import asyncio
 import logging
 from typing import Any, TypedDict
 
+from langchain_core.messages import AIMessage
 from langgraph.graph import END, StateGraph
 
+from ai_service.adapters import get_article_store
+from ai_service.agents.state import StudyDockState
 from ai_service.quiz_generator.generator import generate_questions
 from ai_service.quiz_generator.schemas import ExamOutput, QuizItem
-
-try:
-    import service.infrastructure.mongo.article_store as article_store
-except ImportError:
-    import ReadAndQues.service.infrastructure.mongo.article_store as article_store
 
 logger = logging.getLogger(__name__)
 
@@ -41,9 +39,11 @@ def fetch_article_node(state: QuizSubGraphState) -> QuizSubGraphState:
 
     if not text and article_id:
         try:
-            doc = article_store.get_gold_content(article_id)
-            if doc:
-                text = (doc.get("cleaned_text") or doc.get("original_text") or "").strip()
+            article_store = get_article_store()
+            if article_store:
+                doc = article_store.get_gold_content(article_id)
+                if doc:
+                    text = (doc.get("original_text") or "").strip()
         except Exception as e:
             logger.warning(f"[QuizSubAgent] Could not fetch article text for {article_id}: {e}")
 
@@ -60,11 +60,7 @@ def generate_quiz_node(state: QuizSubGraphState) -> QuizSubGraphState:
 
     text = state.get("article_text", "").strip()
     try:
-        from unittest.mock import MagicMock
-        if isinstance(generate_questions, MagicMock):
-            exam_output = generate_questions(text)
-        else:
-            exam_output = generate_questions(text)
+        exam_output = generate_questions(text)
 
         quizzes: list[dict[str, Any]] = [
             q.model_dump() if hasattr(q, "model_dump") else q
@@ -157,40 +153,50 @@ def run_quiz_subagent(article_id: str = "", article_text: str = "") -> dict[str,
     }
 
 
-# ── Compatibility node for LangGraph or legacy calls ─────────────────────────
+# ── Graph Node for StudyDockState ─────────────────────────────────────────────
 
 
-async def quiz_node(state: Any) -> Any:
+async def quiz_agent_node(state: StudyDockState) -> dict[str, Any]:
     """
-    Quiz node wrapper delegating to the Quiz Sub-Agent.
-    Maintains compatibility with AgentState and LangGraph workflows.
+    Quiz agent node for the main Study Dock graph.
+    Delegates to the Quiz Sub-Graph and maps results back to StudyDockState.
     """
     text = state.get("article_text", "").strip()
     article_id = state.get("article_id", "").strip()
 
-    result = await asyncio.to_thread(run_quiz_subagent, article_id=article_id, article_text=text)
+    result = await asyncio.to_thread(
+        run_quiz_subagent, article_id=article_id, article_text=text
+    )
 
     quizzes = result.get("quizzes", [])
     error = result.get("error", "")
     summary = result.get("summary", "")
 
-    if error:
-        state["error"] = error
-        state["response"] = (
-            f"**⚠️ Cannot generate quiz:** {error}\n\n"
+    if error or not quizzes:
+        err_msg = error or "Could not generate questions from this passage."
+        resp_content = (
+            f"**⚠️ Cannot generate quiz:** {err_msg}\n\n"
             "Please open an article in **ReadSpace** before generating reading comprehension questions."
         )
-        state["quiz_data"] = []
-        state["action_type"] = "chat"
-        return state
+        return {
+            "messages": [AIMessage(content=resp_content)],
+            "action_type": "chat",
+            "quiz_data": [],
+            "error": err_msg,
+            "response": resp_content,
+        }
 
-    state["quiz_data"] = quizzes
-    state["action_type"] = "quiz"
-    state["citations"] = []
-    state["response"] = (
+    quiz_resp_text = (
         f"### 📝 Reading Comprehension Quiz Ready!\n\n"
-        f"Generated **{len(quizzes)}** questions based on the current passage.\n\n"
+        f"I have generated **{len(quizzes)}** reading comprehension questions based on this article.\n\n"
         + (f"**Passage Summary:** {summary}\n\n" if summary else "")
-        + "👉 Practice directly using the quiz panel."
+        + "👉 Practice directly using the quiz panel on your right."
     )
-    return state
+    return {
+        "messages": [AIMessage(content=quiz_resp_text)],
+        "action_type": "quiz",
+        "quiz_data": quizzes,
+        "citations": [],
+        "error": "",
+        "response": quiz_resp_text,
+    }

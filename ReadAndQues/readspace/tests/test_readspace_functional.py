@@ -190,30 +190,6 @@ class ReadspaceFunctionalTestCase(TestCase):
             self.assertEqual(data["proof"]["question_index"], 0)
             self.assertIn("Microplastics", data["proof"]["proof_excerpt"])
 
-    def test_run_ai_tool_gateway_endpoint(self):
-        """AI tool runner executes RAG question through gateway."""
-        self.client.login(username="reading_pro", password="SecurePassword123!")
-
-        mock_rag_result = {
-            "status": "success",
-            "answer": "Microplastics are particles under 5mm.",
-            "citations": [],
-        }
-
-        with patch("service.services.ask_rag_question", return_value=mock_rag_result):
-            payload = {
-                "question": "What is the size of microplastics?",
-                "article_id": self.article_id,
-            }
-            response = self.client.post(
-                reverse("readspace:run_ai_tool_api"),
-                data=json.dumps(payload),
-                content_type="application/json",
-            )
-            self.assertEqual(response.status_code, 200)
-            data = response.json()
-            self.assertEqual(data["status"], "success")
-            self.assertIn("particles under 5mm", data["answer"])
 
     # ── 3. Search & Discovery Endpoints ─────────────────────────────────────────
 

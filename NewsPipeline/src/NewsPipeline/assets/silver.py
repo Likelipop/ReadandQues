@@ -28,15 +28,6 @@ FOOTER_MARKERS = [
     "Disclaimer:",
 ]
 
-# Patterns for leading orphan metadata lines in science/news feeds
-LEADING_METADATA_PATTERNS = [
-    re.compile(r"^[-*•]?\s*Date:\s*$", re.IGNORECASE),
-    re.compile(r"^[-*•]?\s*Source:\s*$", re.IGNORECASE),
-    re.compile(r"^[-*•]?\s*Summary:\s*$", re.IGNORECASE),
-    re.compile(r"^[-*•]?\s*Share:\s*$", re.IGNORECASE),
-    re.compile(r"^[-*•]?\s*(January|February|March|April|May|June|July|August|September|October|November|December)\s+\d{1,2},\s+\d{4}$", re.IGNORECASE),
-]
-
 
 def _extract_title_from_html(html_str: str, default_title: str = "Untitled") -> str:
     """Extract clean title from raw HTML with BeautifulSoup fallback."""
@@ -89,9 +80,8 @@ def sanitize_article_text(raw_text: str) -> str:
     """
     Post-processing Sanitization Engine for extracted article Markdown text.
     1. Truncate boilerplate footers (**Story Source:**, **Journal Reference:**, etc.).
-    2. Strip leading orphan metadata lines (- Date:, - Source:, - Summary:, - Share:).
-    3. Normalize standalone bold subheadings into Markdown headers (### Subheading).
-    4. Normalize paragraph breaks to clean double newlines (\n\n).
+    2. Normalize standalone bold subheadings into Markdown headers (### Subheading).
+    3. Normalize paragraph breaks to clean double newlines (\n\n).
     """
     if not raw_text or not raw_text.strip():
         return ""
@@ -107,43 +97,17 @@ def sanitize_article_text(raw_text: str) -> str:
             min_footer_idx = idx
     text = text[:min_footer_idx].strip()
 
-    # 2. Process lines for leading metadata and heading normalization
+    # 2. Process lines for heading normalization
     raw_lines = text.split("\n")
     cleaned_lines: list[str] = []
-    skip_next_value = False
 
-    leading_prefixes = [
-        "- date:", "date:",
-        "- source:", "source:",
-        "- summary:", "summary:",
-        "- share:", "share:",
-        "- story source:", "story source:",
-    ]
-
-    for i, line in enumerate(raw_lines):
+    for line in raw_lines:
         trimmed = line.strip()
         if not trimmed:
             cleaned_lines.append("")
             continue
 
-        if i < 20:
-            lowered = trimmed.lower()
-            if any(lowered.startswith(p) for p in leading_prefixes):
-                if lowered.startswith(("- date:", "date:", "- source:", "source:")):
-                    parts = trimmed.split(":", 1)
-                    if len(parts) > 1 and not parts[1].strip():
-                        skip_next_value = True
-                continue
-            if skip_next_value:
-                skip_next_value = False
-                continue
-            if re.match(r"^[-*•]?\s*(January|February|March|April|May|June|July|August|September|October|November|December)\s+\d{1,2},\s+\d{4}$", trimmed, re.I):
-                continue
-            # Strip bullet prefix from summary if present
-            if trimmed.startswith("- "):
-                trimmed = trimmed[2:].strip()
-
-        # 3. Standardize standalone bold lines into Markdown subheadings (### Subheading)
+        # Standardize standalone bold lines into Markdown subheadings (### Subheading)
         bold_match = re.match(r"^\*\*([A-Za-z0-9\s,.\'\"!?:;—–-]+)\*\*\.?$", trimmed)
         if bold_match and len(trimmed) < 120 and not trimmed.endswith("."):
             subheading_title = bold_match.group(1).strip()
@@ -151,7 +115,7 @@ def sanitize_article_text(raw_text: str) -> str:
         else:
             cleaned_lines.append(trimmed)
 
-    # 4. Normalize paragraph breaks to clean double newlines
+    # 3. Normalize paragraph breaks to clean double newlines
     combined = "\n".join(cleaned_lines)
     normalized = re.sub(r"\n{3,}", "\n\n", combined).strip()
 

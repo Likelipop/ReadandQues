@@ -77,9 +77,12 @@ def import_article_view(request):
 
 
 @require_POST
-@login_required(login_url="/login/")
 @api_error_handler
 def trigger_quiz(request, pk):
+    if not request.user.is_authenticated:
+        return JsonResponse(
+            {"status": "error", "message": "Authentication required to generate AI quizzes."}, status=401
+        )
     res = services.trigger_quiz_generation(pk)
     if res.get("status") == "error":
         return JsonResponse({"status": "error", "message": res.get("message")}, status=404)
@@ -175,54 +178,14 @@ def save_markers_api(request, pk: str):
     return JsonResponse({"status": "success"})
 
 
-@require_POST
-@csrf_exempt
-def rag_stream_api(request):
-    """Server-Sent Events (SSE) streaming endpoint for RAG Study Buddy responses."""
-    import time
-
-    from django.http import StreamingHttpResponse
-
-    try:
-        body = json.loads(request.body.decode("utf-8"))
-    except Exception:
-        body = {}
-
-    question = body.get("question", "").strip()
-    article_id = body.get("article_id")
-
-    if not question:
-        return JsonResponse({"status": "error", "message": "Question required"}, status=400)
-
-    res = services.ask_rag_question(question=question, article_id=article_id)
-    answer_text = res.get("answer", "")
-    citations = res.get("citations", [])
-
-    def event_stream():
-        # Stream metadata first
-        yield f"data: {json.dumps({'type': 'metadata', 'citations': citations})}\n\n"
-        time.sleep(0.05)
-
-        # Stream words word-by-word (ChatGPT style)
-        words = answer_text.split(" ")
-        for i, word in enumerate(words):
-            chunk = word + (" " if i < len(words) - 1 else "")
-            payload = json.dumps({"type": "delta", "text": chunk})
-            yield f"data: {payload}\n\n"
-            time.sleep(0.02)
-
-        yield "data: [DONE]\n\n"
-
-    response = StreamingHttpResponse(event_stream(), content_type="text/event-stream")
-    response["Cache-Control"] = "no-cache"
-    response["X-Accel-Buffering"] = "no"
-    return response
-
-
 @csrf_exempt
 @require_POST
 def explain_stream_api(request, pk: str | None = None):
     """Stream token-by-token explanation for clicked markdown phrase/sentence."""
+    if not request.user.is_authenticated:
+        return JsonResponse(
+            {"status": "error", "message": "Authentication required for AI explanations."}, status=401
+        )
     try:
         body = json.loads(request.body.decode("utf-8")) if request.body else {}
     except Exception:
@@ -254,6 +217,10 @@ def explain_stream_api(request, pk: str | None = None):
 @require_POST
 def study_dock_stream_api(request):
     """Unified SSE streaming endpoint for Left AI Study Dock (Multi-Agent LangGraph)."""
+    if not request.user.is_authenticated:
+        return JsonResponse(
+            {"status": "error", "message": "Authentication required to use AI Study Dock."}, status=401
+        )
     try:
         body = json.loads(request.body.decode("utf-8")) if request.body else {}
     except Exception:
@@ -267,7 +234,7 @@ def study_dock_stream_api(request):
     if not query:
         return JsonResponse({"status": "error", "message": "Query is required"}, status=400)
 
-    user_id = request.user.id if request.user.is_authenticated else None
+    user_id = request.user.id
     thread_id = body.get("thread_id", "").strip()
     if not thread_id:
         if page_context == "readspace" and article_id:
@@ -331,38 +298,3 @@ def search_semantic_api(request):
     results = selectors.search_articles_semantic(query)
     return JsonResponse({"status": "success", "results": results})
 
-
-@api_error_handler
-def run_ai_tool_api(request):
-    """Generic AI Tool gateway endpoint."""
-    if request.method != "POST":
-        return JsonResponse({"error": "POST method required"}, status=405)
-    try:
-        body = json.loads(request.body.decode("utf-8"))
-    except Exception:
-        return JsonResponse({"error": "Invalid JSON body"}, status=400)
-
-    question = (
-        body.get("question")
-        or (body.get("input_data", {}).get("question") if isinstance(body.get("input_data"), dict) else "")
-        or ""
-    )
-    article_id = body.get("article_id")
-
-    res = services.ask_rag_question(question=question, article_id=article_id)
-    answer = res.get("answer", "")
-    citations = res.get("citations", [])
-    first_quote = citations[0].get("quote", "") if citations and isinstance(citations[0], dict) else ""
-
-    return JsonResponse(
-        {
-            "status": "success",
-            "answer": answer,
-            "citations": citations,
-            "output": {
-                "answer": answer,
-                "citation_quote": first_quote,
-                "status": "RESOLVED",
-            },
-        }
-    )

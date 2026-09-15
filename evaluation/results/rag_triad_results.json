@@ -1,0 +1,1106 @@
+{
+  "total_test_cases": 30,
+  "passed_test_cases": 3,
+  "metrics_summary": {
+    "Contextual Relevancy": {
+      "average_score": 0.3565,
+      "pass_rate": "13.33%",
+      "passed": 4,
+      "total": 30
+    },
+    "Faithfulness": {
+      "average_score": 0.9806,
+      "pass_rate": "96.67%",
+      "passed": 29,
+      "total": 30
+    },
+    "Answer Relevancy": {
+      "average_score": 0.835,
+      "pass_rate": "76.67%",
+      "passed": 23,
+      "total": 30
+    }
+  },
+  "results": [
+    {
+      "name": "test_case_9",
+      "input": "Which sugar substitute was found to have unexpected metabolic effects in the study led by WashU Medicine?",
+      "actual_output": "- **Sugar substitute:** **Sorbitol**\n- **Key finding:** WashU Medicine researchers found sorbitol can be converted into a form of **fructose in the liver**, potentially triggering harmful metabolic effects.  \n- **Source:** [Scientists discover a hidden problem with this popular sugar substitute] (ID: art_8d2a19e9569caafc)",
+      "retrieval_context": [
+        "# Scientists discover a hidden problem with this popular sugar substitute\n\n- Date:\n- September 6, 2026\n- Source:\n- Washington University in St. Louis\n- Summary:\n- Sorbitol, a sugar alcohol commonly used in sugar-free candy, gum, and other low-calorie foods, may not be as harmless as it seems. Researchers at Washington University in St. Louis found that the body can convert sorbitol into a form of fructose in the liver, potentially triggering some of the same harmful metabolic effects linked to fructose.\n- Share:\n\nSugar substitutes are often marketed as a better choice than foods loaded with refined sugar (glucose). Common examples include aspartame, the sweetener used in Equal packets, sucralose (Splenda), and sugar alcohols such as sorbitol.",
+        "The findings reinforce a broader lesson emerging from research on alternative sweeteners. Replacing ordinary sugar with another sweet-tasting compound does not necessarily eliminate metabolic consequences.\n\nAs Patti summarized it, \"there is no free lunch\" when searching for sugar alternatives, particularly when several metabolic pathways can ultimately lead toward liver dysfunction.\n\nThis work was supported by the National Institutes of Health, grants R35ES028365 (G.J.P.) and P30DK056341 (S.K.).",
+        "But growing research is complicating the idea that these alternatives are automatically healthier. A new study suggests that sorbitol, in particular, may have metabolic effects that make it less harmless than many people assume.\n\n### Sorbitol May Be One Step Away From Fructose\n\nThe research, published recently in *Science Signaling*, builds on a line of research from Gary Patti's laboratory at Washington University in St. Louis examining how fructose affects the liver and other parts of the body.",
+        "That finding matters because AMPK is found in both yeast and humans, making it an important target for researchers studying metabolism, aging, and disease.\n\n### The Metformin Connection\n\nAMPK is also linked to metformin, a widely used diabetes drug that has drawn attention in longevity research.\n\nMetformin is best known for helping control blood sugar, but scientists have also been studying whether it can influence biological pathways associated with aging. Rapamycin, another compound that affects growth-related signaling, is also being investigated for its possible effects on lifespan.\n\nThat makes caffeine's connection to AMPK especially intriguing.",
+        "### Calorie Restriction Lowers an Inflammation-Linked Protein\n\nFor the new study, Dixit and his colleagues at YSM examined plasma samples from 42 people who participated in a National Institutes of Health-funded two-year study called the [Comprehensive Assessment of Long-Term Effects of Reducing Intake of Energy](https://clinicaltrials.gov/study/NCT00427193) or CALERIE.\n\n\"It's the only trial of its kind that has been done with such rigor and control and demonstrates relevance to human physiology,\" Dixit says. During the trial, participants reduced their calorie intake by 11 to 14% without feeling deprived."
+      ],
+      "success": false,
+      "metrics": {
+        "Contextual Relevancy": {
+          "score": 0.375,
+          "threshold": 0.7,
+          "success": false,
+          "reason": "The score is 0.38 because the retrieval context does contain the direct answer—e.g., 'Sorbitol, a sugar alcohol commonly used in sugar-free candy, gum, and other low-calorie foods, may not be as harmless as it seems.' and 'Researchers at Washington University in St. Louis found that the body can convert sorbitol into a form of fructose...'—but much of the supplied context is off‑topic (for example, 'The statement \"Sugar substitutes are often marketed as a better choice than foods loaded with refined sugar (glucose).\" does not identify which specific sugar substitute...' and unrelated material like 'Metformin is best known for helping control blood sugar'), so overall relevancy is low.",
+          "error": null
+        },
+        "Faithfulness": {
+          "score": 1.0,
+          "threshold": 0.7,
+          "success": true,
+          "reason": "The score is 1.00 because the contradictions list is empty, indicating no discrepancies between the actual output and the retrieval context — the output fully aligns with the retrieval context.",
+          "error": null
+        },
+        "Answer Relevancy": {
+          "score": 0.75,
+          "threshold": 0.7,
+          "success": true,
+          "reason": "The score is 0.75 because the response correctly identified the sugar substitute and addressed the study’s findings, but it included an irrelevant source-citation/metadata line that didn’t identify the substitute or describe results; that extra line prevented a higher score even though most content was on point.",
+          "error": null
+        }
+      }
+    },
+    {
+      "name": "test_case_8",
+      "input": "Which NASA satellite instrument captured imagery of Indonesia peatland fire season in 2026?",
+      "actual_output": "- **Instrument:** **MODIS** (Moderate Resolution Imaging Spectroradiometer)  \n- **Satellite:** aboard NASA's **Aqua** satellite  \n- Source: [Indonesia’s most dangerous fires are burning underground] (ID: art_b7f7b0c9af89abbf)",
+      "retrieval_context": [
+        "### Satellite Images Reveal Indonesia's Fire Season\n\nIndonesia's 2026 fire season was already underway when the MODIS (Moderate Resolution Imaging Spectroradiometer) instrument aboard NASA's Aqua satellite captured an image of the region on September 1, 2026.\n\nOn the [annotated map](https://scitechdaily.com/images/Indonesia-Peatland-Fires-Annotated.jpg), each red dot represents a \"fire detection.\" This means the satellite sensor and an algorithm identified a pixel containing thermal anomalies associated with fire. A single fire can produce multiple detections.",
+        "# Indonesia’s most dangerous fires are burning underground\n\n- Date:\n- September 6, 2026\n- Source:\n- NASA Earth Observatory\n- Summary:\n- Indonesia’s dangerous peat fires are surging early in the 2026 fire season as a strengthening El Niño and severe drought dry out wetlands that can burn underground for months. These slow smoldering fires are especially destructive because they release far more fine particles and several pollutants than typical tropical forest fires, while thick smoke can make them difficult for satellites to detect.\n- Share:",
+        "Under normal conditions, peat deposits in Kalimantan, Sumatra, and Papua are too wet for fire to move underground. Drought changes that dramatically, allowing flames to enter the peat itself and continue smoldering below the surface.\n\n\"Surface fires are less of a concern, but when fires get underground, they just won't stop,\" Field said. \"They'll keep burning until the rains come in October or November.\"\n\nIndonesia relies on observations from NASA and NOAA satellites to follow active fires in near-real-time. MODIS and VIIRS are among the main instruments used. Indonesia's Ministry of Forestry operates the [SiPongi](https://sipongi.gakkum.kehutanan.go.id/) fire-monitoring platform using MODIS and VIIRS data, and the system counted 946 hotspots on August 31, 2026.",
+        "NOAA assessed El Niño as present and strengthening in August 2026. The climate pattern commonly reduces rainfall across Indonesia. The drying can become even more pronounced when El Niño occurs alongside a positive phase of the Indian Ocean Dipole, which was also underway.\n\n\"Indonesia is only about three weeks into its fire season, but we're seeing fire activity track sharply upward, similar to 2015,\" said Robert Field, a Columbia University researcher who developed a tool called the [Global Fire Weather Database](https://data.giss.nasa.gov/impacts/gfwed/) that produces experimental, real-time fire weather forecasts.\n\n\"The strong El Niño is making the dry season drier over the fire-prone parts of the country and exacerbating burning -- just as we anticipated it would,\" he said.",
+        "As the 2026 fire season continues, Wee plans to follow conditions using NASA's [Worldview data browser](https://worldview.earthdata.nasa.gov/), [FIRMS](https://firms.modaps.eosdis.nasa.gov/) (Fire Information for Resource Management System), [HLS](https://www.earthdata.nasa.gov/data/projects/hls) (Harmonized Landsat and Sentinel-2) observations, and [GFED](https://www.globalfiredata.org/) (Global Fire Emissions Database).\n\n### Hazardous Smoke Is Already Disrupting Daily Life\n\nFor people living in Indonesia and neighboring countries, the effects are already being felt. Indonesian officials have warned that large portions of the population have been exposed to hazardous smoke."
+      ],
+      "success": false,
+      "metrics": {
+        "Contextual Relevancy": {
+          "score": 0.2,
+          "threshold": 0.7,
+          "success": false,
+          "reason": "The score is 0.20 because most retrieved lines focus on causes, impacts and map symbols (e.g., 'each red dot represents a \"fire detection.\"', 'Indonesia’s most dangerous fires are burning underground', 'September 6, 2026', 'NASA's Worldview data browser', 'FIRMS') rather than naming an instrument; however the context does contain the key relevant facts: 'Indonesia's 2026 fire season was already underway when the MODIS (Moderate Resolution Imaging Spectroradiometer) instrument aboard NASA's Aqua satellite captured an image of the region on September 1, 2026.' and 'MODIS and VIIRS are among the main instruments used.'",
+          "error": null
+        },
+        "Faithfulness": {
+          "score": 1.0,
+          "threshold": 0.7,
+          "success": true,
+          "reason": "The score is 1.00 because the contradictions list is empty, indicating no identified discrepancies and that the actual output fully aligns with the retrieval context — nice work!",
+          "error": null
+        },
+        "Answer Relevancy": {
+          "score": 1.0,
+          "threshold": 0.7,
+          "success": true,
+          "reason": "The score is 1.00 because the response directly addressed the question and contained no irrelevant statements; everything in the output was fully relevant to which NASA instrument captured the imagery.",
+          "error": null
+        }
+      }
+    },
+    {
+      "name": "test_case_14",
+      "input": "Why have treatment options for glioblastoma historically seen relatively little progress?",
+      "actual_output": "- **Resistance to standard therapies** — Glioblastoma tumors “frequently withstand both radiation and chemotherapy,” which has limited progress in treatment options. [Scientists find a weak spot in one of the deadliest brain cancers] (ID: art_260b3821987228bd)\n\n- **High adaptability and survival mechanisms** — The tumors are “hard to treat because they can adapt and survive,” in part by suppressing the enzyme PP2A (via proteins such as SET), making them less vulnerable to existing treatments. [Scientists find a weak spot in one of the deadliest brain cancers] (ID: art_260b3821987228bd)",
+      "retrieval_context": [
+        "Glioblastoma is among the most lethal forms of cancer, and treatment options have changed relatively little because the tumors frequently withstand both radiation and chemotherapy. Researchers at The Ohio State University Comprehensive Cancer Center - Arthur G. James Cancer Hospital and Richard J. Solove Research Institute have now identified a protein called SET as a possible target that could make glioblastoma cells easier to kill with existing therapies.\n\nRather than replacing current treatments, the strategy is designed to help them work better. In preclinical experiments, suppressing SET prevented tumors from developing.\n\n### A Potential Weakness in Glioblastoma",
+        "### Searching for the Patients Most Likely To Benefit\n\nThe researchers now want to determine which genes are primarily responsible for the antitumor effects seen in the experiments.\n\nThey also want to identify biomarkers that could reveal which patients are most likely to benefit from the drug combination.\n\nAnother major question is whether treatment could stop transdifferentiation before it happens, rather than trying to treat tumors after they have already changed identity.\n\n\"Preventing the emergence of transdifferentiation would be key to patient survival,\" Alumkal said.\n\n\"Distinguishing between patients whose tumors will never undergo this transition versus patients whose tumors may will help us use this treatment effectively and early.\"",
+        "\"Glioblastoma is hard to treat because it can adapt and survive,\" said Arnab Chakravarti, MD, chair of radiation oncology at the OSUCCC - James. \"Our findings suggest that restoring PP2A activity may make glioblastoma cells less able to survive treatment. That gives us a clear path to test whether this approach can make radiation and chemotherapy more effective for patients with GBM.\"\n\n### Testing Ways to Restore PP2A Activity\n\nThe results remain preliminary and have not yet been evaluated in patients. Researchers are now investigating whether SET or other proteins that suppress PP2A can be targeted safely and whether doing so improves the effectiveness of standard glioblastoma therapies.",
+        "# Scientists find a weak spot in one of the deadliest brain cancers\n\n- Date:\n- September 6, 2026\n- Source:\n- Ohio State University Wexner Medical Center\n- Summary:\n- Researchers may have found a new way to weaken glioblastoma’s defenses against treatment. Blocking a protein called SET prevented tumors from forming in preclinical models, while targeting related proteins made cancer cells more vulnerable to radiation. The strategy works by restoring activity of PP2A, an enzyme that glioblastoma cells appear to suppress. Human testing will be needed to determine whether the approach is safe and effective.\n- Share:",
+        "The team also examined an FDA-approved antipsychotic drug that is capable of increasing PP2A activity. According to the researchers, the results provide additional reason to study medications that influence this pathway.\n\nHowever, the drug is not ready to be used as a glioblastoma treatment and should not be taken for this purpose outside a clinical trial.\n\n\"This is an important first step,\" said Chakravarti. \"By understanding how SET and related PP2A blockers help GBM survive treatment, we can test ways to block that protection and make current therapies more effective.\"\n\n### A First Step Toward New Treatment Strategies"
+      ],
+      "success": true,
+      "metrics": {
+        "Contextual Relevancy": {
+          "score": 0.7407407407407407,
+          "threshold": 0.7,
+          "success": true,
+          "reason": "The score is 0.74 because the context includes directly relevant statements—e.g., 'Treatment options have changed relatively little because the tumors frequently withstand both radiation and chemotherapy.', 'Glioblastoma is hard to treat because it can adapt and survive.', and 'Glioblastoma is among the most lethal forms of cancer.'—but also contains many attributional and forward‑looking items that don't explain historical lack of progress, such as 'Arnab Chakravarti, MD, chair of radiation oncology at the OSUCCC - James.', 'find a weak spot', 'found a new way to weaken glioblastoma’s defenses', and 'Human testing will be needed.'",
+          "error": null
+        },
+        "Faithfulness": {
+          "score": 1.0,
+          "threshold": 0.7,
+          "success": true,
+          "reason": "The score is 1.00 because the contradictions list is empty, indicating no inconsistencies were found between the actual output and the retrieval context; the response is fully faithful—great job!",
+          "error": null
+        },
+        "Answer Relevancy": {
+          "score": 1.0,
+          "threshold": 0.7,
+          "success": true,
+          "reason": "The score is 1.00 because the response remained fully focused on why glioblastoma treatments have progressed slowly (complex tumor biology and heterogeneity, the blood–brain barrier, immunosuppressive microenvironment, limited trial enrollment and challenging endpoints) and contained no irrelevant statements. It cannot be higher because 1.00 is the maximum possible score.",
+          "error": null
+        }
+      }
+    },
+    {
+      "name": "test_case_16",
+      "input": "In which country were the foundational anthropological frameworks of prehistory originally created?",
+      "actual_output": "- **France** — the chrono-cultural and anthropological frameworks of prehistory were first created in Western Europe, **especially France**, in the second half of the 19th century.  \n  [80,000-year-old “arrowheads” rewrite human history] (ID: art_c7e20b62edee46c2)",
+      "retrieval_context": [
+        "The chrono-cultural and anthropological frameworks of prehistory, along with the evolutionary models they inspired, were first created in Western Europe, especially France, in the second half of the 19th century. They were initially linear and Eurocentric: Cro-Magnons (European early modern humans), descending from Neanderthals, laid the foundations for the civilizational superiority claimed by this part of the world at the time. It was not until a century later that the African origin of *Homo sapiens*, as well as the technological and social features that characterised the Western Upper Paleolithic (symbolic productions, long-distance networks, and diversified lithic and bone tools and weapons), were recognized.",
+        "Another remarkable aspect, which is still relatively uncommon, is the convergence and complementarity of data from material culture and from our genetic memory, which did not influence each other given the dates of the respective studies and publications. Together, they sketch out a rewriting of the scenario of *Homo sapiens*’ arrival in Europe: it was thought that he came directly from Africa by the shortest route 45,000 years ago, but we now discover that he had been established in the heart of the Eurasian continent for a long time, well before expanding in search of more territories.",
+        "The [earliest evidence of *Homo sapiens* in Australia, dating back around 65,000 years](https://www.abc.net.au/news/science/2017-07-20/aboriginal-shelter-pushes-human-history-back-to-65,000-years/8719314), predates that found in Europe by 10 millennia, while the ways in which our ancestors initially colonized Western Eurasia over 45,000 years ago remain contentious. The temporal alignment of the earliest European Upper Paleolithic settlements with those in the Levant, which are considered the closest in terms of typology and technology, is still not satisfactory. This is either because the Levantine data comes from old excavations or because it does not fit into the supposed direct lineage",
+        "Co-author Purity Kiura of the National Museums of Kenya adds, \"The discovery of these fossil footprints along the margins of Lake Turkana reinforces the region's global importance in understanding human evolution, preserving remarkable evidence of how our ancient relatives lived 1.4 million years ago. It further strengthens Kenya's position as one of the world's leading paleoanthropological landscapes and highlights our responsibility to protect this irreplaceable heritage.\"",
+        "Recent work published by paleogeneticists [Leonardo Vallini](https://www.nature.com/articles/s41467-024-46161-7) and [Stéphane Mazières](https://www.nature.com/articles/s41598-024-83023-0) defines the Persian Plateau, on the north-eastern edge of which Obi-Rakhmat is located, as a population hub where the ancestors of all present-day non-Africans lived between the early phases of expansion out of Africa – long before the Upper Paleolithic – and the wider colonization of Eurasia. This resource-rich environment may have provided a refuge conducive to demographic regeneration after the genetic bottleneck of the exit from Africa, interaction between groups and, consequently, technical innovations."
+      ],
+      "success": false,
+      "metrics": {
+        "Contextual Relevancy": {
+          "score": 0.10526315789473684,
+          "threshold": 0.7,
+          "success": false,
+          "reason": "The score is 0.11 because only a small explicit passage answers the question — 'The chrono-cultural and anthropological frameworks of prehistory, along with the evolutionary models they inspired, were first created in Western Europe, especially France, in the second half of the 19th century.' and 'They were initially linear and Eurocentric: Cro-Magnons (European early modern humans)...' — while the bulk of the retrieval context (e.g., 'It was not until a century later that the African origin of Homo sapiens...', 'fossil footprints along the margins of Lake Turkana', 'Kenya's position as one of the world's leading paleoanthropological landscapes') deals with migrations, dates, local finds or conservation and is irrelevant.",
+          "error": null
+        },
+        "Faithfulness": {
+          "score": 1.0,
+          "threshold": 0.7,
+          "success": true,
+          "reason": "The score is 1.00 because the contradictions list is empty, indicating there are no discrepancies and the actual output fully aligns with the retrieval context.",
+          "error": null
+        },
+        "Answer Relevancy": {
+          "score": 0.6666666666666666,
+          "threshold": 0.7,
+          "success": false,
+          "reason": "The score is 0.67 because the core response addressed the question about the country of origin for the foundational prehistory frameworks, but it included a stray citation/source line that was irrelevant to the user’s question. The presence of that non-answer lowered the relevancy, while the rest of the content remained on-topic, so the score is not lower.",
+          "error": null
+        }
+      }
+    },
+    {
+      "name": "test_case_3",
+      "input": "What subatomic particle do traditional experiments try to convert into photons to detect dark matter?",
+      "actual_output": "- **Particle:** **axions**  \n  - Many traditional axion experiments try to convert **axions** into photons using extremely strong magnetic fields in laboratories. [A mysterious signal around Earth could be dark matter] (ID: art_6c7ada9c1ac79a01)",
+      "retrieval_context": [
+        "### Turning Earth Into a Giant Dark Matter Detector\n\nMany traditional axion experiments try to convert axions into photons by exposing them to extremely strong magnetic fields inside laboratories. The challenge is scale. Even powerful lab magnets can only cover a relatively small region.\n\nResearchers from Kyoto University, Hiroshima University, and Nihon University saw a way around that limitation. Instead of relying only on laboratory equipment, they asked whether Earth's own magnetic environment could be used as part of the experiment.",
+        "Dark matter is one of the biggest unsolved mysteries in modern physics. Astronomers are highly confident that it exists and estimate that it accounts for about a quarter of the universe's total energy content, yet scientists still do not know what it is made of.\n\nTwo leading possibilities are hypothetical particles known as *ultralight* *axions* and *dark photons*. In the mass range examined by the researchers, these particles would be extraordinarily light, roughly 19 to 21 orders of magnitude lighter than an electron.\n\n### Turning Earth Into a Giant Dark Matter Detector",
+        "# A mysterious signal around Earth could be dark matter\n\n## Scientists turned Earth into a giant dark matter detector and found several mysterious signals worth a closer look.\n\n- Date:\n- September 5, 2026\n- Source:\n- Kyoto University\n- Summary:\n- Scientists used Earth’s magnetic field and atmosphere as a planet-sized detector to search for some of the lightest proposed forms of dark matter. The approach dramatically improved limits on ultralight axions and uncovered several intriguing dark photon signals that still need to be explained.\n- Share:",
+        "### A Decade of Magnetic Data Put to the Test\n\nUsing this framework, the team examined roughly 10 years of geomagnetic measurements collected between 2012 and 2022 by the British Geological Survey's Eskdalemuir Observatory.\n\nThe researchers first removed artificial sources of noise from the data. They then looked for the kind of steady signal concentrated within a very narrow frequency range that dark matter is expected to produce over long periods of time. The results were then subjected to statistical analysis.\n\nThe same theoretical approach was also applied to dark photons. Unlike axions, dark photons can produce electromagnetic waves even when no magnetic field is present, so the researchers searched the dataset for the different signature those particles would be expected to create.",
+        "That enormous new sample should give cosmologists a powerful opportunity to test whether the universe is truly accelerating, whether the apparent effect varies with direction, and what role, if any, dark energy plays in shaping the expansion of the cosmos."
+      ],
+      "success": false,
+      "metrics": {
+        "Contextual Relevancy": {
+          "score": 0.25,
+          "threshold": 0.7,
+          "success": false,
+          "reason": "The score is 0.25 because most retrieved passages discuss experimental limits and other topics (e.g. 'The challenge is scale.' and 'Even powerful lab magnets can only cover a relatively small region.') rather than naming the particle, while only one clear line answers the question: 'Many traditional axion experiments try to convert axions into photons by exposing them to extremely strong magnetic fields inside laboratories.'",
+          "error": null
+        },
+        "Faithfulness": {
+          "score": 1.0,
+          "threshold": 0.7,
+          "success": true,
+          "reason": "The score is 1.00 because the contradictions list is empty, indicating the actual output fully aligns with the retrieval context and no discrepancies were found — great job keeping it faithful.",
+          "error": null
+        },
+        "Answer Relevancy": {
+          "score": 0.6666666666666666,
+          "threshold": 0.7,
+          "success": false,
+          "reason": "The score is 0.67 because the response contained some relevant dark-matter context but included an irrelevant speculative remark about a signal around Earth and did not answer the direct question — it failed to identify the particle (axions/axion-like particles) or the conversion method (Primakoff effect using strong magnetic fields and microwave cavities). Those omissions and the tangent prevent a higher score, while the remaining dark-matter context explains why it isn’t much lower.",
+          "error": null
+        }
+      }
+    },
+    {
+      "name": "test_case_19",
+      "input": "Which organization issued the first guidelines dedicated to managing cardiovascular disease alongside chronic kidney disease?",
+      "actual_output": "- **Organization:** **European Society of Cardiology**\n- **Partner:** Developed in partnership with the **European Renal Association**\n\nSource: [Heart disease and kidney disease can fuel each other. New guidelines aim to break the cycle] (ID: art_a19c0fc0966d9e68)",
+      "retrieval_context": [
+        "The European Society of Cardiology has issued its first guidelines dedicated to managing cardiovascular disease alongside chronic kidney disease, developed in partnership with the European Renal Association. The recommendations were published in the *European Heart Journal* and presented at ESC Congress 2026.\n\nChronic kidney disease (CKD) is diagnosed when abnormalities in kidney structure or function persist for at least 3 months and affect a person's health. An estimated 100 million people across Europe have CKD, and the condition substantially increases their risk of developing a range of cardiovascular diseases (CVD).\n\n### The Dangerous Link Between Heart and Kidney Disease",
+        "### The Dangerous Link Between Heart and Kidney Disease\n\n\"The disability and lifetime lost to each disease are profound, but CKD can accelerate CVD and vice versa, resulting in cardiovascular events and the need for dialysis much earlier in life,\" said Task Force Chair, Associate Professor Kevin Damman from University Medical Centre Groningen, Netherlands. \"The good news is that there have been major advances over the last few years, which mean there are now several simple treatments that can substantially lower the risk of both cardiovascular and kidney complications.\"\n\nBecause heart and kidney disease often occur together, the guidelines emphasize identifying kidney problems earlier in people already receiving treatment for cardiovascular disease.",
+        "Screening is the first step. The guidelines recommend testing every patient with CVD for CKD when cardiovascular disease is diagnosed. This involves blood and urine testing (estimated glomerular filtration rate from blood creatinine plus urine albumin-to-creatinine ratio).\n\nTriage then focuses on determining how likely a patient is to develop kidney failure, as well as evaluating cardiovascular risk. The guidelines recommend using validated risk scoring tools that take kidney function into account.\n\n### Earlier Treatment Could Reduce Complications\n\nThe next priority is addressing risk by introducing proven, cost-effective therapies early enough to slow the progression of CKD and lower the likelihood of cardiovascular events.",
+        "# Heart disease and kidney disease can fuel each other. New guidelines aim to break the cycle\n\n- Date:\n- September 5, 2026\n- Source:\n- European Society of Cardiology\n- Summary:\n- Heart disease and chronic kidney disease can accelerate one another, but new guidelines say simple screening and early treatment could substantially reduce the risks. Blood and urine tests, combined with proven heart and kidney therapies, may help catch problems sooner and prevent serious complications.\n- Share:",
+        "\"Early use of drugs called RAS inhibitors and SGLT2 inhibitors alongside statin-based therapy are particularly important and effective,\" explained Associate Prof. Damman.\n\nThe recommendations also identify situations in which cardiovascular treatment needs to be adjusted for people with CKD. Reduced kidney function can affect the body's ability to clear certain medicines, so the guidelines provide advice about which treatments can be used safely when standard options may not be appropriate.\n\n### Coordinating Heart and Kidney Care\n\nThe final part of the strategy focuses on organizing healthcare services so that patients at greatest risk can be recognized quickly and receive timely care from both cardiologists and nephrologists."
+      ],
+      "success": false,
+      "metrics": {
+        "Contextual Relevancy": {
+          "score": 0.24,
+          "threshold": 0.7,
+          "success": false,
+          "reason": "The score is 0.24 because only a small portion of the retrieval text directly answers the question — e.g. \"The European Society of Cardiology has issued its first guidelines dedicated to managing cardiovascular disease alongside chronic kidney disease, developed in partnership with the European Renal Association\" and \"Source: European Society of Cardiology\" — while the bulk of the context is clinical detail that doesn’t identify the issuing body (e.g. \"The recommendations were published in the *European Heart Journal* and presented at ESC Congress 2026.\" and \"Associate Professor Kevin Damman... is the Task Force Chair\").",
+          "error": null
+        },
+        "Faithfulness": {
+          "score": 1.0,
+          "threshold": 0.7,
+          "success": true,
+          "reason": "The score is 1.00 because the contradictions list is empty, indicating there are no inconsistencies and the actual output fully aligns with the retrieval context — great job.",
+          "error": null
+        },
+        "Answer Relevancy": {
+          "score": 0.8,
+          "threshold": 0.7,
+          "success": true,
+          "reason": "The score is 0.80 because the response was largely relevant to the question but included an irrelevant metadata/source identifier that did not answer which organization issued the guidelines; that extraneous line prevented a higher score even though the remaining content addressed the topic.",
+          "error": null
+        }
+      }
+    },
+    {
+      "name": "test_case_5",
+      "input": "Which institutions collaborated to build the detailed cellular map of breast tumors revealing cancer cell shields?",
+      "actual_output": "**Institutions that collaborated**\n\n- **MRC Laboratory of Medical Sciences (LMS)**\n- **Imperial College London**\n- **UCL Genetics Institute (University College London)**\n\nSource: [Scientists find breast cancer cells hiding behind protective “shields”] (ID: art_76bb0df1a86080d8)",
+      "retrieval_context": [
+        "Researchers from the MRC Laboratory of Medical Sciences (LMS), Imperial College London, and UCL Genetics Institute have built a detailed cellular map of breast tumors, revealing separate regions filled with actively dividing cancer cells and others containing dormant cells. Published in *Genome Medicine*, the findings show that these inactive cancer cells are often surrounded by immune and connective tissue cells that may help protect them from treatment.\n\nThe work suggests that future cancer therapies may need to do more than attack fast-growing tumor cells. They may also need to target dormant cancer cells and the local environments that allow them to persist, with the goal of stopping tumor growth while reducing the risk that the disease returns later.",
+        "# Scientists find breast cancer cells hiding behind protective “shields”\n\n- Date:\n- September 6, 2026\n- Source:\n- Medical Research Council (MRC) Laboratory of Medical Sciences\n- Summary:\n- Researchers have mapped breast tumors in striking detail and uncovered hidden pockets of dormant cancer cells that may help explain why cancer can return after treatment. Unlike rapidly dividing cells, these quiet cells can essentially hibernate, allowing them to evade chemotherapy and reactivate later. The team found that they are often surrounded by immune cells and connective tissue cells that may act like a protective shield.\n- Share:",
+        "### Hidden Cells Inside Breast Tumors\n\nBreast tumors are complex environments made up of many different kinds of cells. Alongside rapidly multiplying cancer cells are immune cells, newly formed blood vessels and a particularly concerning group of cancer cells that remain unusually quiet.\n\nThese dormant, or 'quiescent', cells can survive treatment and may later contribute to cancer spreading or returning. Researchers at the LMS, Imperial and UCL wanted to understand where these cells are located in untreated tumors, what distinguishes them and which other cells tend to surround them.\n\nUsing publicly available data, the team created detailed maps of breast cancer tumors and found distinct clusters of quiescent cells surrounded by other cells that may serve as a protective barrier.",
+        "Alexis adds, \"If we want to achieve long-term control of peoples' tumors and prevent tumor relapse, we have to focus on these dormant quiescent cancer cells, and have to understand more about them.\"\n\n### Mapping the Tumor Cell by Cell\n\nTo investigate these hidden cell populations, Alexis worked with Dr. Maria Secrier's computational biology team at UCL to construct a detailed picture of the tumor and the immune and support cells surrounding it.\n\nThe researchers combined single-cell RNA sequencing, which reveals which genes individual cells are using, with spatial transcriptomics, a technique that shows where those cells are positioned and which neighboring cells are nearby.",
+        "\"The cancer cells are really encapsulated within these areas of macrophages and fibroblasts that we think act as shields for these dormant cancer cells,\" said Maria. \"But we don't yet know the direction of cause and effect: whether the surrounding cells push cancer cells into dormancy or if the cancer cells attract or alter their surroundings. It's very likely coming from both sides.\"\n\n### Different Tumor Regions May Need Different Treatments\n\nMany chemotherapy drugs work best against cells that are dividing quickly. Dormant cells, however, are not actively multiplying, which can make them much harder to eliminate."
+      ],
+      "success": false,
+      "metrics": {
+        "Contextual Relevancy": {
+          "score": 0.2,
+          "threshold": 0.7,
+          "success": false,
+          "reason": "The score is 0.20 because most retrieval lines focus on findings or implications rather than named collaborators — e.g., 'Scientists find breast cancer cells hiding behind protective “shields”', 'Date: - September 6, 2026', and 'Using publicly available data, the team created detailed maps of breast cancer tumors...' — while only a few statements explicitly name institutions, notably 'Researchers from the MRC Laboratory of Medical Sciences (LMS), Imperial College London, and UCL Genetics Institute have built a detailed cellular map of breast tumors...' and 'Source: Medical Research Council (MRC) Laboratory of Medical Sciences'.",
+          "error": null
+        },
+        "Faithfulness": {
+          "score": 1.0,
+          "threshold": 0.7,
+          "success": true,
+          "reason": "The score is 1.00 because the contradictions list is empty ([]), indicating no discrepancies — the actual output fully aligns with the retrieval context, showing excellent fidelity.",
+          "error": null
+        },
+        "Answer Relevancy": {
+          "score": 1.0,
+          "threshold": 0.7,
+          "success": true,
+          "reason": "The score is 1.00 because the response stayed fully on-topic and contained no irrelevant statements—directly addressing the institutions that collaborated, so there was nothing extraneous. Nice and concise!",
+          "error": null
+        }
+      }
+    },
+    {
+      "name": "test_case_11",
+      "input": "At which international conference were the findings about the lifestyle program improving cognition presented?",
+      "actual_output": "- **Conference:** Alzheimer's Association International Conference (**AAIC**)  \n- **When/Where:** **AAIC 2026 in London**  \n- **Source:** [This lifestyle program improved cognition 55% more than basic health advice] (ID: art_50093d064b156524)",
+      "retrieval_context": [
+        "The findings were presented at the Alzheimer's Association International Conference (AAIC) 2026 in London. They build on results from the U.S. Study to Protect Brain Health Through Lifestyle Intervention to Reduce Risk (U.S. POINTER), showing that programs combining physical activity, healthy eating, cognitive training and social engagement can be adapted for different cultures, health systems and communities. The study was also published in *The Lancet*.\n\n### Adapting Brain Health Programs to Local Cultures",
+        "# This lifestyle program improved cognition 55% more than basic health advice\n\n- Date:\n- September 6, 2026\n- Source:\n- Alzheimer's Association International Conference\n- Summary:\n- Older adults at risk of dementia improved their memory and thinking after following lifestyle programs combining exercise, healthy eating, cognitive training, and social engagement. Those who received regular coaching and structured support improved substantially more than participants given general health advice.\n- Share:",
+        "Participants in the SLI group had a 55% greater improvement on a composite measure of global cognition compared with participants in the FLI group. They also experienced significantly larger improvements in memory, executive function, and processing speed.\n\nLatAm-FINGERS and U.S. POINTER are part of the World-Wide FINGERS network. The international effort grew out of the original Finnish FINGER trial, which found that interventions targeting several lifestyle factors at the same time may help preserve cognitive function in older adults at risk of decline.",
+        "The Flexible Lifestyle Intervention (FLI) group included 526 participants. They received periodic health education along with broad lifestyle recommendations. During the two-year study, these participants attended four group meetings covering diet, physical activity, cognitive and social engagement, and vascular risk management. Unlike the SLI group, they did not receive continuing coaching or supervision.\n\n**55% Greater Improvement in Overall Cognition**\n\nAfter two years, the more structured SLI program produced significantly stronger cognitive gains than the FLI approach.",
+        "Older adults at risk of dementia improved their memory, thinking skills, and overall cognitive performance after taking part in two culturally adapted lifestyle programs across 11 Latin American countries. The strongest benefits were seen among participants who received more structured guidance, including regular coaching and support.\n\nThe Alzheimer's Association-funded study, known as the Latin American Initiative for Lifestyle Intervention to Prevent Cognitive Decline (LatAm-FINGERS), followed participants for two years."
+      ],
+      "success": false,
+      "metrics": {
+        "Contextual Relevancy": {
+          "score": 0.23809523809523808,
+          "threshold": 0.7,
+          "success": false,
+          "reason": "The score is 0.24 because most retrieval-context lines focus on study background, publication, dates and outcomes (e.g., 'The study was also published in *The Lancet*.', 'September 6, 2026', 'Participants in the SLI group had a 55% greater improvement on a composite measure of global cognition...') and therefore do not answer where the findings were presented, while only one statement directly addresses the question: 'The findings were presented at the Alzheimer's Association International Conference (AAIC) 2026 in London.'",
+          "error": null
+        },
+        "Faithfulness": {
+          "score": 0.75,
+          "threshold": 0.7,
+          "success": true,
+          "reason": "The score is 0.75 because the actual output misattributes the source: it presents the quoted headline ('program improved cognition 55% more than basic health advice') and an ID (art_50093d064b156524) that do not appear in the retrieval context, instead of correctly listing the Alzheimer's Association International Conference (AAIC) as the report source.",
+          "error": null
+        },
+        "Answer Relevancy": {
+          "score": 0.25,
+          "threshold": 0.7,
+          "success": false,
+          "reason": "The score is 0.25 because the output mainly supplied irrelevant metadata—the AAIC 2026 location and year, the article title/source, and an internal source ID—without explicitly naming which international conference presented the findings. It isn’t lower because it did include a partial, related clue (mentioning AAIC 2026), but that clue wasn’t presented clearly as the direct answer.",
+          "error": null
+        }
+      }
+    },
+    {
+      "name": "test_case_7",
+      "input": "Why do tropical peatland fires in Indonesia burn underground rather than through trees?",
+      "actual_output": "- **Peat composition and drying:** Tropical peatlands are made of deep deposits of organic, waterlogged soil (peat). When these wetlands **dry out**, flames can move into the peat and **smolder through the soil** rather than racing through trees and surface vegetation. [Indonesia’s most dangerous fires are burning underground] (ID: art_b7f7b0c9af89abbf)\n\n- **Drought and El Niño:** Severe drought (often linked to El Niño) dries normally wet peatlands, enabling underground ignition. Under normal, wet conditions peat is too waterlogged for fires to penetrate. [Indonesia’s most dangerous fires are burning underground] (ID: art_b7f7b0c9af89abbf)\n\n- **Low‑temperature smoldering:** Once peat ignites it **continues to smolder at relatively low temperatures underground**, making these fires persistent and hard to extinguish. As one expert put it, “Surface fires are less of a concern, but when fires get underground, they just won't stop.” [Indonesia’s most dangerous fires are burning underground] (ID: art_b7f7b0c9af89abbf)",
+      "retrieval_context": [
+        "Tropical peatland fires rank among the most dangerous and stubborn fires on Earth. Instead of racing through trees and vegetation, these fires smolder through dried wetland soils and large deposits of peat, often continuing underground at relatively low temperatures. That makes them extremely difficult to extinguish and exceptionally polluting.\n\nBy [one estimate](https://doi.org/10.1038/s41597-025-06127-w), peat fires produce three times more fine particulate matter than other tropical forest fires, along with five times more sulfur dioxide, three times more organic carbon, and twice as much methane and carbon monoxide.\n\n### Satellite Images Reveal Indonesia's Fire Season",
+        "# Indonesia’s most dangerous fires are burning underground\n\n- Date:\n- September 6, 2026\n- Source:\n- NASA Earth Observatory\n- Summary:\n- Indonesia’s dangerous peat fires are surging early in the 2026 fire season as a strengthening El Niño and severe drought dry out wetlands that can burn underground for months. These slow smoldering fires are especially destructive because they release far more fine particles and several pollutants than typical tropical forest fires, while thick smoke can make them difficult for satellites to detect.\n- Share:",
+        "The comparison with 2015 is significant. After more than three months of burning that year, Indonesia's fires had emitted 1.75 billion tons of greenhouse gas equivalents -- more than Japan emits in an entire year. By September 2, the 2026 fires had been burning for about a month and had already released roughly 10 percent of the amount produced during the 2015 crisis.\n\n### Underground Peat Fires Can Burn for Months\n\nIndonesia was also experiencing severe, widespread drought during the summer of 2026, much as it did in 2015. Data from the Indonesian meteorological agency showed that about 90 percent of the country received little or no rainfall in early August.",
+        "Peat fires are a persistent problem in Indonesia, which contains about 36 percent of the world's tropical peatlands. During severe droughts, these normally wet landscapes can dry enough to ignite. Over the past three decades, such conditions have repeatedly produced long-lasting fires that blanket large areas in smoke for weeks and disrupt the lives of millions of people.\n\n**El Niño Is Intensifying the Dry Season**\n\nWildfires occur in Indonesia every year, but some of the most destructive seasons in recent decades came during El Niño, particularly in 1997 and 2015.",
+        "Under normal conditions, peat deposits in Kalimantan, Sumatra, and Papua are too wet for fire to move underground. Drought changes that dramatically, allowing flames to enter the peat itself and continue smoldering below the surface.\n\n\"Surface fires are less of a concern, but when fires get underground, they just won't stop,\" Field said. \"They'll keep burning until the rains come in October or November.\"\n\nIndonesia relies on observations from NASA and NOAA satellites to follow active fires in near-real-time. MODIS and VIIRS are among the main instruments used. Indonesia's Ministry of Forestry operates the [SiPongi](https://sipongi.gakkum.kehutanan.go.id/) fire-monitoring platform using MODIS and VIIRS data, and the system counted 946 hotspots on August 31, 2026."
+      ],
+      "success": false,
+      "metrics": {
+        "Contextual Relevancy": {
+          "score": 0.4838709677419355,
+          "threshold": 0.7,
+          "success": false,
+          "reason": "The score is 0.48 because the retrieval contains clear mechanistic lines — e.g., \"these fires smolder through dried wetland soils and large deposits of peat, often continuing underground at relatively low temperatures,\" \"during severe droughts, these normally wet landscapes can dry enough to ignite,\" and \"El Niño is intensifying the dry season\" — but much of the context is unrelated to the why-question and instead addresses emissions/monitoring metadata such as \"peat fires produce three times more fine particulate matter...\", \"Satellite Images Reveal Indonesia's Fire Season\", \"release far more fine particles and several pollutants\", and \"September 6, 2026\". The presence of both useful mechanism statements and many non-mechanistic items yields a mixed, mid-range relevancy.",
+          "error": null
+        },
+        "Faithfulness": {
+          "score": 1.0,
+          "threshold": 0.7,
+          "success": true,
+          "reason": "The score is 1.00 because the contradictions list is empty, indicating no discrepancies between the actual output and the retrieval context — the output fully aligns with the provided information. Great job!",
+          "error": null
+        },
+        "Answer Relevancy": {
+          "score": 1.0,
+          "threshold": 0.7,
+          "success": true,
+          "reason": "The score is 1.00 because the output stayed fully on-topic and directly explained why Indonesian tropical peatland fires smolder underground (peat composition, high organic content, water-table dynamics, and smoldering combustion) without introducing any irrelevant information. It cannot be higher because 1.00 is the maximum score, and it earned that by including only pertinent content.",
+          "error": null
+        }
+      }
+    },
+    {
+      "name": "test_case_18",
+      "input": "How fast can particles become unstable inside certain nuclear fusion systems compared to human reaction time?",
+      "actual_output": "- **Speed of instability:** Particles can become unstable **within just a few thousandths of a second** (i.e., a few milliseconds).  \n  [AI can now control fusion plasma faster than humans can react] (ID: art_0e3f3666946f1632)\n\n- **Compared to human reaction:** That timescale is **far too fast for a human operator to respond**; AI systems are needed to react and even predicted an instability about **200 milliseconds** before it appeared in one experiment.  \n  [AI can now control fusion plasma faster than humans can react] (ID: art_0e3f3666946f1632)",
+      "retrieval_context": [
+        "In some fusion systems, particles hotter than the core of the sun can become unstable within just a few thousandths of a second. That is far too fast for a human operator to respond. Researchers at the U.S. Department of Energy's (DOE) Princeton Plasma Physics Laboratory (PPPL) and Princeton University have developed a new software framework that uses artificial intelligence (AI) to make those rapid decisions while maintaining strict safety controls and leaving people responsible for setting the system's objectives.",
+        "# AI can now control fusion plasma faster than humans can react\n\n## A new Princeton AI system can control fusion plasma in milliseconds and even predict dangerous instabilities before they happen.\n\n- Date:\n- September 6, 2026\n- Source:\n- Princeton University\n- Summary:\n- Princeton researchers have tested an AI system that can monitor and control fusion plasma in milliseconds, reacting far faster than a human operator. In one experiment, it predicted a damaging instability about 200 milliseconds before it appeared and adjusted the plasma to stop it from forming.\n- Share:",
+        "For fusion to continue successfully, the plasma must remain hot, dense, and stable. That requires frequent adjustments to systems such as the tokamak's heating equipment, magnets and gas injectors. Even relatively small disturbances in the plasma, known as instabilities, can grow within milliseconds and disrupt the fusion reaction.\n\nPredicting plasma behavior is another major challenge. Advanced computer simulations can take days or even months to complete. While those tools are valuable for planning future experiments, they are far too slow to guide an experiment in real time when the entire test may last only a few minutes.",
+        "### Bringing Multiple AI Models Into One Fusion System\n\nMachine learning has already shown considerable potential for controlling fusion plasmas. However, many previous efforts were developed individually, without a common framework that would make it easy for different models to work together. Fusion systems require multiple models because different parts of the machine and plasma must be monitored and controlled at the same time.\n\nPACMAN was designed to provide that shared structure.",
+        "The results also do not disprove an idea proposed by study co-author Professor Sir Roger Penrose (University of Oxford). Penrose has argued that quantum mechanics could eventually break down when sufficiently massive objects remain in quantum superpositions for long enough periods.\n\nThe current experiment did not involve objects massive enough, or superpositions lasting long enough, to test that possibility. However, the researchers hope the new technique can eventually be extended to much heavier objects, including nanodiamonds. Experiments designed to investigate that possibility are already underway in the same group at Ben-Gurion University of the Negev."
+      ],
+      "success": false,
+      "metrics": {
+        "Contextual Relevancy": {
+          "score": 0.4583333333333333,
+          "threshold": 0.7,
+          "success": false,
+          "reason": "The score is 0.46 because the retrieval context does include directly relevant timing statements — e.g. 'particles hotter than the core of the sun can become unstable within just a few thousandths of a second', 'instabilities... can grow within milliseconds', and 'A new Princeton AI system can control fusion plasma in milliseconds' — but those are diluted by many unrelated items such as 'developed a new software framework that uses artificial intelligence (AI) to make those rapid decisions...', metadata like 'Date: September 6, 2026' and 'Source: Princeton University', and theoretical asides like 'do not disprove an idea proposed by study co‑author Professor Sir Roger Penrose', reducing overall contextual relevancy.",
+          "error": null
+        },
+        "Faithfulness": {
+          "score": 1.0,
+          "threshold": 0.7,
+          "success": true,
+          "reason": "The score is 1.00 because the contradictions list is empty, indicating the actual output fully aligns with the retrieval context and no inconsistencies were found.",
+          "error": null
+        },
+        "Answer Relevancy": {
+          "score": 1.0,
+          "threshold": 0.7,
+          "success": true,
+          "reason": "The score is 1.00 because the output stayed fully on-topic and contained no irrelevant statements; it can’t be higher because 1.00 is the maximum possible score.",
+          "error": null
+        }
+      }
+    },
+    {
+      "name": "test_case_15",
+      "input": "At which archaeological site in Uzbekistan were the 80,000-year-old microlithic projectile points identified?",
+      "actual_output": "- **Archaeological site:** **Obi-Rakhmat** (Uzbekistan)  \n- **Source:** [80,000-year-old “arrowheads” rewrite human history] (ID: art_c7e20b62edee46c2)",
+      "retrieval_context": [
+        "Unretouched triangular microlithic projectile points have been identified from their impact traces in the oldest occupation layers of the Obi-Rakhmat site in Uzbekistan, dating to 80,000 years ago. Their size corresponds to small arrowheads, which are directly comparable to those produced by *Homo sapiens* during an incursion into Neanderthal territory in the Rhône Valley, 25,000 years later. [This new study](https://journals.plos.org/plosone/article?id=10.1371/journal.pone.0328390), published in the *PLOS One* journal, provides a strong argument that could rewrite history on *Homo sapiens*‘ first settlement in Europe.",
+        "Returning to the bibliography and [our own work on Middle Paleolithic tools](https://www.persee.fr/doc/paleo_0153-9345_1998_num_24_1_4666), we found that the presence in the same assemblage of various types of projectile points and inserts, some of which were microlithic and produced for this purpose, is only known at *Homo sapiens* sites. The oldest documented occurrences are in South Africa in the Pre-Still Bay (more than 77,000 years old) and later cultural layers of the [Sibudu cave](https://www.bbc.com/news/science-environment-11086110). In contrast, lithic points damaged by use as projectile heads are rare in the Neanderthal record",
+        "# 80,000-year-old “arrowheads” rewrite human history\n\n## Tiny 80,000-year-old “arrowheads” from Uzbekistan could rewrite the story of how Homo sapiens reached Europe.\n\n- Date:\n- September 5, 2026\n- Source:\n- The Conversation\n- Summary:\n- Archaeologists have identified tiny 80,000-year-old projectile points in Uzbekistan that may have been used like arrowheads. Their size, design, and impact damage closely resemble weapons found much later at a Homo sapiens site in France. The discovery suggests sophisticated projectile technology may have appeared in Central Asia long before modern humans became firmly established in Europe, potentially rewriting a major chapter of human migration.\n- Share:",
+        "The micro-points from Obi-Rakhmat have no known equivalents in the Eurasian Middle Paleolithic, except for identical projectile points identified by [Traceology expert Laure Metz](https://theconversation.com/the-earliest-modern-humans-in-europe-mastered-bow-and-arrow-technology-54-000-years-ago-200609) at the Mandrin site, in the Rhône Valley, France, in a layer dating to approximately 54,000 years ago – some ten thousand years before the disappearance of local Neanderthals. Notably, [a *Homo sapiens* milk tooth was also recovered from this layer](https://theconversation.com/new-research-suggests-modern-humans-lived-in-europe-10-000-years-earlier-than-previously-thought-in-neanderthal-territories-176648)",
+        "In this context, our international multidisciplinary team has identified tiny, unretouched, triangular projectile points within the lithic debris of the oldest stratigraphic layers. These points were distinguished based on their macroscopic and microscopic impact marks, which were compared to experimental reference data. Due to their small size (less than 2 cm in width and weighing only a few grams) and brittleness, they would have been unsuitable for mounting on heavy shafts. The width of their cutting edges corresponds to the diameter of arrow shafts [documented ethnographically](https://www.sciencedirect.com/science/article/abs/pii/S1040618223003166) for low-poundage bows, consistent with transcultural invariants rooted in physical and ballistic constraints."
+      ],
+      "success": false,
+      "metrics": {
+        "Contextual Relevancy": {
+          "score": 0.15,
+          "threshold": 0.7,
+          "success": false,
+          "reason": "The score is 0.15 because most retrieved text is about other places and broad claims (e.g. 'Mandrin site, in the Rhône Valley, France, in a layer dating to approximately 54,000 years ago' and general headlines that do not give a site), while only a few statements directly name the Uzbekistan find: 'Unretouched triangular microlithic projectile points have been identified ... Obi-Rakhmat site in Uzbekistan, dating to 80,000 years ago' and 'Tiny 80,000-year-old projectile points in Uzbekistan may have been used like arrowheads.'.",
+          "error": null
+        },
+        "Faithfulness": {
+          "score": 1.0,
+          "threshold": 0.7,
+          "success": true,
+          "reason": "The score is 1.00 because the contradictions list is empty, indicating there are no discrepancies and the actual output fully aligns with the retrieval context.",
+          "error": null
+        },
+        "Answer Relevancy": {
+          "score": 0.75,
+          "threshold": 0.7,
+          "success": true,
+          "reason": "The score is 0.75 because the response mostly addressed the question but included an irrelevant metadata/source identifier that did not state which archaeological site in Uzbekistan was involved; that single irrelevant statement prevented a higher score.",
+          "error": null
+        }
+      }
+    },
+    {
+      "name": "test_case_12",
+      "input": "How many study sites across Latin America participated in the culturally adapted lifestyle intervention?",
+      "actual_output": "- **Answer:** **12 study sites**  \n  - Supporting detail: the analysis included **1,065 people enrolled at 12 study sites** across Argentina, Bolivia, Brazil, Chile, Colombia, Costa Rica, Dominican Republic, Ecuador, Mexico, Peru and Uruguay.  \n  - Source: [This lifestyle program improved cognition 55% more than basic health advice] (ID: art_50093d064b156524)",
+      "retrieval_context": [
+        "### Adapting Brain Health Programs to Local Cultures\n\n\"The results demonstrate for the first time in Latin America that culturally adapted lifestyle interventions can be successfully implemented across diverse countries and communities, and deliver cognitive benefits for populations that are often underrepresented in clinical research,\" said Lucia Crivelli, Ph.D., lead author of the study and principal investigator at Fleni, a neurological institute in Buenos Aires, Argentina.\n\n\"We did not simply translate the U.S. POINTER model into Spanish and Portuguese. We adapted it to local cultures and habits while preserving its core elements -- making the program practical, affordable and feasible as a public health strategy,\" Crivelli added.",
+        "Older adults at risk of dementia improved their memory, thinking skills, and overall cognitive performance after taking part in two culturally adapted lifestyle programs across 11 Latin American countries. The strongest benefits were seen among participants who received more structured guidance, including regular coaching and support.\n\nThe Alzheimer's Association-funded study, known as the Latin American Initiative for Lifestyle Intervention to Prevent Cognitive Decline (LatAm-FINGERS), followed participants for two years.",
+        "\"The LatAm-FINGERS results add to U.S. POINTER findings by extending the evidence to Latin America and strengthening the case that these behavioral and lifestyle interventions can be adapted for diverse populations and communities worldwide,\" said Heather M. Snyder, Ph.D., Alzheimer's Association senior vice president of medical and scientific relations.\n\n\"A key message from this study is that structure and social support matter,\" Snyder continued. \"Addressing multiple lifestyle factors can positively impact brain health and may eventually be combined with emerging drug therapies to reduce cognitive decline and dementia risk.\"\n\n### Comparing Structured Support With General Advice",
+        "The findings were presented at the Alzheimer's Association International Conference (AAIC) 2026 in London. They build on results from the U.S. Study to Protect Brain Health Through Lifestyle Intervention to Reduce Risk (U.S. POINTER), showing that programs combining physical activity, healthy eating, cognitive training and social engagement can be adapted for different cultures, health systems and communities. The study was also published in *The Lancet*.\n\n### Adapting Brain Health Programs to Local Cultures",
+        "### Comparing Structured Support With General Advice\n\nThe analysis included 1,065 people enrolled at 12 study sites in Argentina, Bolivia, Brazil, Chile, Colombia, Costa Rica, Dominican Republic, Ecuador, Mexico, Peru and Uruguay. Participants were randomly placed into one of two groups that differed in how intensive and structured the intervention was and how much ongoing support participants received.\n\nThe Systematic Lifestyle Intervention (SLI) group included 539 participants. They received continuous coaching and support through supervised exercise, nutrition counseling based on a modified MIND diet, computerized cognitive training, cardiovascular risk monitoring, and 38 group meetings designed to encourage social connection and accountability."
+      ],
+      "success": false,
+      "metrics": {
+        "Contextual Relevancy": {
+          "score": 0.09090909090909091,
+          "threshold": 0.7,
+          "success": false,
+          "reason": "The score is 0.09 because most retrieved statements (e.g., \"successfully implemented across diverse countries and communities\", \"did not simply translate the U.S. POINTER model into Spanish and Portuguese\", \"followed participants for two years\") concern outcomes, adaptation, authorship and duration rather than a site count, while only the lines \"The programs were implemented across 11 Latin American countries.\" and \"The analysis included 1,065 people enrolled at 12 study sites in Argentina, Bolivia, Brazil, Chile, Colombia, Costa Rica, Dominican Republic, Ecuador, Mexico, Peru and Uruguay.\" directly provide the number of study sites.",
+          "error": null
+        },
+        "Faithfulness": {
+          "score": 1.0,
+          "threshold": 0.7,
+          "success": true,
+          "reason": "The score is 1.00 because the contradictions list is empty, indicating no discrepancies—the actual output fully aligns with the retrieval context.",
+          "error": null
+        },
+        "Answer Relevancy": {
+          "score": 0.75,
+          "threshold": 0.7,
+          "success": true,
+          "reason": "The score is 0.75 because the response was partly relevant — it demonstrated knowledge of the program’s results and cited a source, which shows contextual understanding — but it did not answer the direct question about how many study sites participated; the outcome information and source identifier are irrelevant to that specific query, so the score cannot be higher.",
+          "error": null
+        }
+      }
+    },
+    {
+      "name": "test_case_17",
+      "input": "What is the name of the AI framework developed to predict and control nuclear fusion plasma instabilities?",
+      "actual_output": "- **Name:** **PACMAN**\n- **Full name / meaning:** **Prediction And Control using MAchiNe learning**\n- **Source:** [AI can now control fusion plasma faster than humans can react] (ID: art_0e3f3666946f1632)",
+      "retrieval_context": [
+        "AI models then select the measurements they need and use them to estimate what the plasma is currently doing or what it is likely to do next. Controllers take those predictions and determine what actions are needed, such as increasing the power of a heating beam.\n\nIn the final stage, PACMAN resolves any conflicting instructions from the controllers, applies strict hardware safety limits, and sends the approved commands to the tokamak. Because the models and controllers operate independently, scientists can introduce new components without disrupting the rest of the framework.\n\n### AI Tested on a Real Fusion Machine\n\nResearchers demonstrated PACMAN's flexibility in five experiments using the DOE's DIII-D National Fusion Facility tokamak in San Diego.\n\nDuring those tests, PACMAN:",
+        "# AI can now control fusion plasma faster than humans can react\n\n## A new Princeton AI system can control fusion plasma in milliseconds and even predict dangerous instabilities before they happen.\n\n- Date:\n- September 6, 2026\n- Source:\n- Princeton University\n- Summary:\n- Princeton researchers have tested an AI system that can monitor and control fusion plasma in milliseconds, reacting far faster than a human operator. In one experiment, it predicted a damaging instability about 200 milliseconds before it appeared and adjusted the plasma to stop it from forming.\n- Share:",
+        "The framework is called PACMAN (a novel abbreviation for Prediction And Control using MAchiNe learning). Researchers successfully tested it on a real fusion system in five separate experiments. Its design and initial results are described in a new paper published in the journal *Nuclear Fusion*.\n\n### AI Takes on Fusion's Millisecond Challenge\n\nFusion has the potential to provide a virtually unlimited supply of electricity. Researchers are exploring several approaches to making fusion practical on Earth, including machines known as tokamaks. These devices rely on powerful magnetic fields to confine a plasma: an electrically charged gas often called the fourth state of matter.",
+        "### Bringing Multiple AI Models Into One Fusion System\n\nMachine learning has already shown considerable potential for controlling fusion plasmas. However, many previous efforts were developed individually, without a common framework that would make it easy for different models to work together. Fusion systems require multiple models because different parts of the machine and plasma must be monitored and controlled at the same time.\n\nPACMAN was designed to provide that shared structure.",
+        "In some fusion systems, particles hotter than the core of the sun can become unstable within just a few thousandths of a second. That is far too fast for a human operator to respond. Researchers at the U.S. Department of Energy's (DOE) Princeton Plasma Physics Laboratory (PPPL) and Princeton University have developed a new software framework that uses artificial intelligence (AI) to make those rapid decisions while maintaining strict safety controls and leaving people responsible for setting the system's objectives."
+      ],
+      "success": false,
+      "metrics": {
+        "Contextual Relevancy": {
+          "score": 0.4166666666666667,
+          "threshold": 0.7,
+          "success": false,
+          "reason": "The score is 0.42 because most retrieval snippets are background and do not give a name (e.g. \"AI models then select the measurements they need and use them to estimate...\" and \"A new Princeton AI system\" identify behavior or a generic system but \"does not include any specific name\"), while the relevant content explicitly names the framework (e.g. \"The framework is called PACMAN (a novel abbreviation for Prediction And Control using MAchiNe learning).\" and \"In the final stage, PACMAN resolves any conflicting instructions...\"). The presence of the explicit name amid many irrelevant lines yields a partial but not high relevancy.",
+          "error": null
+        },
+        "Faithfulness": {
+          "score": 1.0,
+          "threshold": 0.7,
+          "success": true,
+          "reason": "The score is 1.00 because the contradictions list is empty, indicating no discrepancies between the actual output and the retrieval context — the output fully aligns with the source. Great job!",
+          "error": null
+        },
+        "Answer Relevancy": {
+          "score": 1.0,
+          "threshold": 0.7,
+          "success": true,
+          "reason": "The score is 1.00 because the response contained no irrelevant statements and directly addressed the question about the AI framework name—fully relevant and concise.",
+          "error": null
+        }
+      }
+    },
+    {
+      "name": "test_case_0",
+      "input": "What atmospheric phenomenon contributed to the temporary net ice sheet mass gain of about 695 billion tons over East Antarctica?",
+      "actual_output": "- **Atmospheric phenomenon:** a **Rossby wave train**\n- **How it contributed:** warming in the tropical warm pool generated a Rossby wave train that altered atmospheric circulation, established a north–south circulation pattern over East Antarctica, funneled moisture toward the continent, and increased regional snowfall—leading to the temporary ~695 billion ton ice gain.  \n  - Source: [Antarctica gained a record 695 billion tons of ice. Scientists found the surprising reason] (ID: art_b63f7920e6650b13)",
+      "retrieval_context": [
+        "# Antarctica gained a record 695 billion tons of ice. Scientists found the surprising reason\n\n- Date:\n- September 6, 2026\n- Source:\n- Chinese Academy of Sciences Headquarters\n- Summary:\n- East Antarctica gained an astonishing 695 billion tons of ice between 2021 and 2023, temporarily slowing Antarctica’s long-term decline. Researchers found that warming thousands of miles away in the tropical ocean altered atmospheric circulation and funneled moisture toward the continent, triggering exceptionally heavy snowfall.\n- Share:\n\nA persistent patch of unusually warm tropical ocean helped intensify snowfall over East Antarctica, contributing to a temporary net ice sheet mass gain of about 695 billion tons, according to a new study published in *Nature* on August 19.",
+        "Yet between 2021-23, that pattern briefly shifted. The ice sheet gained about 695 billion tons of mass, making it the largest Antarctic mass gain observed by the GRACE satellite missions.\n\nTo understand what caused the unusual increase, researchers led by the Institute of Oceanology of the Chinese Academy of Sciences (IOCAS) brought together several types of evidence. They analyzed gravity satellite measurements, snow accumulation records preserved in ice cores, and simulations of atmospheric circulation. Their goal was to determine where the extra moisture came from and how weather patterns delivered it to East Antarctica.\n\n### A Climate Signal From the Tropics",
+        "The researchers therefore describe the tropical warm pool as a remote \"regulator\" that can influence snowfall and ice mass in East Antarctica over periods lasting several years. Changes in tropical ocean temperatures can alter atmospheric circulation in ways that ultimately affect how much snow falls on the distant Antarctic continent.\n\nThe findings reveal a long-distance climate connection in which conditions in the tropics can have major consequences for Antarctica.\n\n### Antarctica Is Still Losing Ice Over the Long Term\n\nDespite the striking 695 billion-ton increase, the researchers emphasize that the event was temporary and does not reverse the long-term decline of the Antarctic Ice Sheet.",
+        "Researchers found that sustained warming in the tropical warm pool during 2021-23 set off a chain of atmospheric changes that ultimately affected weather thousands of miles away in Antarctica. The warming generated a Rossby wave train that traveled toward the continent, helped establish a north-south circulation pattern over East Antarctica, altered the movement of moisture, and increased regional snowfall. Together, these changes temporarily slowed the Antarctic Ice Sheet's overall loss of mass.\n\n### A Remarkable Antarctic Ice Gain\n\nThe Antarctic Ice Sheet is a major source of uncertainty when scientists estimate how much global sea levels could rise in the future. During the past two decades, Antarctica has lost ice at an average rate of approximately 140.5 billion tons per year.",
+        "The international study, published in *Science*, addresses a long-standing climate mystery: how Antarctica could develop a massive ice sheet at a time when Earth was around 5ºC warmer than it is today.\n\nThe findings point to the gradual formation of high terrain in East Antarctica. As an escarpment, plateau, and mountain system rose, it created elevations cold enough for snow and ice to persist and build up over time.\n\nThe process began after Antarctica and Africa started separating during the Jurassic Period, 201-143 million years ago. Powerful forces deep inside Earth gradually lifted much of East Antarctica over more than 100 million years, helping set the stage for ice sheet formation about 34 million years ago."
+      ],
+      "success": false,
+      "metrics": {
+        "Contextual Relevancy": {
+          "score": 0.6666666666666666,
+          "threshold": 0.7,
+          "success": false,
+          "reason": "The score is 0.67 because the retrieval does contain direct causal statements—e.g., 'A persistent patch of unusually warm tropical ocean helped intensify snowfall over East Antarctica,' 'The warming generated a Rossby wave train that traveled toward the continent,' and 'Warming thousands of miles away in the tropical ocean altered atmospheric circulation and funneled moisture toward the continent'—which directly identify tropical ocean warming altering atmospheric circulation (a Rossby wave/ moisture funneling) as the phenomenon. However, contextual noise reduces clarity: items like 'Date: September 6, 2026' and 'They analyzed gravity satellite measurements, snow accumulation records preserved in ice cores, and simulations of atmospheric circulation' are metadata/methods that do not state the atmospheric mechanism, so relevance is moderate rather than high.",
+          "error": null
+        },
+        "Faithfulness": {
+          "score": 1.0,
+          "threshold": 0.7,
+          "success": true,
+          "reason": "The score is 1.00 because the contradictions list is empty, indicating no discrepancies and that the actual output fully aligns with the retrieval context — great job!",
+          "error": null
+        },
+        "Answer Relevancy": {
+          "score": 1.0,
+          "threshold": 0.7,
+          "success": true,
+          "reason": "The score is 1.00 because the output contained no irrelevant statements and stayed fully on-topic; it cannot be higher because 1.00 is the maximum possible score. Nice concise and focused response.",
+          "error": null
+        }
+      }
+    },
+    {
+      "name": "test_case_13",
+      "input": "Which specific protein stood out as a weak spot when blocked in glioblastoma brain cancer research?",
+      "actual_output": "- **Protein:** **SET**\n- **Evidence:** Blocking **SET** had a strong effect on tumor formation and stood out as a potential weak spot; suppressing SET prevented tumors from developing in preclinical experiments and made glioblastoma cells more vulnerable to treatment.  \n- **Source:** [Scientists find a weak spot in one of the deadliest brain cancers] (ID: art_260b3821987228bd)",
+      "retrieval_context": [
+        "# Scientists find a weak spot in one of the deadliest brain cancers\n\n- Date:\n- September 6, 2026\n- Source:\n- Ohio State University Wexner Medical Center\n- Summary:\n- Researchers may have found a new way to weaken glioblastoma’s defenses against treatment. Blocking a protein called SET prevented tumors from forming in preclinical models, while targeting related proteins made cancer cells more vulnerable to radiation. The strategy works by restoring activity of PP2A, an enzyme that glioblastoma cells appear to suppress. Human testing will be needed to determine whether the approach is safe and effective.\n- Share:",
+        "### A Potential Weakness in Glioblastoma\n\nAmong the proteins examined, SET stood out because blocking it had such a strong effect on tumor formation. The researchers also found that interfering with related proteins increased the sensitivity of glioblastoma cells to radiation.\n\nTogether, the findings point to a biological pathway that may eventually be targeted with drugs to weaken the cancer's defenses.",
+        "The OSUCCC - James team focused on PP2A, an enzyme involved in regulating signals that cancer cells use to grow, survive, and recover from treatment-related damage. Glioblastoma cells appear to interfere with PP2A using three proteins called ANP32A, CIP2A and SET. When the researchers blocked those proteins in laboratory and animal models, fewer cancer cells survived, and the remaining cells became more vulnerable to radiation.",
+        "Glioblastoma is considered the most aggressive type of brain cancer.\n\nOne reason it is so difficult to treat is that cancer cells spread into nearby brain tissue. That makes complete surgical removal extremely challenging because surgeons must avoid damaging healthy areas of the brain. The blood-brain barrier creates another obstacle by restricting how effectively drugs and radiotherapy can reach the tumor. Together, these challenges help explain why the five-year survival rate is only about 7 percent.\n\n### A Two-Function Nanoparticle Platform",
+        "Glioblastoma is among the most lethal forms of cancer, and treatment options have changed relatively little because the tumors frequently withstand both radiation and chemotherapy. Researchers at The Ohio State University Comprehensive Cancer Center - Arthur G. James Cancer Hospital and Richard J. Solove Research Institute have now identified a protein called SET as a possible target that could make glioblastoma cells easier to kill with existing therapies.\n\nRather than replacing current treatments, the strategy is designed to help them work better. In preclinical experiments, suppressing SET prevented tumors from developing.\n\n### A Potential Weakness in Glioblastoma"
+      ],
+      "success": false,
+      "metrics": {
+        "Contextual Relevancy": {
+          "score": 0.5217391304347826,
+          "threshold": 0.7,
+          "success": false,
+          "reason": "The score is 0.52 because much of the context is background and procedural (e.g., \"Human testing will be needed to determine whether the approach is safe and effective.\"; \"Glioblastoma is considered the most aggressive type of brain cancer.\"), yet key lines directly answer the question by naming the protein: \"Blocking a protein called SET prevented tumors from forming in preclinical models.\" and \"Among the proteins examined, SET stood out because blocking it had such a strong effect on tumor formation.\".",
+          "error": null
+        },
+        "Faithfulness": {
+          "score": 1.0,
+          "threshold": 0.7,
+          "success": true,
+          "reason": "The score is 1.00 because the provided Contradictions list is empty, indicating no discrepancies between the actual output and the retrieval context — the output fully aligns with the source. Great job!",
+          "error": null
+        },
+        "Answer Relevancy": {
+          "score": 1.0,
+          "threshold": 0.7,
+          "success": true,
+          "reason": "The score is 1.00 because the output directly addressed which protein was the weak spot with no irrelevant statements — concise, focused, and fully relevant.",
+          "error": null
+        }
+      }
+    },
+    {
+      "name": "test_case_1",
+      "input": "Which satellite mission observed the largest Antarctic ice mass gain between 2021 and 2023?",
+      "actual_output": "- **Satellite mission:** **GRACE satellite missions**  \n- **Source:** [Antarctica gained a record 695 billion tons of ice. Scientists found the surprising reason] (ID: art_b63f7920e6650b13)",
+      "retrieval_context": [
+        "Yet between 2021-23, that pattern briefly shifted. The ice sheet gained about 695 billion tons of mass, making it the largest Antarctic mass gain observed by the GRACE satellite missions.\n\nTo understand what caused the unusual increase, researchers led by the Institute of Oceanology of the Chinese Academy of Sciences (IOCAS) brought together several types of evidence. They analyzed gravity satellite measurements, snow accumulation records preserved in ice cores, and simulations of atmospheric circulation. Their goal was to determine where the extra moisture came from and how weather patterns delivered it to East Antarctica.\n\n### A Climate Signal From the Tropics",
+        "# Antarctica gained a record 695 billion tons of ice. Scientists found the surprising reason\n\n- Date:\n- September 6, 2026\n- Source:\n- Chinese Academy of Sciences Headquarters\n- Summary:\n- East Antarctica gained an astonishing 695 billion tons of ice between 2021 and 2023, temporarily slowing Antarctica’s long-term decline. Researchers found that warming thousands of miles away in the tropical ocean altered atmospheric circulation and funneled moisture toward the continent, triggering exceptionally heavy snowfall.\n- Share:\n\nA persistent patch of unusually warm tropical ocean helped intensify snowfall over East Antarctica, contributing to a temporary net ice sheet mass gain of about 695 billion tons, according to a new study published in *Nature* on August 19.",
+        "Researchers found that sustained warming in the tropical warm pool during 2021-23 set off a chain of atmospheric changes that ultimately affected weather thousands of miles away in Antarctica. The warming generated a Rossby wave train that traveled toward the continent, helped establish a north-south circulation pattern over East Antarctica, altered the movement of moisture, and increased regional snowfall. Together, these changes temporarily slowed the Antarctic Ice Sheet's overall loss of mass.\n\n### A Remarkable Antarctic Ice Gain\n\nThe Antarctic Ice Sheet is a major source of uncertainty when scientists estimate how much global sea levels could rise in the future. During the past two decades, Antarctica has lost ice at an average rate of approximately 140.5 billion tons per year.",
+        "Europe's Copernicus Sentinel-1 mission has documented a major change at Petermann Glacier in northwest Greenland, where a 76 sq km section of the glacier's floating ice tongue broke away on August 4, 2026.\n\nThe break represents Petermann Glacier's largest loss of floating ice since 2012 and the biggest calving event recorded in the Arctic since 2020. It offers another striking example of how quickly conditions can shift across Earth's polar regions.\n\nThe newly formed tabular iceberg, also known as an 'ice island', is roughly the size of Manhattan and may be as much as 150 meters thick.\n\n### Sentinel-1 Captures the Breakup",
+        "### Satellite Monitoring Revealed Years of Growing Instability\n\nScientists have been tracking changes at Petermann Glacier with long-term satellite observations since 2019. Over that period, they closely followed the condition of the glacier's floating ice tongue, recording the expansion of fractures and watching for signs that a major section might eventually break away.\n\n\"Petermann Glacier has long been one of Greenland's largest remaining ice tongues,\" says Garbo. \"We've anticipated this break for years, and seeing it finally happen is remarkable.\""
+      ],
+      "success": false,
+      "metrics": {
+        "Contextual Relevancy": {
+          "score": 0.25925925925925924,
+          "threshold": 0.7,
+          "success": false,
+          "reason": "The score is 0.26 because, although the retrieval contains directly relevant lines—\"The ice sheet gained about 695 billion tons of mass, making it the largest Antarctic mass gain observed by the GRACE satellite missions.\" and \"Between 2021-23, the ice sheet gained about 695 billion tons of mass.\"—most retrieved content is unrelated (e.g., \"They analyzed gravity satellite measurements, snow accumulation records preserved in ice cores, and simulations of atmospheric circulation.\" describes methods not the observing mission; \"September 6, 2026\" is a publication date; and \"The statement refers to 'Petermann Glacier in northwest Greenland'... it is about a Greenland calving event in 2026, not about Antarctic ice mass gain between 2021 and 2023.\").",
+          "error": null
+        },
+        "Faithfulness": {
+          "score": 1.0,
+          "threshold": 0.7,
+          "success": true,
+          "reason": "The score is 1.00 because the contradictions list is empty, indicating no discrepancies were found and the actual output aligns fully with the retrieval context—well done.",
+          "error": null
+        },
+        "Answer Relevancy": {
+          "score": 0.3333333333333333,
+          "threshold": 0.7,
+          "success": false,
+          "reason": "The score is 0.33 because the output contained a partially relevant fact (reported ice gain) but failed to answer the question directly by naming which satellite mission observed the largest Antarctic ice mass gain; instead it included a bare source identifier that provides no mission information. These omissions make the response incomplete and partly irrelevant (so it isn’t higher), while the presence of the reported ice-change detail explains why it isn’t lower.",
+          "error": null
+        }
+      }
+    },
+    {
+      "name": "test_case_2",
+      "input": "According to the large study of over 270,000 people, which common amino acid supplement was linked to lifespan differences in men?",
+      "actual_output": "- **Amino acid:** **Tyrosine**\n- **Key point:** Higher blood levels of tyrosine were linked to a shorter lifespan in men (potentially reducing male life expectancy by nearly one year).  \n- **Source:** [Popular brain supplement linked to shorter lifespan in men] (ID: art_db53477a0482ae61)",
+      "retrieval_context": [
+        "A large study involving more than 270,000 people suggests that one common amino acid may be tied to how long men live.\n\nResearchers led by Jie V. Zhao, Yitang Sun, Junmeng Zhang, and Kaixiong Ye from the University of Hong Kong and the University of Georgia examined whether phenylalanine and tyrosine, two amino acids involved in metabolism and brain function, are connected to lifespan (lifespan). Their results point to a notable difference between men and women. Higher tyrosine levels were associated with shorter life expectancy in men, while no significant effect was detected in women.",
+        "# Popular brain supplement linked to shorter lifespan in men\n\n## A common amino acid found in protein-rich foods and supplements may be linked to a shorter lifespan in men.\n\n- Date:\n- September 6, 2026\n- Source:\n- Impact Journals LLC\n- Summary:\n- A large study involving more than 270,000 people has linked higher blood levels of the amino acid tyrosine to a shorter lifespan in men. Using both observational data and genetic analysis, researchers found that elevated tyrosine could potentially reduce male life expectancy by nearly a year, while no significant effect appeared in women. Tyrosine is found naturally in protein-rich foods and is also sold as a supplement for boosting focus and mental performance, making the finding especially intriguing.\n- Share:",
+        "# Common medications may change your gut for years\n\n- Date:\n- August 24, 2026\n- Source:\n- Estonian Research Council\n- Summary:\n- Common medications may reshape the gut microbiome long after the last dose is taken. In a study of more than 2,500 people, researchers found lasting microbial changes linked not only to antibiotics, but also to antidepressants, beta-blockers, acid-reducing drugs, and benzodiazepines. Some effects were still detectable years later, suggesting past medication use may strongly influence the gut bacteria people carry today.\n- Share:\n\nMedications can influence the community of microbes living in the human gut long after a person stops taking them, according to a large study led by researchers at the University of Tartu Institute of Genomics.",
+        "Deaths from any cause were also more common among people with documented melatonin use. During the five-year period, 7.8% of participants in the melatonin group died compared with 4.3% of those in the non-melatonin group, making the risk nearly twice as high.\n\n\"Melatonin supplements are widely thought of as a safe and 'natural' option to support better sleep, so it was striking to see such consistent and significant increases in serious health outcomes, even after balancing for many other risk factors,\" Nnadi said.\n\nThe results also drew concern from sleep researcher Marie-Pierre St-Onge, Ph.D., C.C.S.H., FAHA, who was not involved in the study.",
+        "At first, higher levels of both amino acids appeared to be associated with an increased risk of death. But when the researchers examined the relationships more closely, tyrosine was the one that consistently stood out.\n\n### Tyrosine Linked to a Shorter Lifespan in Men\n\nThe genetic analyses suggested that elevated tyrosine levels may have a potentially causal relationship with reduced life expectancy in men. According to the researchers' estimates, higher tyrosine could shorten male lifespan by nearly one year.\n\nThe same pattern was not seen in women. Researchers found no significant effect of tyrosine on female lifespan."
+      ],
+      "success": false,
+      "metrics": {
+        "Contextual Relevancy": {
+          "score": 0.5,
+          "threshold": 0.7,
+          "success": false,
+          "reason": "The score is 0.50 because the retrieval does contain the direct answer (e.g. “Higher tyrosine levels were associated with shorter life expectancy in men,” “a common amino acid … may be linked to a shorter lifespan in men,” and “higher tyrosine could shorten male lifespan by nearly one year”), but that clear signal is diluted by irrelevant material such as author/institution metadata (“Jie V. Zhao, Yitang Sun, Junmeng Zhang, and Kaixiong Ye”), publication/source details (“Date: August 24, 2026”, “Source: Estonian Research Council”), and unrelated medication/melatonin content (“documented melatonin use”, “a study of more than 2,500 people”), so overall relevance is only moderate.",
+          "error": null
+        },
+        "Faithfulness": {
+          "score": 1.0,
+          "threshold": 0.7,
+          "success": true,
+          "reason": "The score is 1.00 because the contradictions list is empty, indicating there are no identified contradictions and the actual output fully aligns with the retrieval context.",
+          "error": null
+        },
+        "Answer Relevancy": {
+          "score": 1.0,
+          "threshold": 0.7,
+          "success": true,
+          "reason": "The score is 1.00 because the output contained no irrelevant statements and directly addressed the question; it cannot be higher because 1.00 is the maximum possible score.",
+          "error": null
+        }
+      }
+    },
+    {
+      "name": "test_case_10",
+      "input": "Who is the lead researcher from WashU Medicine investigating the metabolic effects of sugar substitutes?",
+      "actual_output": "- **Answer:** The current articles in the system do not contain enough information to answer this question.",
+      "retrieval_context": [
+        "The findings reinforce a broader lesson emerging from research on alternative sweeteners. Replacing ordinary sugar with another sweet-tasting compound does not necessarily eliminate metabolic consequences.\n\nAs Patti summarized it, \"there is no free lunch\" when searching for sugar alternatives, particularly when several metabolic pathways can ultimately lead toward liver dysfunction.\n\nThis work was supported by the National Institutes of Health, grants R35ES028365 (G.J.P.) and P30DK056341 (S.K.).",
+        "# Scientists discover a hidden problem with this popular sugar substitute\n\n- Date:\n- September 6, 2026\n- Source:\n- Washington University in St. Louis\n- Summary:\n- Sorbitol, a sugar alcohol commonly used in sugar-free candy, gum, and other low-calorie foods, may not be as harmless as it seems. Researchers at Washington University in St. Louis found that the body can convert sorbitol into a form of fructose in the liver, potentially triggering some of the same harmful metabolic effects linked to fructose.\n- Share:\n\nSugar substitutes are often marketed as a better choice than foods loaded with refined sugar (glucose). Common examples include aspartame, the sweetener used in Equal packets, sucralose (Splenda), and sugar alcohols such as sorbitol.",
+        "### What This Means for Aging\n\n\"These findings help explain why caffeine might be beneficial for health and longevity,\" said Dr. John-Patrick Alao, the postdoctoral research scientist leading this study. \"And they open up exciting possibilities for future research into how we might trigger these effects more directly -- with diet, lifestyle, or new medicines.\"\n\nThe study does not prove that drinking coffee will make people live longer. The experiments were carried out in fission yeast, and results from simple organisms do not always translate directly to humans.\n\nStill, the fact that AMPK is shared across yeast and humans gives researchers a useful biological clue.",
+        "After reaching the liver, sorbitol can be converted into a derivative of fructose.\n\nThat finding is particularly relevant because people with diabetes and other metabolic disorders may deliberately choose products labeled \"sugar free\" in an effort to avoid the health effects associated with table sugar. Understanding whether alternative sweeteners truly offer a healthier metabolic outcome is therefore important.\n\n### Too Much Sorbitol Can Overwhelm the Gut\n\nAt relatively low levels, including the quantities typically obtained from fruit, gut bacteria appear to be effective at removing sorbitol.",
+        "The research, published in the scientific journal *Discover Food*, was led by Dr. Asaf Tzachor, Founder and Academic Director of the Aviram Sustainability and Climate Program at Reichman University, together with researchers from Iceland, Denmark and Austria. Using advanced biotechnology and carefully controlled light conditions, the team produced carbon-neutral, nutrient-rich Spirulina biomass containing active vitamin B12. According to the researchers, this is the first time biologically active vitamin B12 has been reported in Spirulina.\n\n### A Global Vitamin B12 Problem"
+      ],
+      "success": false,
+      "metrics": {
+        "Contextual Relevancy": {
+          "score": 0.17391304347826086,
+          "threshold": 0.7,
+          "success": false,
+          "reason": "The score is 0.17 because, while the context does point to WashU—e.g. \"Source: Washington University in St. Louis\" and \"Researchers at Washington University in St. Louis found that the body can convert sorbitol...\"—it does not provide the investigator’s name (e.g. \"does not identify or point to a specific lead researcher from WashU Medicine\"; \"does not name the lead researcher from WashU Medicine\"). The only investigator clues are grant initials \"R35ES028365 (G.J.P.) and P30DK056341 (S.K.)\", which are insufficient to identify the lead researcher.",
+          "error": null
+        },
+        "Faithfulness": {
+          "score": 1.0,
+          "threshold": 0.7,
+          "success": true,
+          "reason": "The score is 1.00 because the Contradictions list is empty, indicating no discrepancies between the actual output and the retrieval context and thus the output is fully faithful.",
+          "error": null
+        },
+        "Answer Relevancy": {
+          "score": 0.5,
+          "threshold": 0.7,
+          "success": false,
+          "reason": "The score is 0.50 because the output was partly useful (it presumably included the correct lead-researcher information), but it also contained the irrelevant fragment 'JSON:' which adds no content or answer. That stray label prevents a higher score; removing it or replacing it with the requested formatted answer would improve the relevancy.",
+          "error": null
+        }
+      }
+    },
+    {
+      "name": "test_case_26",
+      "input": "Approximately how many people in the United States are currently waiting for a liver transplant?",
+      "actual_output": "- **Answer:** Approximately **more than 10,000 people** in the United States are currently waiting for a liver transplant.  \n- **Source:** [MIT scientists develop injectable “mini livers” that work inside the body] (ID: art_0cd8f87eb2744df4)",
+      "retrieval_context": [
+        "More than 10,000 people in the United States with chronic liver disease are currently waiting for a liver transplant, yet the supply of donated organs falls far short of demand. Some patients with liver failure also cannot undergo transplantation because they are not healthy enough to withstand the operation.\n\nMIT engineers are developing a possible alternative: injectable \"mini livers\" designed to provide some of the functions normally carried out by a damaged liver.\n\nIn a new study in mice, the researchers found that injected liver cells remained alive for at least two months. During that time, the cells continued producing many of the enzymes and proteins normally generated by the liver.",
+        "### A Potential Bridge to Liver Transplantation\n\nThe researchers envision several possible roles for the technology. For some patients, injectable liver grafts might provide an alternative to surgery. For others, they could temporarily supplement liver function while the patient waits for a donor organ.\n\n\"The way we see this technology is it can provide an alternative to surgery, but it can also serve as a bridge to transplantation where these grafts can provide support until a donor organ becomes available,\" Kumar says. \"And if we think they might need another therapy or more grafts, the barriers to do that are much less with this injectable technology than undergoing another surgery.\"",
+        "### Restoring Essential Liver Functions\n\nThe liver is responsible for roughly 500 essential functions in the human body. Among other jobs, it helps regulate blood clotting, clears bacteria from the bloodstream, and processes medications. Many of these tasks are performed by specialized liver cells known as hepatocytes.\n\nFor more than a decade, Bhatia's laboratory has investigated ways to restore hepatocyte activity without requiring patients to undergo a surgical liver transplant. One strategy involves placing hepatocytes inside a biomaterial such as a hydrogel. However, those gels still need to be surgically implanted.",
+        "\"We hope our research will help both the public and physicians understand the connection between PCE exposure and significant liver fibrosis,\" he said. \"If more people with PCE exposure are screened for liver fibrosis, the disease can be caught earlier, and patients may have a better chance of recovering their liver function,\" said Lee.",
+        "# Keto diet cut liver fat by 67% in a clinical trial\n\n- Date:\n- August 29, 2026\n- Source:\n- Cell Press\n- Summary:\n- A ketogenic diet outperformed Mediterranean and low-fat diets in several measures of metabolic health during a clinical trial involving people with obesity, prediabetes, and fatty liver disease. All three groups lost about 10% of their body weight, but keto reduced liver fat by 67%, compared with 45% for the other diets. About half of the keto group also no longer qualified as having prediabetes after four to five months.\n- Share:"
+      ],
+      "success": false,
+      "metrics": {
+        "Contextual Relevancy": {
+          "score": 0.04,
+          "threshold": 0.7,
+          "success": false,
+          "reason": "The score is 0.04 because only one line directly answers the query—\"More than 10,000 people in the United States with chronic liver disease are currently waiting for a liver transplant\"—while the bulk of the retrieval context is unrelated, containing items like \"injectable \\\"mini livers\\\"\", \"study in mice\"/\"cells remained alive for at least two months\", and clinical/diet items such as \"Keto diet cut liver fat by 67% in a clinical trial\", none of which supply a count of people waiting.",
+          "error": null
+        },
+        "Faithfulness": {
+          "score": 1.0,
+          "threshold": 0.7,
+          "success": true,
+          "reason": "The score is 1.00 because the contradictions list is empty — no discrepancies were identified, so the actual output fully aligns with the retrieval context. Well done!",
+          "error": null
+        },
+        "Answer Relevancy": {
+          "score": 0.5,
+          "threshold": 0.7,
+          "success": false,
+          "reason": "The score is 0.50 because the output contained some relevant context about liver transplants but failed to provide the requested current number of people on the U.S. liver transplant waiting list and included an irrelevant MIT \"mini livers\" citation; the presence of useful context justifies a mid-range score, while the missing statistic and unrelated citation prevent a higher rating.",
+          "error": null
+        }
+      }
+    },
+    {
+      "name": "test_case_23",
+      "input": "Which eye condition has been linked to long-term use of Cialis for prostate symptoms in a large study?",
+      "actual_output": "- **Primary condition linked:** **glaucoma**  \n  - The study found higher rates of **primary open‑angle glaucoma** and a greater likelihood of starting glaucoma treatment over five years.  \n- **Related eye condition also increased:** **ocular hypertension**  \n\nSource: [Cialis linked to higher glaucoma risk in large study] (ID: art_e8a5efef07fdd506)",
+      "retrieval_context": [
+        "A widely used erectile dysfunction medication may be associated with a greater risk of glaucoma when taken long-term to relieve urinary symptoms caused by an enlarged prostate, according to a large comparative study published online in the *British Journal of Ophthalmology*.\n\nThe findings suggest that men who use tadalafil (Cialis) over extended periods for these symptoms may benefit from closer monitoring of their eye health. Researchers say this may be especially important for people who already have glaucoma risk factors, including a family history of the disease or elevated pressure within the eye (ocular hypertension).\n\n### Tadalafil and Eye Health",
+        "# Cialis linked to higher glaucoma risk in large study\n\n- Date:\n- September 7, 2026\n- Source:\n- BMJ Group\n- Summary:\n- A large study of nearly 74,000 men suggests that long-term use of tadalafil, best known as Cialis, may be linked to a higher risk of glaucoma and other eye pressure problems. Men prescribed the drug for urinary symptoms caused by an enlarged prostate were 22% more likely to develop glaucoma, 32% more likely to develop ocular hypertension, and 33% more likely to be diagnosed with primary open-angle glaucoma or start glaucoma treatment over five years.\n- Share:",
+        "### Study Cannot Prove Cialis Causes Glaucoma\n\nThe researchers caution that the findings do not establish that tadalafil directly causes glaucoma. Because this was an observational study, it can identify associations but cannot determine cause and effect.\n\nThere were also several limitations. For example, the researchers could not account for changes in medication prescriptions or actual medication use over time, nor could they fully track the development of additional underlying health conditions during the study period.\n\nMost participants were White, which means the findings may not necessarily apply to men from other ethnic backgrounds.\n\nEven so, the researchers say the results warrant further investigation into how long-term PDE5i use might affect the eyes.",
+        "### Tadalafil and Eye Health\n\nTadalafil belongs to a group of medications known as phosphodiesterase type 5 inhibitors (PDE5i), the same drug class that includes sildenafil (Viagra). These medications are widely used for erectile dysfunction, while tadalafil is also prescribed for urinary problems associated with an enlarged prostate.\n\nPrevious research has connected PDE5i medications with several types of eye problems, including disorders involving the optic nerve and the macula, which is the area of the retina responsible for detailed central vision.",
+        "However, researchers say the evidence surrounding glaucoma has remained inconsistent. In particular, relatively little is known about glaucoma risk when tadalafil is used for lower urinary tract symptoms, a treatment that commonly involves taking the medication every day over a long period.\n\nTo investigate this question more closely, the researchers examined whether tadalafil, a long-acting PDE5i, was associated with an increased risk of glaucoma when prescribed for urinary tract symptoms related to an enlarged prostate (benign prostatic hyperplasia).\n\n### Nearly 74,000 Men Included in the Study"
+      ],
+      "success": true,
+      "metrics": {
+        "Contextual Relevancy": {
+          "score": 0.7727272727272727,
+          "threshold": 0.7,
+          "success": true,
+          "reason": "The score is 0.77 because the retrieval contains clear, directly relevant statements—e.g., it says a long-term link to “a higher risk of glaucoma,” that men were “22% more likely to develop glaucoma” and “33% more likely to be diagnosed with primary open-angle glaucoma”—but relevance is diluted by unrelated metadata and limitations such as “September 7, 2026,” the source “BMJ Group,” and methodological notes like “could not account for changes in medication prescriptions or actual medication use over time” and “Most participants were White,” which do not identify the specific eye condition.",
+          "error": null
+        },
+        "Faithfulness": {
+          "score": 1.0,
+          "threshold": 0.7,
+          "success": true,
+          "reason": "The score is 1.00 because the contradictions list is empty, indicating no discrepancies were found and the actual output fully aligns with the retrieval context.",
+          "error": null
+        },
+        "Answer Relevancy": {
+          "score": 1.0,
+          "threshold": 0.7,
+          "success": true,
+          "reason": "The score is 1.00 because the output was fully on-topic and directly addressed the question with no irrelevant statements, so there was nothing to deduct from the relevancy.",
+          "error": null
+        }
+      }
+    },
+    {
+      "name": "test_case_20",
+      "input": "What health risk was linked to common dry-cleaning chemicals in recent medical studies?",
+      "actual_output": "- **Health risk:** **Serious liver scarring (significant liver fibrosis)**  \n- **Key findings:**  \n  - People with detectable levels of the dry-cleaning chemical **tetrachloroethylene (PCE)** in their blood were **three times more likely** to have significant liver fibrosis.  \n  - For every **1 nanogram per milliliter** increase in blood PCE, the **odds of significant liver fibrosis increased five-fold**.  \n- **Context:** PCE is commonly used in dry cleaning and found in some household products; the study analyzed nationally representative NHANES data.  \n- **Source:** [Common dry-cleaning chemical linked to triple the risk of liver scarring] (ID: art_77a09464a9c526a3)",
+      "retrieval_context": [
+        "# Common dry-cleaning chemical linked to triple the risk of liver scarring\n\n## A common dry-cleaning chemical was linked to triple the risk of serious liver scarring, pointing to a hidden environmental cause of liver disease.",
+        "\"People with higher incomes may be more likely to use dry cleaning services, which could increase their exposure to PCE,\" said Lee. \"However, people who work in dry cleaning facilities may also face elevated risk due to prolonged, direct exposure to PCE at work.\"\n\nThe relationship between exposure and liver fibrosis became even more striking when researchers examined PCE concentrations in the blood.\n\nFor every one nanogram per milliliter increase in PCE concentration (one nanogram is one-billionth of a gram), the odds of having significant liver fibrosis increased five-fold.\n\n### A possible clue to unexplained liver disease\n\nOne of the most notable findings was what researchers did not see.",
+        "- Date:\n- September 7, 2026\n- Source:\n- University of Southern California - Health Sciences\n- Summary:\n- A chemical commonly used in dry cleaning and found in some household products may be an overlooked threat to liver health. Researchers found that people with detectable levels of tetrachloroethylene (PCE) in their blood were three times more likely to have significant liver fibrosis, a dangerous buildup of scar tissue that can eventually lead to liver failure or cancer. The risk climbed sharply as PCE levels increased, even after accounting for factors such as age, sex, race, education, alcohol use, and metabolic conditions.\n- Share:",
+        "Liver disease is most often associated with a handful of familiar causes. These include heavy alcohol use, fat accumulation in the liver connected to obesity, diabetes and high cholesterol, as well as infections with hepatitis B or C.\n\nBut new research suggests that an environmental chemical may deserve more attention as another possible risk factor.\n\nA study published in *Liver International* by researchers at Keck Medicine of USC found that exposure to tetrachloroethylene, commonly known as PCE, may be linked to serious liver damage. PCE is widely used in dry cleaning and can also be found in consumer products including arts and crafts adhesives, spot removers and stainless steel polish.",
+        "Because of its toxicity, the United States Environmental Protection Agency has begun a 10-year phaseout of PCE use in dry cleaning. The agency has also prohibited some other uses and imposed workplace protections for others.\n\nEven so, PCE may continue to be encountered in certain products and industrial applications, particularly in countries that do not have comparable restrictions.\n\n### Higher PCE levels were tied to greater liver risk\n\nTo investigate the possible connection between PCE and liver disease, Lee and his colleagues analyzed data from the National Health and Nutrition Examination Survey (NHANES), a nationally representative health survey of the United States population."
+      ],
+      "success": true,
+      "metrics": {
+        "Contextual Relevancy": {
+          "score": 0.7222222222222222,
+          "threshold": 0.7,
+          "success": true,
+          "reason": "The score is 0.72 because, while some retrieval items are irrelevant (e.g., 'The phrase \"what researchers did not see\" is vague...', 'September 7, 2026' which is a publication date..., 'University of Southern California - Health Sciences' which identifies the source but does not answer..., and the list of other causes...), the context still directly answers the question with clear findings such as 'A common dry-cleaning chemical was linked to triple the risk of serious liver scarring,' 'Researchers found that people with detectable levels of tetrachloroethylene (PCE) in their blood were three times more likely to have significant liver fibrosis,' and 'For every one nanogram per milliliter increase in PCE concentration... the odds of having significant liver fibrosis increased five-fold.'",
+          "error": null
+        },
+        "Faithfulness": {
+          "score": 1.0,
+          "threshold": 0.7,
+          "success": true,
+          "reason": "The score is 1.00 because the contradictions list is empty (contradictions = []), indicating no discrepancies between the actual output and the retrieval context — nicely aligned and faithful.",
+          "error": null
+        },
+        "Answer Relevancy": {
+          "score": 1.0,
+          "threshold": 0.7,
+          "success": true,
+          "reason": "The score is 1.00 because the response directly addressed the health risk with no irrelevant statements; there were no extraneous details. It cannot be higher since 1.00 is the maximum possible score.",
+          "error": null
+        }
+      }
+    },
+    {
+      "name": "test_case_29",
+      "input": "What insights does the newly discovered Brazilian dinosaur provide about ancient prehistoric continents?",
+      "actual_output": "- **Ancient intercontinental connection**: The discovery indicates a surprising 120-million-year-old link between **South America and Europe**, because the dinosaur’s closest known relative lived in what is now Spain.  \n  [Giant new dinosaur discovered beneath construction site in Brazil] (ID: art_948ce40af204c8ae)\n\n- **Migration route and timing**: Researchers propose the species’ ancestors reached South America by moving **through North Africa between about 140 and 120 million years ago**, when those landmasses were still joined. This supports the idea that these regions were connected as part of **Gondwana**.  \n  [Giant new dinosaur discovered beneath construction site in Brazil] (ID: art_948ce40af204c8ae)\n\n- **How giant dinosaurs spread**: The find provides direct evidence about **how giant dinosaurs dispersed across ancient continents**, linking evolutionary relationships across distant landmasses.  \n  [Giant new dinosaur discovered beneath construction site in Brazil] (ID: art_948ce40af204c8ae)",
+      "retrieval_context": [
+        "A newly identified dinosaur species discovered during construction work in northeastern Brazil is offering fresh clues about how giant dinosaurs spread across ancient continents.\n\nThe species, named *Dasosaurus tocantinensis*, is described in a study published in the *Journal of Systematic Palaeontology*. The animal measured about 20 meters long and lived roughly 120 million years ago. Its fossils were found at the site of a road rail terminal under construction in Davinópolis, a city in the state of Maranhão.",
+        "# Giant new dinosaur discovered beneath construction site in Brazil\n\n## A giant new dinosaur discovered beneath a Brazilian construction site is revealing a surprising 120-million-year-old connection between South America and Europe.\n\n- Date:\n- September 8, 2026\n- Source:\n- Fundação de Amparo à Pesquisa do Estado de São Paulo\n- Summary:\n- Scientists have identified a giant new dinosaur from Brazil that reached about 20 meters long and lived 120 million years ago. Its surprising evolutionary ties to a Spanish dinosaur suggest its ancestors crossed ancient land connections between Europe, Africa, and South America.\n- Share:",
+        "\"*Daso*\" means \"forest,\" a reference to the region's wooded environment. Early Portuguese colonizers described those forests as forming a dense tangle, or \"*maranhão*.\" The second part of the name, \"*Tocantinensis*,\" refers to the Tocantins River because the fossil site lies near its eastern bank.\n\nResearchers also examined the microscopic structure of the dinosaur's bones. The analysis, led by Tito Aureliano and Aline Ghilardi of the Federal University of Rio Grande do Norte (UFRN), revealed a growth pattern that combines traits seen in older sauropods with features found in titanosaurs, a group closely related to the newly discovered species.",
+        "**Maranhão's Largest Known Dinosaur**\n\n\"It's the largest known dinosaur for Maranhão, which has other species, but not sauropods like this one; rather, it has smaller ones, such as the diplodocid *Amazonsaurus maranhensis*, which was about 10 meters long,\" says Elver Luiz Mayer, a professor at the Federal University of the São Francisco Valley (UNIVASF) in the state of Bahia.\n\nMayer normally studies mammals from the Quaternary period, which is far more recent than the age of the dinosaur fossils. He became involved with the find in 2021 while working in São Félix do Xingu in the state of Pará, where he was then a professor at the Federal University of Southern and Southeastern Pará (UNIFESSPA)",
+        "One of the most striking aspects of the discovery is the dinosaur's evolutionary connection to Europe. Its closest known relative lived in what is now Spain, suggesting that these animals belonged to a broader lineage that once occupied regions that are now separated by the Atlantic Ocean.\n\nResearchers propose that the ancestors of *Dasosaurus tocantinensis* reached South America by moving through North Africa sometime between 140 and 120 million years ago. At the time, these landmasses were still connected within the supercontinent Gondwana.\n\n**Maranhão's Largest Known Dinosaur**"
+      ],
+      "success": false,
+      "metrics": {
+        "Contextual Relevancy": {
+          "score": 0.55,
+          "threshold": 0.7,
+          "success": false,
+          "reason": "The score is 0.55 because the context contains clear paleogeographic evidence — e.g. \"offering fresh clues about how giant dinosaurs spread across ancient continents,\" \"lived roughly 120 million years ago,\" \"its surprising evolutionary ties to a Spanish dinosaur...ancestors crossed ancient land connections,\" \"ancestors... reached South America by moving through North Africa...between 140 and 120 million years ago,\" and \"these landmasses were still connected within the supercontinent Gondwana\" — but much of the retrieved material is taxonomic or local/detail-oriented and not directly about continental connections (for example, \"named *Dasosaurus tocantinensis*\", \"measured about 20 meters long\", \"beneath a Brazilian construction site\"), so overall relevance is moderate rather than high.",
+          "error": null
+        },
+        "Faithfulness": {
+          "score": 1.0,
+          "threshold": 0.7,
+          "success": true,
+          "reason": "The score is 1.00 because there are no contradictions in the provided list, indicating the actual output fully aligns with the retrieval context—well done, accurate and faithful.",
+          "error": null
+        },
+        "Answer Relevancy": {
+          "score": 1.0,
+          "threshold": 0.7,
+          "success": true,
+          "reason": "The score is 1.00 because the response remained fully on-topic and directly answered what insights the newly discovered Brazilian dinosaur provides about ancient prehistoric continents, with no irrelevant statements; it cannot be higher because 1.00 is the maximum possible score.",
+          "error": null
+        }
+      }
+    },
+    {
+      "name": "test_case_22",
+      "input": "Which university professor developed mathematical models treating romantic relationships as dynamic systems?",
+      "actual_output": "- **Professor:** Laurent Pujo-Menjouet  \n- **Affiliation:** University of Lyon I\n\nSource: [Scientists say love follows hidden mathematical rules] (ID: art_728dcae0f8fcb3a8)",
+      "retrieval_context": [
+        "Professor Laurent Pujo-Menjouet of the University of Lyon I and other researchers around the world have been developing mathematical models that treat romantic relationships as dynamical systems. In other words, they study how feelings evolve, respond to outside pressures, and either recover or decline over time.\n\nIn his book *[Love! Valour! Equations!](http://www.routledge.com/LOVE-VALOUR-EQUATIONS-Mathematics-of-the-Couple/Pujo-Menjouet/p/book/9781041281702)*, which brings together mathematics, psychology, literature, cinema and everyday life, Pujo-Menjouet writes: \"There is no mysterious enchantment or magic potion. By now, that would be known. Is all hope lost then? Certainly not. That is precisely where everything becomes interesting.\"",
+        "The framework draws on a long history of mathematical work. That includes Thomas Malthus's population models from the 18th century, the Lotka-Volterra predator-prey equations developed in the 1920s, and later efforts by psychologist John Gottman, economist José Manuel Rey, physicist Sergio Rinaldi, and mathematician Steven Strogatz, who was among the first to apply dynamical systems theory directly to romantic relationships.\n\n### A Mathematical Threshold for Relationship Stability\n\nPsychologist Dr. John Gottman, widely known as 'Doctor Love', helped show that relationship behavior could be analyzed mathematically. By coding interactions between couples and translating those exchanges into graphs, his work demonstrated that mathematical models could help predict relationship outcomes.",
+        "### From Population Models to Romantic Relationships\n\nThe mathematical path to understanding relationships starts in an unexpected place: with rabbits.\n\nSome of the ideas now being applied to couples were originally developed to study changes in animal populations. Malthusian models and predator-prey equations, for example, have been used to examine the spread of Australian rabbits and the shifting populations of Canadian lynxes and snowshoe hares.\n\nAnother important idea is the Allee effect, which describes what happens when a population drops below a critical level. Below that threshold, survival becomes much more difficult. Above it, the population has a better chance of growing and remaining stable.",
+        "# Scientists say love follows hidden mathematical rules\n\n## Scientists are using mathematics to reveal the hidden tipping points that may determine whether love lasts or falls apart.\n\n- Date:\n- September 7, 2026\n- Source:\n- Taylor & Francis Group\n- Summary:\n- Could math help explain why some relationships survive life’s inevitable stresses while others slowly fall apart? Researchers have spent decades developing mathematical models that treat romantic feelings as changing systems, revealing patterns in attraction, emotional reactions, conflict, and recovery.\n- Share:\n\nCould lasting love have a mathematical formula? Researchers who have studied romantic relationships for decades say that the way feelings change over time may follow patterns that can be modeled with surprising precision.",
+        "### Why Love Cannot Be Reduced to an Equation\n\nThe researchers also emphasize that these models have important limitations.\n\nMost have been developed largely from patterns observed in Western relationships. The reasons relationships succeed or fail can vary greatly across cultures, religions, socioeconomic circumstances, and generations. Building a model that works universally would therefore require far more complexity.\n\nHuman behavior also does not always follow predictable rules. People can act irrationally, change their habits, seek therapy, strengthen their commitment, or grow in ways that a mathematical model cannot fully anticipate."
+      ],
+      "success": false,
+      "metrics": {
+        "Contextual Relevancy": {
+          "score": 0.3333333333333333,
+          "threshold": 0.7,
+          "success": false,
+          "reason": "The score is 0.33 because the context does contain direct answers — e.g. \"Professor Laurent Pujo-Menjouet of the University of Lyon I...\" and \"Steven Strogatz...was among the first to apply dynamical systems theory directly to romantic relationships\" — but that useful content is swamped by irrelevant material such as \"Thomas Malthus's population models\", \"Lotka-Volterra predator-prey equations\", and \"with rabbits\" which focus on ecological/model origins rather than the requested professor, so overall relevance is low.",
+          "error": null
+        },
+        "Faithfulness": {
+          "score": 1.0,
+          "threshold": 0.7,
+          "success": true,
+          "reason": "The score is 1.00 because the contradictions list is empty, indicating no inconsistencies were found and the actual output fully aligns with the retrieval context — well done.",
+          "error": null
+        },
+        "Answer Relevancy": {
+          "score": 0.75,
+          "threshold": 0.7,
+          "success": true,
+          "reason": "The score is 0.75 because the response was mostly relevant to the question but included an irrelevant statement about a \"source ID\" being an internal identifier that does not answer which professor developed the models; this distracts and lowers clarity. It remains at 0.75 because the rest of the output was on-topic and provided useful information addressing the question.",
+          "error": null
+        }
+      }
+    },
+    {
+      "name": "test_case_27",
+      "input": "Which university researchers discovered toxin-blocking proteins in rattlesnake blood to create new antivenom?",
+      "actual_output": "- **University:** **University of Maryland**  \n- **Finding:** University of Maryland researchers discovered toxin-blocking proteins in rattlesnake blood used to develop a new antivenom.  \n- **Source:** [Scientists discover a powerful new antivenom hidden in rattlesnake blood] (ID: art_e90e6080efc670d7)",
+      "retrieval_context": [
+        "# Scientists discover a powerful new antivenom hidden in rattlesnake blood\n\n## Scientists are turning snakes’ own venom defenses into an antivenom that proved about 10 times more potent than a current treatment in laboratory tests.\n\n- Date:\n- September 8, 2026\n- Source:\n- University of Maryland\n- Summary:\n- Researchers discovered that combinations of toxin-blocking proteins naturally found in rattlesnake blood can powerfully neutralize venom from several dangerous snake species. In lab tests, the mixtures were about 10 times more potent than a current commercial antivenom, pointing toward a new generation of nature-inspired snakebite treatments.\n- Share:",
+        "University of Maryland researchers have identified a promising new way to treat venomous snakebites by borrowing from snakes' own natural defenses. Their approach uses toxin-blocking proteins that western diamondback rattlesnakes evolved to protect themselves from venom.\n\nBy combining specific proteins found in rattlesnake blood, the researchers achieved unusually strong protection against venom from several dangerous snake species.\n\nThe study was led by Distinguished University Professor of BiologySean B. Carroll and published in the *Proceedings of the National Academy of Sciences*. The findings could help researchers develop more powerful antivenoms for deadly snakebites, which remain a major health threat in some regions of the world.",
+        "### A Natural Defense Hidden in Rattlesnake Blood\n\nIn 2022, Carroll's laboratory found part of the answer: a protein called FETUA-3. The researchers discovered that it could block the activity of many metalloproteinase toxins found in western diamondback rattlesnake venom. It could also bind to and inhibit toxins from the venoms of several other rattlesnake species.\n\n\"Here was evolution's way for snakes to protect themselves from accidental self-envenomation,\" he said, which prompted a follow-up question. \"Why rely on horse antibodies when nature has packaged an effective antidote right there in the snake?\"",
+        "For the new research, co-authors including Elda Sánchez, director of the National Natural Toxins Research Center at Texas A&M University-Kingsville, examined what each FETUA protein contributes to venom resistance.\n\nThe team found that individual proteins could counter certain effects of venom. One might reduce bleeding, for example, while another could interfere with enzyme activity. However, none of the FETUA proteins on its own was able to completely prevent death from a venomous bite.\n\n### Protein Combinations Dramatically Boost Protection\n\nThe results changed when researchers combined several FETUA proteins. These mixtures were far more effective at blocking the harmful effects of venom than the individual proteins alone.",
+        "Existing antivenoms save lives, but they also have major drawbacks. They are typically produced by exposing large animals to snake venom and then collecting the antibodies those animals generate. Manufacturing these treatments can be costly, their quality and effectiveness can vary, and they may not work equally well against the many different toxins found in venom from different snake species. They can also cause serious immune reactions.\n\nThose limitations have pushed scientists to search for better options. In this case, the researchers turned to snakes themselves for clues.\n\n\"We've known from anecdotes for 100 years that vipers tend to be resistant to their own venom,\" Carroll said. \"But for a long time, nobody knew what exactly was circulating in their blood that protected them.\""
+      ],
+      "success": false,
+      "metrics": {
+        "Contextual Relevancy": {
+          "score": 0.7083333333333334,
+          "threshold": 0.7,
+          "success": true,
+          "reason": "The score is 0.71 because, while several lines are just background and don’t name the university (e.g., \"Date: September 8, 2026\" and \"Existing antivenoms save lives, but they also have major drawbacks.\"), the context does explicitly identify the source and team: \"Source: University of Maryland\", \"University of Maryland researchers have identified a promising new way to treat venomous snakebites...\", and \"Researchers discovered that combinations of toxin-blocking proteins naturally found in rattlesnake blood...\" — enough to answer the question but with extraneous material that reduces confidence.",
+          "error": null
+        },
+        "Faithfulness": {
+          "score": 0.6666666666666666,
+          "threshold": 0.7,
+          "success": false,
+          "reason": "The score is 0.67 because the contradictions show the actual output overstated the findings: the retrieval context only reports that University of Maryland researchers identified toxin‑blocking proteins in rattlesnake blood and that protein mixtures neutralized venom in lab tests (about 10× more potent than a commercial antivenom in those tests), but it does not say they developed an actual new antivenom product—only that the findings could help researchers develop nature‑inspired antivenoms.",
+          "error": null
+        },
+        "Answer Relevancy": {
+          "score": 1.0,
+          "threshold": 0.7,
+          "success": true,
+          "reason": "The score is 1.00 because the response contained no irrelevant statements and directly addressed the question—clear and on point.",
+          "error": null
+        }
+      }
+    },
+    {
+      "name": "test_case_24",
+      "input": "What technological driver is producing data at an unprecedented scale, necessitating more energy-efficient computer memory?",
+      "actual_output": "- **Technological driver:** **Artificial intelligence (AI)** (along with other information and communication technologies, **ICTs**)\n- **Why:** AI — e.g., internet searches, AI-generated images, recommendation systems, scientific simulations, and large language models — is producing and processing data at a scale never seen before, driving the need for more energy-efficient memory.  \n  [Scientists find a way to slash computer memory energy use by orders of magnitude] (ID: art_fdc3865a31fc3874)",
+      "retrieval_context": [
+        "### AI's Growing Energy Demand\n\nThat expansion also brings a major challenge: electricity use. Data centers already require huge amounts of power, and their energy demands are expected to rise substantially in the coming decades. Without significant improvements in efficiency, ICTs could eventually represent a sizable share of worldwide electricity consumption and carbon emissions.\n\nFinding ways to make computing more energy efficient is therefore becoming increasingly important as demand for digital services accelerates.\n\nResearchers at the University of Edinburgh have developed a new theoretical framework that could help reduce the amount of energy needed to store and manipulate digital information (bits, represented as \"0\"s and \"1\"s) in future magnetic memory technologies.",
+        "### Moving Closer to a Fundamental Energy Limit\n\nComputer simulations suggest that the method could lower switching energy by several orders of magnitude compared with leading memory technologies used or being developed today, including DRAM, STT-MRAM and emerging SOT-MRAM devices.\n\nEven more strikingly, the predicted energy requirements move future magnetic memory much closer to the Landauer limit (the fundamental thermodynamic limit) defining the minimum amount of energy required to process a single bit of information.\n\nThat limit represents a fundamental boundary imposed by physics, so approaching it would mark a major advance in the effort to make computing as energy efficient as possible.",
+        "Artificial intelligence (AI) and other information and communication technologies (ICTs) are producing and processing data at a scale never seen before.\n\nInternet searches, AI-generated images, recommendation systems, scientific simulations, and large language models all depend on enormous amounts of information being created, moved, stored, and analyzed. As AI becomes more deeply integrated into everyday life, industry, and science, the global need for computing power and data storage continues to climb.\n\n### AI's Growing Energy Demand",
+        "### A More Efficient Way to Switch Magnetic Memory\n\nAt the heart of magnetic memory is the ability to switch magnetic states, which allows digital information to be changed and controlled.\n\nInstead of using conventional methods for designing magnetic switching processes (which is the basic mechanism behind data manipulation), the researchers turned to Optimal Control Theory, a mathematical approach used to determine the most efficient way to reach a specific goal.\n\nUsing this method, the team created a framework for designing ultrafast magnetic-field pulses that can switch magnetic states while consuming as little energy as possible. The calculations also take realistic experimental limitations into account, making the approach more relevant to potential future devices.",
+        "\"Sometimes they printed a certain configuration, and the product just melted,\" said Azza Fadhel, first author of the paper and a PhD student in computer science. \"It wasn't really printable, and even with time and money, they wouldn't be able to try all 100 million options. What we were doing in our collaboration is to apply the AI so that we efficiently choose candidates from this very large search space.\"\n\n### AI Searches More Than 100 Million Possibilities\n\nThe researchers started with data from 37 printing configurations that had already failed in earlier experiments conducted in the School of Mechanical and Materials Engineering."
+      ],
+      "success": false,
+      "metrics": {
+        "Contextual Relevancy": {
+          "score": 0.5238095238095238,
+          "threshold": 0.7,
+          "success": false,
+          "reason": "The score is 0.52 because the context does contain the direct answer — \"Artificial intelligence (AI) and other information and communication technologies (ICTs) are producing and processing data at a scale never seen before.\" — but a large portion of the retrieved text instead focuses on memory energy and magnetic switching (e.g. \"lower switching energy by several orders of magnitude ... including DRAM, STT-MRAM and emerging SOT-MRAM devices\" and \"move future magnetic memory much closer to the Landauer limit ... minimum amount of energy required to process a single bit\"), which is about energy-efficiency research rather than identifying the data-producing technological driver, lowering overall relevancy.",
+          "error": null
+        },
+        "Faithfulness": {
+          "score": 1.0,
+          "threshold": 0.7,
+          "success": true,
+          "reason": "The score is 1.00 because the contradictions list is empty — no discrepancies were identified, so the actual output fully aligns with the retrieval context. Great job keeping the output faithful!",
+          "error": null
+        },
+        "Answer Relevancy": {
+          "score": 0.8333333333333334,
+          "threshold": 0.7,
+          "success": true,
+          "reason": "The score is 0.83 because most of the response was relevant to the question, but it included an irrelevant statement about a scientific finding on reducing memory energy use that did not identify which technological driver is producing unprecedented amounts of data; that misplaced detail prevents a higher score, while the remainder of the answer still focused on the correct topic so the score stays fairly high.",
+          "error": null
+        }
+      }
+    },
+    {
+      "name": "test_case_28",
+      "input": "Where was the newly identified giant dinosaur species discovered beneath a construction site?",
+      "actual_output": "- **Location:** Davinópolis, in the state of **Maranhão**, northeastern **Brazil**  \n- **Specific site:** fossils were found at the site of a **road rail terminal under construction**  \n- **Source:** [Giant new dinosaur discovered beneath construction site in Brazil] (ID: art_948ce40af204c8ae)",
+      "retrieval_context": [
+        "A newly identified dinosaur species discovered during construction work in northeastern Brazil is offering fresh clues about how giant dinosaurs spread across ancient continents.\n\nThe species, named *Dasosaurus tocantinensis*, is described in a study published in the *Journal of Systematic Palaeontology*. The animal measured about 20 meters long and lived roughly 120 million years ago. Its fossils were found at the site of a road rail terminal under construction in Davinópolis, a city in the state of Maranhão.",
+        "# Giant new dinosaur discovered beneath construction site in Brazil\n\n## A giant new dinosaur discovered beneath a Brazilian construction site is revealing a surprising 120-million-year-old connection between South America and Europe.\n\n- Date:\n- September 8, 2026\n- Source:\n- Fundação de Amparo à Pesquisa do Estado de São Paulo\n- Summary:\n- Scientists have identified a giant new dinosaur from Brazil that reached about 20 meters long and lived 120 million years ago. Its surprising evolutionary ties to a Spanish dinosaur suggest its ancestors crossed ancient land connections between Europe, Africa, and South America.\n- Share:",
+        "\"Because it includes tail vertebrae, a 1.5-meter femur, ribs, foot bones, and arm and leg bones, this is considered a relatively complete specimen. We believe there are more fossils from this same specimen yet to be excavated at the site,\" says Max Langer, a professor at the Ribeirão Preto School of Philosophy, Sciences, and Letters at the University of São Paulo (FFCLRP-USP), who participated in the study.\n\nLanger coordinates the project \"Exploring the Diversity of South American Cretaceous Dinosaurs and Their Associated Faunas,\" which is supported by FAPESP.\n\n**Why the Dinosaur Was Named *Dasosaurus***\n\nThe species name reflects both the landscape of Maranhão and the location where the fossils were found.",
+        "\"*Daso*\" means \"forest,\" a reference to the region's wooded environment. Early Portuguese colonizers described those forests as forming a dense tangle, or \"*maranhão*.\" The second part of the name, \"*Tocantinensis*,\" refers to the Tocantins River because the fossil site lies near its eastern bank.\n\nResearchers also examined the microscopic structure of the dinosaur's bones. The analysis, led by Tito Aureliano and Aline Ghilardi of the Federal University of Rio Grande do Norte (UFRN), revealed a growth pattern that combines traits seen in older sauropods with features found in titanosaurs, a group closely related to the newly discovered species.",
+        "**Maranhão's Largest Known Dinosaur**\n\n\"It's the largest known dinosaur for Maranhão, which has other species, but not sauropods like this one; rather, it has smaller ones, such as the diplodocid *Amazonsaurus maranhensis*, which was about 10 meters long,\" says Elver Luiz Mayer, a professor at the Federal University of the São Francisco Valley (UNIVASF) in the state of Bahia.\n\nMayer normally studies mammals from the Quaternary period, which is far more recent than the age of the dinosaur fossils. He became involved with the find in 2021 while working in São Félix do Xingu in the state of Pará, where he was then a professor at the Federal University of Southern and Southeastern Pará (UNIFESSPA)"
+      ],
+      "success": false,
+      "metrics": {
+        "Contextual Relevancy": {
+          "score": 0.35,
+          "threshold": 0.7,
+          "success": false,
+          "reason": "The score is 0.35 because most retrieved snippets focus on taxonomy, size and analysis (e.g., 'The species, named Dasosaurus tocantinensis, is described in a study published in the Journal of Systematic Palaeontology.', 'measured about 20 meters long and lived roughly 120 million years ago.', 'September 8, 2026'), which are irrelevant to location, but the context does include the specific discovery location: 'Its fossils were found at the site of a road rail terminal under construction in Davinópolis, a city in the state of Maranhão.' and the nearby landmark ('Tocantinensis refers to the Tocantins River because the fossil site lies near its eastern bank.'), yielding partial relevance.",
+          "error": null
+        },
+        "Faithfulness": {
+          "score": 1.0,
+          "threshold": 0.7,
+          "success": true,
+          "reason": "The score is 1.00 because the contradictions list is empty — no inconsistencies were reported, so the actual output aligns fully with the retrieval context. Great job!",
+          "error": null
+        },
+        "Answer Relevancy": {
+          "score": 1.0,
+          "threshold": 0.7,
+          "success": true,
+          "reason": "The score is 1.00 because the response was fully on-topic and directly answered where the dinosaur was discovered, containing no irrelevant statements; it cannot be higher because 1.00 is the maximum possible score.",
+          "error": null
+        }
+      }
+    },
+    {
+      "name": "test_case_21",
+      "input": "By what percentage could worldwide cancer cases surge by 2050 according to the American Cancer Society?",
+      "actual_output": "- **Percentage increase:** **67%** surge in worldwide cancer cases **by 2050**  \n  - Source: [Cancer cases could surge 67% worldwide by 2050] (ID: art_d33d11bf479aef5a)",
+      "retrieval_context": [
+        "# Cancer cases could surge 67% worldwide by 2050\n\n## Global cancer cases could surge 67% by 2050, but researchers say nearly half of cancer deaths may be preventable.\n\n- Date:\n- September 7, 2026\n- Source:\n- American Cancer Society\n- Summary:\n- Cancer is becoming an even larger global health threat, with nearly 21 million people diagnosed and 9.8 million dying from the disease in 2024. New estimates suggest about 1 in 5 people worldwide will develop cancer during their lifetime, while cases could climb by 67% to 34 million by 2050 simply because populations are growing and aging.\n- Share:",
+        "A major new analysis led by the American Cancer Society (ACS) paints a troubling picture of cancer worldwide while also highlighting how much of the burden could potentially be reduced through prevention, earlier diagnosis, and better access to care.\n\nAccording to Global Cancer Statistics, 2026, nearly 21 million people were diagnosed with cancer worldwide in 2024, while 9.8 million died from the disease. The estimates suggest that roughly 1 in 5 people across the globe will develop cancer at some point in their lives. About 1 in 9 men and 1 in 13 women are expected to die from cancer.\n\nBy 2050, annual cancer cases are projected to climb to 34 million. That represents a 67% increase compared with 2024, driven solely by population growth and aging.\n\n### A Global Picture of Cancer",
+        "### A Major Cancer Burden in the U.S. and Worldwide\n\nProstate cancer remains a major health concern both in the United States and globally. The American Cancer Society estimates that more than 333,000 men in the U.S. will be diagnosed with prostate cancer in 2026 and that more than 36,000 will die from the disease.\n\nWorldwide, nearly 1.5 million men were diagnosed with prostate cancer in 2022, according to the International Agency for Research on Cancer. Nearly 400,000 men died from the disease that year.",
+        "The new figures are based on GLOBOCAN estimates for 2024. GLOBOCAN is a database created by IARC that tracks cancer incidence and deaths across 34 cancer types of cancer and 186 countries worldwide. Researchers examined how cancer diagnoses and deaths vary by region and by the Human Development Index, then used demographic trends to estimate what the global burden could look like in 2050.\n\n### Cancer Rates Vary Dramatically Around the World\n\nOne of the clearest findings is that cancer does not affect every region equally.\n\nCancer incidence rates differed by roughly four to five times across regions. Australia/New Zealand had the highest rates, while some parts of Africa and South-Central Asia had the lowest.",
+        "\"Cancer is one of the greatest public health challenges of the 21st century and a major barrier to increasing life expectancy worldwide. Understanding the magnitude and geographic distributions of the disease is essential to guide effective and equitable prevention and control efforts,\" said Dr. Hyuna Sung, senior principal scientist, cancer surveillance at the American Cancer Society and lead author of the report. \"While the scale of the cancer burden and the stark geographic disparities are sobering, they also point to a tremendous opportunity. Nearly half of all cancer deaths are estimated to be avoidable through potentially modifiable risk factors and an additional substantial proportion of cancer deaths can be prevented through early detection and timely treatment.\""
+      ],
+      "success": false,
+      "metrics": {
+        "Contextual Relevancy": {
+          "score": 0.27586206896551724,
+          "threshold": 0.7,
+          "success": false,
+          "reason": "The score is 0.28 because most retrieval items are unrelated (e.g., \"Nearly 21 million people diagnosed and 9.8 million dying from the disease in 2024\" and \"about 1 in 5 people worldwide will develop cancer during their lifetime\"), even though the context does contain the exact answer in a few lines (e.g., \"Cancer cases could surge 67% worldwide by 2050\" and \"Source: American Cancer Society\"). The presence of many irrelevant facts, dates, and regional notes dilutes the overall relevancy despite the clear 67% statement.",
+          "error": null
+        },
+        "Faithfulness": {
+          "score": 1.0,
+          "threshold": 0.7,
+          "success": true,
+          "reason": "The score is 1.00 because the contradictions list is empty, indicating no discrepancies were found and the actual output fully aligns with the retrieval context—great job maintaining fidelity!",
+          "error": null
+        },
+        "Answer Relevancy": {
+          "score": 1.0,
+          "threshold": 0.7,
+          "success": true,
+          "reason": "The score is 1.00 because the response directly and succinctly answers the question and contains no irrelevant statements, so there’s nothing extraneous lowering the relevancy.",
+          "error": null
+        }
+      }
+    },
+    {
+      "name": "test_case_4",
+      "input": "What percentage of the universe do astronomers estimate is composed of dark matter?",
+      "actual_output": "- **Estimate:** Astronomers say dark matter makes up **about a quarter** of the universe's total energy content.\n- **Approximate percentage:** **≈25%**  \n- **Source:** [A mysterious signal around Earth could be dark matter] (ID: art_6c7ada9c1ac79a01)",
+      "retrieval_context": [
+        "Dark matter is one of the biggest unsolved mysteries in modern physics. Astronomers are highly confident that it exists and estimate that it accounts for about a quarter of the universe's total energy content, yet scientists still do not know what it is made of.\n\nTwo leading possibilities are hypothetical particles known as *ultralight* *axions* and *dark photons*. In the mass range examined by the researchers, these particles would be extraordinarily light, roughly 19 to 21 orders of magnitude lighter than an electron.\n\n### Turning Earth Into a Giant Dark Matter Detector",
+        "\"This study strengthens the evidence that the universe contains a component of dark matter,\" says Gallardo. \"But we still do not know what that component is made of.\"\n\nFuture measurements of the CMB, together with larger surveys of galaxies, should allow astronomers and physicists to test gravity with even greater precision.\n\n\"With so many unanswered questions, gravity remains one of the most fascinating areas of research. It's a naturally attractive field,\" Gallardo chuckles.\n\n*Patricio Gallardo is a research associate in the Department of Astronomy and Physics in the School of Arts & Sciences at the University of Pennsylvania.*",
+        "### Preparing for the Square Kilometre Array\n\nProfessor Laura Wolz, co-author of the study from the University of Manchester, added: \"MeerKAT continues to open new windows for cosmology. The fact that this signal can be extracted from observations that were not originally designed for hydrogen intensity mapping is very encouraging. It shows the enormous scientific value of MeerKAT data and points the way to future observations with SKAO.\"\n\nFuture studies that observe larger portions of the sky for longer periods should allow astronomers to map neutral hydrogen with even greater precision.\n\nThose observations could help researchers understand how galaxies developed, determine how dark matter influences the cosmic web, and reconstruct how the Universe has changed across billions of years.",
+        "That enormous new sample should give cosmologists a powerful opportunity to test whether the universe is truly accelerating, whether the apparent effect varies with direction, and what role, if any, dark energy plays in shaping the expansion of the cosmos.",
+        "The calculations also support an earlier finding that binaries with total black hole masses roughly above 10<sup>9</sup> solar masses dominate the predicted PTA signal. Binary systems containing less massive black holes contribute far less.\n\n### Connecting Dark Matter, Dark Stars, and Black Holes\n\nThe findings create a new observational link between several major questions in modern cosmology, including the nature of dark matter, the formation of the first luminous objects, the origins of supermassive black holes, and the gravitational waves that travel through the Universe."
+      ],
+      "success": false,
+      "metrics": {
+        "Contextual Relevancy": {
+          "score": 0.125,
+          "threshold": 0.7,
+          "success": false,
+          "reason": "The score is 0.12 because the vast majority of the retrieval context is unrelated (e.g., it emphasizes \"ultralight axions and dark photons\", a heading \"### Turning Earth Into a Giant Dark Matter Detector\", and topics like \"dark energy\" and MeerKAT) and contains many method/biographical statements rather than a numeric estimate — while the only directly relevant lines are that \"Astronomers ... estimate that it accounts for about a quarter of the universe's total energy content\" and quotes such as '\"This study strengthens the evidence that the universe contains a component of dark matter,\" says Gallardo.'.",
+          "error": null
+        },
+        "Faithfulness": {
+          "score": 1.0,
+          "threshold": 0.7,
+          "success": true,
+          "reason": "The score is 1.00 because the contradictions list is empty, indicating the actual output fully aligns with the retrieval context and no contradictions were found.",
+          "error": null
+        },
+        "Answer Relevancy": {
+          "score": 0.5,
+          "threshold": 0.7,
+          "success": false,
+          "reason": "The score is 0.50 because the reply likely included the correct estimate but also added two irrelevant items that weaken relevance: a source title about a specific signal that doesn’t provide the dark-matter percentage, and an internal source identifier that contains no answer. Those extraneous references reduce confidence, preventing a higher score.",
+          "error": null
+        }
+      }
+    },
+    {
+      "name": "test_case_6",
+      "input": "Besides cancer cells, what other types of cells make up the complex microenvironment of breast tumors?",
+      "actual_output": "- **Immune cells** — these surround and can help shield dormant cancer cells from treatment. ([Scientists find breast cancer cells hiding behind protective “shields”] (ID: art_76bb0df1a86080d8))\n\n- **Newly formed blood vessels** — angiogenic vessels are part of the tumor microenvironment alongside cancer cells. ([Scientists find breast cancer cells hiding behind protective “shields”] (ID: art_76bb0df1a86080d8))\n\n- **Connective tissue cells** — stromal/connective tissue cells frequently surround dormant cancer cells and may act as a protective barrier. ([Scientists find breast cancer cells hiding behind protective “shields”] (ID: art_76bb0df1a86080d8))",
+      "retrieval_context": [
+        "### Hidden Cells Inside Breast Tumors\n\nBreast tumors are complex environments made up of many different kinds of cells. Alongside rapidly multiplying cancer cells are immune cells, newly formed blood vessels and a particularly concerning group of cancer cells that remain unusually quiet.\n\nThese dormant, or 'quiescent', cells can survive treatment and may later contribute to cancer spreading or returning. Researchers at the LMS, Imperial and UCL wanted to understand where these cells are located in untreated tumors, what distinguishes them and which other cells tend to surround them.\n\nUsing publicly available data, the team created detailed maps of breast cancer tumors and found distinct clusters of quiescent cells surrounded by other cells that may serve as a protective barrier.",
+        "Glioblastoma is among the most lethal forms of cancer, and treatment options have changed relatively little because the tumors frequently withstand both radiation and chemotherapy. Researchers at The Ohio State University Comprehensive Cancer Center - Arthur G. James Cancer Hospital and Richard J. Solove Research Institute have now identified a protein called SET as a possible target that could make glioblastoma cells easier to kill with existing therapies.\n\nRather than replacing current treatments, the strategy is designed to help them work better. In preclinical experiments, suppressing SET prevented tumors from developing.\n\n### A Potential Weakness in Glioblastoma",
+        "Researchers from the MRC Laboratory of Medical Sciences (LMS), Imperial College London, and UCL Genetics Institute have built a detailed cellular map of breast tumors, revealing separate regions filled with actively dividing cancer cells and others containing dormant cells. Published in *Genome Medicine*, the findings show that these inactive cancer cells are often surrounded by immune and connective tissue cells that may help protect them from treatment.\n\nThe work suggests that future cancer therapies may need to do more than attack fast-growing tumor cells. They may also need to target dormant cancer cells and the local environments that allow them to persist, with the goal of stopping tumor growth while reducing the risk that the disease returns later.",
+        "### How Prostate Cancer Changes To Escape Treatment\n\nSome resistant prostate tumors survive by activating alternative biological pathways that reshape the identity of their cells. As this happens, the cancer cells lose some of their glandular characteristics and begin adopting other cellular identities.\n\nScientists call this process transdifferentiation.\n\nIn a new study published in *JCI Insight*, researchers at the University of Michigan identified two pathways that may be targeted at the same time to treat prostate tumors that have undergone this transformation.",
+        "# Scientists find breast cancer cells hiding behind protective “shields”\n\n- Date:\n- September 6, 2026\n- Source:\n- Medical Research Council (MRC) Laboratory of Medical Sciences\n- Summary:\n- Researchers have mapped breast tumors in striking detail and uncovered hidden pockets of dormant cancer cells that may help explain why cancer can return after treatment. Unlike rapidly dividing cells, these quiet cells can essentially hibernate, allowing them to evade chemotherapy and reactivate later. The team found that they are often surrounded by immune cells and connective tissue cells that may act like a protective shield.\n- Share:"
+      ],
+      "success": false,
+      "metrics": {
+        "Contextual Relevancy": {
+          "score": 0.17857142857142858,
+          "threshold": 0.7,
+          "success": false,
+          "reason": "The score is 0.18 because while the retrieval context does contain directly relevant lines — e.g. 'Breast tumors are complex environments made up of many different kinds of cells.', 'Alongside rapidly multiplying cancer cells are immune cells.', 'Alongside rapidly multiplying cancer cells are newly formed blood vessels.', and '...surrounded by immune and connective tissue cells that may act like a protective shield' — most of the context is irrelevant: it focuses on other cancers or cancer-cell behavior (e.g. 'The heading explicitly mentions 'Glioblastoma'...', and 'These dormant, or 'quiescent', cells can survive treatment and may later contribute to cancer spreading or returning.') or treatment strategies and metadata, so only a small portion actually answers which non-cancer cell types are present.",
+          "error": null
+        },
+        "Faithfulness": {
+          "score": 1.0,
+          "threshold": 0.7,
+          "success": true,
+          "reason": "The score is 1.00 because the contradictions list is empty—there are no identified contradictions, indicating the actual output fully aligns with the retrieval context. Great job!",
+          "error": null
+        },
+        "Answer Relevancy": {
+          "score": 1.0,
+          "threshold": 0.7,
+          "success": true,
+          "reason": "The score is 1.00 because the response fully addressed the question and included no irrelevant statements; since this is a perfect relevancy match there’s no way to increase the score further — nice, concise answer.",
+          "error": null
+        }
+      }
+    },
+    {
+      "name": "test_case_25",
+      "input": "What vital biological functions are shaped by the microorganisms in the human gut microbiome?",
+      "actual_output": "According to the article, microorganisms in the human gut microbiome help shape these vital biological functions:\n\n- **Digestion**\n- **Immune function**\n- **Metabolism**\n\nSource: [Your gut microbiome may be more contagious than scientists thought] (ID: art_6c93a900e6e20a65)",
+      "retrieval_context": [
+        "The human gut is home to trillions of microorganisms (the microbiome), a vast community that helps shape digestion, immune function and metabolism. Now, researchers led by the University of Vienna have found that many gut bacterial species are more complex than they appear.\n\nUsing an analytical strategy known as 'reverse ecology,' the team showed that individual bacterial species can contain several evolutionarily distinct populations, each adapted to different conditions inside the gut. Some of these populations were associated with advanced age, chronic inflammatory bowel diseases, colorectal cancer and type 2 diabetes.",
+        "# Common medications may change your gut for years\n\n- Date:\n- August 24, 2026\n- Source:\n- Estonian Research Council\n- Summary:\n- Common medications may reshape the gut microbiome long after the last dose is taken. In a study of more than 2,500 people, researchers found lasting microbial changes linked not only to antibiotics, but also to antidepressants, beta-blockers, acid-reducing drugs, and benzodiazepines. Some effects were still detectable years later, suggesting past medication use may strongly influence the gut bacteria people carry today.\n- Share:\n\nMedications can influence the community of microbes living in the human gut long after a person stops taking them, according to a large study led by researchers at the University of Tartu Institute of Genomics.",
+        "The researchers now plan to determine which genes separate these bacterial populations from one another and what biological functions those genetic differences produce.",
+        "The analysis revealed that many well-known gut bacterial species actually divide into several distinct evolutionary lineages. These populations appear to be better suited to different conditions within the gut.\n\n\"If you don't just count species but take evolutionary adaptation into account, you can identify the biologically relevant units in the microbiome much more accurately,\" says lead author Xiaoqian Annie Yu, Centre for Microbiology and Environmental Systems Science (CeMESS), University of Vienna. \"Even within the same bacterial species, some populations occur more frequently than others in certain diseases. When all are considered together, this often remains hidden.\"\n\n### Gut Bacteria Can Spread Across Continents",
+        "The results suggest that the gut microbiome may be shaped by more than diet, medication and lifestyle. Transmission between people could also be an important force influencing which bacterial populations become established and spread.\n\n### Toward More Precise Microbiome Medicine\n\nThe discovery could change how researchers connect gut bacteria with disease. Instead of treating an entire bacterial species as a single unit, scientists may eventually be able to focus on the specific populations that are most relevant to health.\n\nThat added precision could improve the search for biomarkers and, over time, may lead to more targeted therapies. Such treatments could potentially encourage beneficial bacterial strains while suppressing populations associated with harmful effects."
+      ],
+      "success": false,
+      "metrics": {
+        "Contextual Relevancy": {
+          "score": 0.043478260869565216,
+          "threshold": 0.7,
+          "success": false,
+          "reason": "The score is 0.04 because the bulk of the context concerns species complexity and external influences rather than functions (e.g., \"many gut bacterial species are more complex than they appear\", \"Common medications may reshape the gut microbiome long after the last dose is taken\", \"Some effects were still detectable years later\"). Only two brief lines address functions: \"the human gut is home to trillions of microorganisms... that helps shape digestion, immune function and metabolism\" and \"determine which genes ... and what biological functions those genetic differences produce\", so overall relevance to the question is very low.",
+          "error": null
+        },
+        "Faithfulness": {
+          "score": 1.0,
+          "threshold": 0.7,
+          "success": true,
+          "reason": "The score is 1.00 because there are no contradictions listed (Contradictions: []), indicating the actual output fully aligns with the retrieval context—well done!",
+          "error": null
+        },
+        "Answer Relevancy": {
+          "score": 1.0,
+          "threshold": 0.7,
+          "success": true,
+          "reason": "The score is 1.00 because the response remained fully on-topic, directly addressing the vital biological functions shaped by the human gut microbiome with no irrelevant statements—clear and focused.",
+          "error": null
+        }
+      }
+    }
+  ]
+}

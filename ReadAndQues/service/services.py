@@ -133,17 +133,6 @@ def save_user_highlights(user_id: int, article_id: str, highlighted_text: str, n
     )
 
 
-def ask_rag_question(question: str, article_id: str | None = None) -> dict[str, Any]:
-    try:
-        from ai_service.interface import ask_question
-
-        res = ask_question(question=question, article_id=article_id)
-        return {"status": "success", "answer": res.get("answer", ""), "citations": res.get("citations", [])}
-    except Exception as e:
-        logger.error(f"RAG service query failed: {e}")
-        return {"status": "error", "answer": f"Error executing RAG: {str(e)}", "citations": []}
-
-
 def delete_article_hard(article_id: str) -> dict[str, Any]:
     article_store.delete_gold_content(article_id)
     exam_store.delete_exam(article_id)

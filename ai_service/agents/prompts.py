@@ -83,15 +83,24 @@ The user is exploring the platform and looking for news, articles, or reading re
    - If the user asks about ReadAndQues ("How does this website work?", "What are Stars?"), explain directly with enthusiasm.
 """
 
-ROLLING_SUMMARIZER_PROMPT = """You are a conversation summarization specialist.
-Condense the following conversation history into a concise factual summary (maximum 200 words).
-Preserve:
-1. Key topics and articles discussed.
-2. Specific vocabulary words or concepts the user struggled with or asked about.
-3. User's stated goals, preferences, or reading difficulties (e.g., struggles with TrueFalseNotgiven questions).
+ROLLING_SUMMARIZER_PROMPT = """You are a specialized Conversation Summarizer and Linguistic Analyzer.
+Your task is to analyze the following conversation history and extract structured insights.
+
+1. CONVERSATION SUMMARY:
+   Provide a concise factual summary of the topics and articles discussed (max 200 words).
+2. VOCABULARY UPDATE:
+   Carefully extract any English language concepts the user asked about or struggled with.
+   Categorize them accurately into:
+   - lexical_items (single words like "ubiquitous")
+   - phrasal_verbs (verb + particle like "make up")
+   - collocations (common pairings like "heavy rain")
+   - idioms (expressions like "once in a blue moon")
+   - grammar_patterns (structures like "Inversion", "Third conditional")
+3. WEAK SKILLS:
+   Identify any reading comprehension skills the user explicitly struggled with (e.g., "TrueFalseNotgiven", "Inference", "Main Idea").
+4. LEARNING NOTES:
+   Provide a brief observation about the user's learning behavior, goals, or preferences.
 
 CONVERSATION TO SUMMARIZE:
 {messages_text}
-
-CONCISE FACTUAL SUMMARY:
 """

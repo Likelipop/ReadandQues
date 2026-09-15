@@ -1,9 +1,10 @@
-import { describe, it, expect, vi } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { render, screen, fireEvent } from '@testing-library/react';
 import { LeftAiDock } from '../LeftAiDock';
+import { authStore } from '../../../store';
 
 // Mock useSSEStream hook
-vi.mock('../../hooks/useSSEStream', () => ({
+vi.mock('../../../hooks/useSSEStream', () => ({
   useSSEStream: () => ({
     isStreaming: false,
     streamedText: '',
@@ -17,56 +18,128 @@ vi.mock('../../hooks/useSSEStream', () => ({
 }));
 
 describe('LeftAiDock', () => {
-  it('renders collapsed trigger tab on the left initially', () => {
-    render(<LeftAiDock activeArticleId="test-1" pageContext="readspace" />);
-    expect(screen.getByRole('complementary', { name: 'AI Study Dock Tab' })).toBeInTheDocument();
-    expect(screen.getByText('AI Study Dock')).toBeInTheDocument();
-    expect(screen.getByText('Ctrl+K')).toBeInTheDocument();
+  beforeEach(() => {
+    // Reset auth store to unauthenticated guest by default
+    authStore.setState({
+      user: null,
+      isLoading: false,
+      error: null,
+    });
   });
 
-  it('expands panel when left tab is clicked', () => {
-    render(<LeftAiDock activeArticleId="test-1" pageContext="readspace" />);
-    const tab = screen.getByRole('complementary', { name: 'AI Study Dock Tab' });
-    fireEvent.click(tab);
+  describe('Unauthenticated Guest State', () => {
+    it('renders collapsed trigger tab with lock indicator', () => {
+      render(<LeftAiDock activeArticleId="test-1" pageContext="readspace" />);
+      expect(screen.getByRole('complementary', { name: 'AI Study Dock Tab' })).toBeInTheDocument();
+      expect(screen.getByText('AI Study Dock')).toBeInTheDocument();
+      expect(screen.getByTestId('ai-dock-lock-badge')).toBeInTheDocument();
+    });
 
-    expect(screen.getByRole('dialog', { name: 'AI Study Dock' })).toBeInTheDocument();
-    expect(screen.getByText('Explainer • Hybrid RAG • Quiz')).toBeInTheDocument();
-    expect(
-      screen.getByPlaceholderText('Ask about this article, words, or create a quiz...')
-    ).toBeInTheDocument();
+    it('displays Auth Gate card and sign-in placeholder when opened as guest', () => {
+      render(<LeftAiDock activeArticleId="test-1" pageContext="readspace" />);
+      const tab = screen.getByRole('complementary', { name: 'AI Study Dock Tab' });
+      fireEvent.click(tab);
+
+      expect(screen.getByRole('dialog', { name: 'AI Study Dock' })).toBeInTheDocument();
+      expect(screen.getByTestId('ai-dock-auth-gate')).toBeInTheDocument();
+      expect(screen.getByText('Sign In to Unlock AI Study Assistant')).toBeInTheDocument();
+      expect(
+        screen.getByPlaceholderText('Sign in to chat with AI Study Assistant...')
+      ).toBeInTheDocument();
+    });
+
+    it('triggers onOpenAuth when clicking Sign In button in Auth Gate', () => {
+      const handleOpenAuth = vi.fn();
+      render(
+        <LeftAiDock
+          activeArticleId="test-1"
+          pageContext="readspace"
+          onOpenAuth={handleOpenAuth}
+        />
+      );
+      const tab = screen.getByRole('complementary', { name: 'AI Study Dock Tab' });
+      fireEvent.click(tab);
+
+      const signInBtn = screen.getByRole('button', { name: /Sign In Now/i });
+      fireEvent.click(signInBtn);
+      expect(handleOpenAuth).toHaveBeenCalledWith('login');
+    });
+
+    it('triggers onOpenAuth when clicking Quick Action buttons (Quiz / Summarize)', () => {
+      const handleOpenAuth = vi.fn();
+      const handleShowToast = vi.fn();
+      render(
+        <LeftAiDock
+          activeArticleId="test-1"
+          pageContext="readspace"
+          onOpenAuth={handleOpenAuth}
+          onShowToast={handleShowToast}
+        />
+      );
+      const tab = screen.getByRole('complementary', { name: 'AI Study Dock Tab' });
+      fireEvent.click(tab);
+
+      const quizBtn = screen.getByRole('button', { name: /^Quiz$/i });
+      fireEvent.click(quizBtn);
+      expect(handleOpenAuth).toHaveBeenCalledWith('login');
+    });
   });
 
-  it('allows closing expanded dock via close button', () => {
-    render(<LeftAiDock activeArticleId="test-1" pageContext="readspace" />);
-    const tab = screen.getByRole('complementary', { name: 'AI Study Dock Tab' });
-    fireEvent.click(tab);
+  describe('Authenticated Member State', () => {
+    beforeEach(() => {
+      authStore.setState({
+        user: {
+          id: 1,
+          username: 'member_user',
+          email: 'member@example.com',
+          is_authenticated: true,
+          stars: 10,
+        },
+        isLoading: false,
+        error: null,
+      });
+    });
 
-    expect(screen.getByRole('dialog', { name: 'AI Study Dock' })).toBeInTheDocument();
+    it('renders collapsed tab without lock badge', () => {
+      render(<LeftAiDock activeArticleId="test-1" pageContext="readspace" />);
+      expect(screen.queryByTestId('ai-dock-lock-badge')).not.toBeInTheDocument();
+    });
 
-    const closeBtn = screen.getByLabelText('Collapse Dock');
-    fireEvent.click(closeBtn);
+    it('expands panel with full active chat input and no auth gate', () => {
+      render(<LeftAiDock activeArticleId="test-1" pageContext="readspace" />);
+      const tab = screen.getByRole('complementary', { name: 'AI Study Dock Tab' });
+      fireEvent.click(tab);
 
-    expect(screen.queryByRole('dialog', { name: 'AI Study Dock' })).not.toBeInTheDocument();
-    expect(screen.getByRole('complementary', { name: 'AI Study Dock Tab' })).toBeInTheDocument();
-  });
+      expect(screen.getByRole('dialog', { name: 'AI Study Dock' })).toBeInTheDocument();
+      expect(screen.queryByTestId('ai-dock-auth-gate')).not.toBeInTheDocument();
+      expect(
+        screen.getByPlaceholderText('Ask about this article, words, or create a quiz...')
+      ).toBeInTheDocument();
+    });
 
-  it('resets chat history when reset button is clicked', () => {
-    render(<LeftAiDock activeArticleId="test-1" pageContext="readspace" />);
-    const tab = screen.getByRole('complementary', { name: 'AI Study Dock Tab' });
-    fireEvent.click(tab);
+    it('allows closing expanded dock via close button', () => {
+      render(<LeftAiDock activeArticleId="test-1" pageContext="readspace" />);
+      const tab = screen.getByRole('complementary', { name: 'AI Study Dock Tab' });
+      fireEvent.click(tab);
 
-    const resetBtn = screen.getByLabelText('Clear chat history');
-    fireEvent.click(resetBtn);
+      expect(screen.getByRole('dialog', { name: 'AI Study Dock' })).toBeInTheDocument();
 
-    expect(screen.getByText(/AI Study Dock reset/i)).toBeInTheDocument();
-  });
+      const closeBtn = screen.getByLabelText('Collapse Dock');
+      fireEvent.click(closeBtn);
 
-  it('renders Quick Action Dock buttons (Quiz, Summarize) in chat mode', () => {
-    render(<LeftAiDock activeArticleId="test-1" pageContext="readspace" />);
-    const tab = screen.getByRole('complementary', { name: 'AI Study Dock Tab' });
-    fireEvent.click(tab);
+      expect(screen.queryByRole('dialog', { name: 'AI Study Dock' })).not.toBeInTheDocument();
+      expect(screen.getByRole('complementary', { name: 'AI Study Dock Tab' })).toBeInTheDocument();
+    });
 
-    expect(screen.getByRole('button', { name: /^Quiz$/i })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /^Summarize$/i })).toBeInTheDocument();
+    it('resets chat history when reset button is clicked', () => {
+      render(<LeftAiDock activeArticleId="test-1" pageContext="readspace" />);
+      const tab = screen.getByRole('complementary', { name: 'AI Study Dock Tab' });
+      fireEvent.click(tab);
+
+      const resetBtn = screen.getByLabelText('Clear chat history');
+      fireEvent.click(resetBtn);
+
+      expect(screen.getByText(/AI Study Dock reset/i)).toBeInTheDocument();
+    });
   });
 });

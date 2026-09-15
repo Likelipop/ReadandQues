@@ -23,6 +23,7 @@ dependencies = [
     "pypdf>=6.16.0",
     "django-ninja>=1.6.3",
     "nltk>=3.10.0",
+    "deepeval>=4.2.2",
 ]
 
 [dependency-groups]

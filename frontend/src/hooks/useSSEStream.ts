@@ -96,6 +96,9 @@ export function useSSEStream() {
         });
 
         if (!response.ok || !response.body) {
+          if (response.status === 401) {
+            throw new Error('Authentication required. Please log in to use AI Study Dock.');
+          }
           throw new Error(`HTTP ${response.status}: Failed to connect to stream`);
         }
 

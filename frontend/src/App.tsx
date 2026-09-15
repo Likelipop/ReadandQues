@@ -122,6 +122,8 @@ export default function App() {
             articleId={selectedArticleId}
             onNavigateHome={() => handleNavigate('home')}
             onSelectArticle={(aid) => handleNavigate('readspace', aid)}
+            onOpenAuth={handleOpenAuth}
+            onShowToast={showToast}
           />
         )}
 
@@ -147,6 +149,8 @@ export default function App() {
       <LeftAiDock
         activeArticleId={currentView === 'readspace' ? selectedArticleId || undefined : undefined}
         pageContext={currentView}
+        onOpenAuth={handleOpenAuth}
+        onShowToast={showToast}
       />
 
       {/* 6. Global Auth Modal */}
